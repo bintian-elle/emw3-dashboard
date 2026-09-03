@@ -1,69 +1,17 @@
-import Image from "next/image";
+import Link from "next/link";
+import { RiArrowRightLine, RiArrowRightUpLine, RiBarChartGroupedLine, RiDatabase2Line, RiRobot2Line, RiSparkling2Line } from "@remixicon/react";
+import { BluevuaMark, Emw3Logo } from "@/components/brand/emw3-logo";
+import { ButtonLink } from "@/components/base/buttons/button";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
-}
+const agentUrl="https://agents.emw3-dashboard.win/";
+
+export default function Home(){return <main className="min-h-screen bg-background-full p-4 sm:p-6 lg:p-8"><div className="mx-auto min-h-[calc(100vh-4rem)] max-w-7xl overflow-hidden rounded-3xl border border-border-button-default bg-background-secondary-default shadow-card">
+  <header className="flex items-center justify-between border-b border-separator-border px-5 py-4 sm:px-8"><Link href="/" aria-label="Go to homepage"><Emw3Logo priority className="w-44 sm:w-52"/></Link><span className="rounded-full border border-border-button-default bg-background-primary-default px-3 py-1.5 text-caption-1-semibold text-text-secondary">Marketing intelligence</span></header>
+  <section className="grid border-b border-separator-border lg:grid-cols-[1.35fr_0.65fr]"><div className="flex flex-col justify-center px-6 py-14 sm:px-10 sm:py-20 lg:px-14 lg:py-24"><span className="mb-5 inline-flex w-fit items-center gap-2 rounded-full bg-status-purple-background px-3 py-1.5 text-caption-1-semibold text-status-purple-text"><RiSparkling2Line className="size-4" aria-hidden/>Analytics and AI in one workspace</span><h1 className="max-w-4xl text-display-2-semibold text-text-primary sm:text-display-1-semibold">See performance clearly. Turn insight into action.</h1><p className="mt-6 max-w-2xl text-title-3-regular text-text-secondary">Monitor cross-channel performance, manage creative testing, and work with an AI agent that understands your marketing data.</p><div className="mt-8 flex flex-wrap gap-3"><ButtonLink href="/bluevua" trailingIcon={RiArrowRightLine}>Open Bluevua</ButtonLink><ButtonLink href={agentUrl} variant="secondary" trailingIcon={RiArrowRightUpLine}>Open AI Agent</ButtonLink></div></div>
+    <div className="relative flex min-h-80 items-center justify-center overflow-hidden border-t border-separator-border bg-background-primary-default p-8 lg:border-l lg:border-t-0"><div className="absolute -right-16 -top-16 size-64 rounded-full bg-status-purple-background"/><div className="absolute -bottom-20 -left-16 size-64 rounded-full bg-status-blue-background"/><div className="relative w-full max-w-sm rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-sidebar"><div className="flex items-center gap-3"><span className="flex size-11 items-center justify-center rounded-xl bg-status-purple-background text-status-purple-text"><RiRobot2Line className="size-6" aria-hidden/></span><div><p className="text-body-medium text-text-primary">AI marketing agent</p><p className="text-caption-2-regular text-text-secondary">Ready to analyze</p></div></div><div className="mt-5 grid gap-3"><div className="rounded-2xl bg-background-secondary-default p-4"><p className="text-caption-1-semibold text-text-tertiary">ASK</p><p className="mt-2 text-body-regular text-text-primary">Why did ROAS change this week?</p></div><div className="rounded-2xl bg-status-purple-background p-4"><p className="text-body-regular text-status-purple-text">Compare channels, find the drivers, and recommend the next action.</p></div></div></div></div>
+  </section>
+  <section className="px-6 py-10 sm:px-10 lg:px-14 lg:py-12" aria-label="Workspaces"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><p className="text-caption-1-semibold text-text-tertiary">WORKSPACE</p><p className="text-body-regular text-text-secondary">Connected data, reporting, testing and analysis</p></div><div className="grid gap-5 lg:grid-cols-2">
+    <Link href="/bluevua" className="group flex min-h-64 flex-col justify-between rounded-3xl border border-border-button-default bg-background-primary-default p-6 shadow-card outline-none transition hover:border-border-button-hover hover:shadow-sidebar focus-visible:ring-2 focus-visible:ring-border-focus-ring"><div><div className="flex items-start justify-between gap-4"><BluevuaMark className="size-14"/><RiArrowRightUpLine className="size-6 text-foreground-icon-tertiary transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden/></div><h3 className="mt-8 text-title-1-semibold text-text-primary">Bluevua dashboard</h3><p className="mt-2 max-w-lg text-body-regular text-text-secondary">Open the project workspace for dashboards, cross-channel testing, campaign metrics and creative performance.</p></div><div className="mt-6 flex flex-wrap gap-2"><span className="inline-flex items-center gap-1.5 rounded-full bg-status-blue-background px-3 py-1.5 text-caption-1-semibold text-status-blue-text"><RiBarChartGroupedLine className="size-4" aria-hidden/>Dashboard</span><span className="inline-flex items-center gap-1.5 rounded-full bg-status-lime-background px-3 py-1.5 text-caption-1-semibold text-status-lime-text"><RiDatabase2Line className="size-4" aria-hidden/>Live data</span></div></Link>
+    <Link href={agentUrl} className="group flex min-h-64 flex-col justify-between rounded-3xl border border-border-button-default bg-background-primary-default p-6 shadow-card outline-none transition hover:border-border-button-hover hover:shadow-sidebar focus-visible:ring-2 focus-visible:ring-border-focus-ring"><div><div className="flex items-start justify-between gap-4"><span className="flex size-14 items-center justify-center rounded-2xl bg-status-purple-background text-status-purple-text"><RiRobot2Line className="size-7" aria-hidden/></span><RiArrowRightUpLine className="size-6 text-foreground-icon-tertiary transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden/></div><h3 className="mt-8 text-title-1-semibold text-text-primary">AI Agent</h3><p className="mt-2 max-w-lg text-body-regular text-text-secondary">Ask questions about performance, investigate changes, compare campaigns, and turn analysis into practical next steps.</p></div><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full bg-status-purple-background px-3 py-1.5 text-caption-1-semibold text-status-purple-text">Conversational analytics</span><span className="rounded-full bg-status-yellow-background px-3 py-1.5 text-caption-1-semibold text-status-yellow-text">Recommendations</span></div></Link>
+  </div></section>
+</div></main>;}

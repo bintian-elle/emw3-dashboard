@@ -1,0 +1,1 @@
+export function highResolutionCreativeUrl(value:string|null){if(!value)return null;if(value.includes("fbcdn.net"))return value;return value.replace(/\/default\.jpg(?=\?|$)/,"/hqdefault.jpg").replace(/\/mqdefault\.jpg(?=\?|$)/,"/hqdefault.jpg");}
