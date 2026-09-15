@@ -1,0 +1,5 @@
+{
+  "venvPath": "Klaviyo database",
+  "venv": ".venv",
+  "extraPaths": ["Klaviyo database/.venv/lib/python3.14/site-packages"]
+}

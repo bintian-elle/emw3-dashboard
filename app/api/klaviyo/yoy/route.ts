@@ -1,0 +1,4 @@
+import { NextResponse } from "next/server";
+import { KlaviyoError, loadYoY, type DateRange } from "@/lib/klaviyo-dashboard";
+
+export async function POST(request:Request){try{const {range}=await request.json() as {range:DateRange};const start=Date.parse(`${range?.start}T00:00:00Z`),end=Date.parse(`${range?.end}T00:00:00Z`);if(!Number.isFinite(start)||!Number.isFinite(end)||end<start||(end-start)/86_400_000>=365)return NextResponse.json({error:"Select a valid date range of no more than 365 days."},{status:400});return NextResponse.json(await loadYoY(range));}catch(error){const status=error instanceof KlaviyoError&&error.retryAfter?429:500;return NextResponse.json({error:error instanceof Error?error.message:"Previous Year data could not be loaded.",retryAfter:error instanceof KlaviyoError?error.retryAfter:0},{status});}}
