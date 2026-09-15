@@ -4,8 +4,8 @@ import { AI_PROMPT_VERSION, ANALYTICS_VERSION } from "./klaviyo-analytics";
 
 export type DateRange = { start: string; end: string };
 export type DashboardRequest = { range: DateRange; comparison: DateRange; presetLabel: string; comparisonLabel: string; language?:"en"|"zh" };
-export type AiInsightItem = { title:string; finding:string; evidence:string[]; business_impact:string; priority:"high"|"medium"|"low" };
-export type AiInsightPayload = { headline:string; executive_summary:string; performance_status:"positive"|"mixed"|"negative"|"stable"; overall_insights:AiInsightItem[]; whats_working:AiInsightItem[]; what_to_optimize:AiInsightItem[]; risks_to_watch:AiInsightItem[]; recommended_actions:Array<{action:string;reason:string;priority:"high"|"medium"|"low"}> };
+export type AiInsightItem = { title:string; observation:string; interpretation:string; supporting_evidence:string[]; driver:string; business_implication:string; next_step:string; confidence:"high"|"medium"|"low" };
+export type AiInsightPayload = { headline:string; executive_summary:string; performance_status:"positive"|"mixed"|"negative"|"stable"; key_insights:AiInsightItem[]; recommended_actions:Array<{action:string;reason:string;priority:"high"|"medium"|"low"}> };
 export type CampaignMetric = { id:string; name:string; sentDate:string; channel:"email"|"sms"; messageId:string; revenue:number; recipients:number; delivered:number; openRate:number; clickRate:number; orders:number; aov:number };
 export type DashboardData = {
   timezone:string; range:DateRange; comparison:DateRange; presetLabel:string; comparisonLabel:string; dataUpdatedThrough:string;
