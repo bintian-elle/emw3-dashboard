@@ -1,5 +1,13 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Private access
+
+Set `SITE_ACCESS_KEY` in `.env.local` and in the production deployment environment. Use a long, randomly generated value. The dashboard uses this shared key to issue a 30-day Secure, HttpOnly cookie; no user accounts are required.
+
+```bash
+SITE_ACCESS_KEY="replace-with-a-long-random-secret"
+```
+
 ## Getting Started
 
 First, run the development server:

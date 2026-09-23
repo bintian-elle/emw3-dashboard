@@ -112,6 +112,8 @@ export interface InputBaseProps extends Omit<AriaInputProps, "size" | "className
   trailingIcon?: IconComponent;
   /** Custom element rendered in the leading slot (Phone basic uses this). */
   leadingAddon?: ReactNode;
+  /** Custom interactive element rendered after the input. */
+  trailingAddon?: ReactNode;
   /** Class for the field shell. */
   fieldClassName?: string;
   /** Ref to the <input> element. */
@@ -161,6 +163,7 @@ export function InputBase({
   leadingIcon: Leading,
   trailingIcon: Trailing,
   leadingAddon,
+  trailingAddon,
   fieldClassName,
   className,
   ref,
@@ -214,9 +217,9 @@ export function InputBase({
             className={cx(inputStyles.input, ctx.inputClassName, className)}
           />
         </div>
-        {Trailing ? (
+        {trailingAddon ?? (Trailing ? (
           <Trailing className={inputStyles.icon} aria-hidden />
-        ) : null}
+        ) : null)}
       </div>
     </AriaGroup>
   );
@@ -235,6 +238,7 @@ export interface InputProps
       | "leadingIcon"
       | "trailingIcon"
       | "leadingAddon"
+      | "trailingAddon"
       | "fieldClassName"
       | "groupRef"
       | "ref"
@@ -254,6 +258,7 @@ export function Input({
   leadingIcon,
   trailingIcon,
   leadingAddon,
+  trailingAddon,
   fieldClassName,
   ref,
   groupRef,
@@ -289,6 +294,7 @@ export function Input({
             leadingIcon={leadingIcon}
             trailingIcon={trailingIcon}
             leadingAddon={leadingAddon}
+            trailingAddon={trailingAddon}
             fieldClassName={fieldClassName}
           />
           {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}

@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   title: "EMW3 Analytics",
   description: "AI-powered marketing analytics for Bluevua.",
   icons: { icon: "/icon.svg" },
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: { index: false, follow: false, noimageindex: true, "max-snippet": 0, "max-image-preview": "none" },
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

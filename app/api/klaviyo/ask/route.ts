@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cachedAiInsight, KlaviyoError, loadAiDetails, loadDashboard, saveAiInsight, updateCachedAiInsight, type DashboardRequest } from "@/lib/klaviyo-dashboard";
+import { cachedAiInsight, loadAiDetails, loadDashboard, saveAiInsight, updateCachedAiInsight, type DashboardRequest } from "@/lib/klaviyo-dashboard";
 import { buildPerformanceIntelligence, parseAiInsightResponse, validateAiInsightClaims } from "@/lib/klaviyo-analytics";
 
 type AskRequest = DashboardRequest & { question?: string; mode?:"question"|"summary"; debug?:boolean };

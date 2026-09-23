@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createElement, type ReactNode } from "react";
 import {
   ChartNoAxesCombined,
   FlaskConical,
@@ -35,7 +35,6 @@ export function DashboardSection({
   className?: string;
 }) {
   const semanticIcon = Icon ?? sectionIcon(title);
-  const SemanticIcon = semanticIcon;
   const isAi = title === "AI Performance Insights";
   const resolvedTone = isAi ? "accent" : iconTone;
   const visibleEyebrow = eyebrow && !/^\d+$/.test(eyebrow) ? eyebrow : undefined;
@@ -44,7 +43,7 @@ export function DashboardSection({
     <section className={cx("min-w-0 max-w-full space-y-5 pt-4", className)}>
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div className="flex min-w-0 items-start gap-3">
-          <span className={cx("mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl", resolvedTone === "accent" ? "bg-accent-50 text-accent-700" : "bg-background-secondary-default text-foreground-icon-secondary")}><SemanticIcon className="size-5" aria-hidden="true" /></span>
+          <span className={cx("mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl", resolvedTone === "accent" ? "bg-accent-50 text-accent-700" : "bg-background-secondary-default text-foreground-icon-secondary")}>{createElement(semanticIcon,{className:"size-5","aria-hidden":"true"})}</span>
           <div className="min-w-0">
             {visibleEyebrow && <p className={cx("text-caption-1-semibold", resolvedTone === "accent" ? "text-accent-700" : "text-text-tertiary")}>{visibleEyebrow}</p>}
             <h2 className={cx("text-title-1-semibold tracking-tight text-text-primary", visibleEyebrow && "mt-1")}>{title}</h2>
