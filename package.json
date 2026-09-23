@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "prebuild": "node scripts/clean-next-build-cache.mjs",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test:analytics": "node --experimental-strip-types --test lib/klaviyo-analytics.test.ts"

@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Keep production builds within the memory available on the small
+    // self-hosted deployment instance. Development still uses Turbopack.
+    webpackMemoryOptimizations: true,
+    webpackBuildWorker: true,
+  },
   async headers() {
     return [{
       source: "/:path*",
