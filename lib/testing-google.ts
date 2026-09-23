@@ -34,6 +34,7 @@ export type GoogleTestGroup = {
 
 export type GoogleSearchTest = {
   campaignName: string;
+  campaignStatus: string;
   periodLabel: string;
   period: { start: string; end: string } | null;
   groups: GoogleTestGroup[];
@@ -85,14 +86,14 @@ export function resolveTestingPeriod(latest:string,input:TestingPeriodInput) {
 
 export async function getGoogleSearchTest(input:TestingPeriodInput={}): Promise<GoogleSearchTest> {
   await connection();
-  const latestResult=await db.query<{latest_date:string}>(`
-    SELECT MAX(f.date)::text AS latest_date
+  const latestResult=await db.query<{latest_date:string;campaign_status:string}>(`
+    SELECT MAX(f.date)::text AS latest_date, MAX(c.campaign_status) AS campaign_status
     FROM fact_ad_group_daily f
     JOIN dim_campaign c USING (customer_id, campaign_id)
     WHERE c.campaign_name=$1 AND f.date<CURRENT_DATE
   `,[GOOGLE_SEARCH_CAMPAIGN]);
   const preset=input.preset??"lastWeek";
-  if(!latestResult.rows[0]?.latest_date)return {campaignName:GOOGLE_SEARCH_CAMPAIGN,periodLabel:testingPeriodLabels[preset],period:null,groups:[]};
+  if(!latestResult.rows[0]?.latest_date)return {campaignName:GOOGLE_SEARCH_CAMPAIGN,campaignStatus:latestResult.rows[0]?.campaign_status??"Unknown",periodLabel:testingPeriodLabels[preset],period:null,groups:[]};
   const period=resolveTestingPeriod(latestResult.rows[0].latest_date,input);
   const result = await db.query<GoogleTestRow>(`
     SELECT
@@ -144,6 +145,7 @@ export async function getGoogleSearchTest(input:TestingPeriodInput={}): Promise<
 
   return {
     campaignName: GOOGLE_SEARCH_CAMPAIGN,
+    campaignStatus: latestResult.rows[0].campaign_status,
     periodLabel: testingPeriodLabels[preset],
     period,
     groups,

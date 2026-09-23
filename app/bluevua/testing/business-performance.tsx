@@ -4,9 +4,10 @@ import type { GoogleSearchTest } from "@/lib/testing-google";
 import type { MetaCampaignTest } from "@/lib/testing-meta";
 import type { RedditTestingData } from "@/lib/testing-reddit";
 import { cx } from "@/utils/cx";
+import { SegmentedGauge, type GaugeSegment } from "./segmented-gauge";
 
 type Metric={spend:number;revenue:number;orders:number;clicks:number};
-type Segment={label:string;value:number;display:string;color:string;dot:string};
+type Segment=GaugeSegment;
 const channelStyle={Google:{color:"stroke-chart-4",dot:"bg-chart-4"},Meta:{color:"stroke-chart-5",dot:"bg-chart-5"},Reddit:{color:"stroke-chart-3",dot:"bg-chart-3"},EDM:{color:"stroke-chart-8",dot:"bg-chart-8"}};
 const assetStyle={Message:{color:"stroke-chart-2",dot:"bg-chart-2"},Picture:{color:"stroke-chart-3",dot:"bg-chart-3"},Video:{color:"stroke-chart-5",dot:"bg-chart-5"}};
 const currency=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}),number=new Intl.NumberFormat("en-US",{maximumFractionDigits:0}),percent=new Intl.NumberFormat("en-US",{style:"percent",minimumFractionDigits:2,maximumFractionDigits:2});
@@ -15,9 +16,7 @@ const add=(target:Metric,row:Metric)=>{target.spend+=row.spend;target.revenue+=r
 const ratio=(a:number,b:number)=>b>0?a/b:null;
 const showRatio=(value:number|null,suffix="")=>value==null?"—":`${value.toFixed(2)}${suffix}`;
 
-function SegmentedGauge({segments,value,caption}:{segments:Segment[];value:string;caption:string}){const total=segments.reduce((sum,item)=>sum+Math.max(0,item.value),0),gap=segments.length>1?1.5:0;let offset=0;return <div><div className="relative mx-auto h-36 max-w-sm"><svg viewBox="0 0 180 110" className="size-full" aria-hidden><path d="M 20 92 A 70 70 0 0 1 160 92" pathLength="100" fill="none" className="stroke-chart-track" strokeWidth="14" strokeLinecap="round"/>{segments.map(item=>{const share=total?item.value/total*100:0,start=offset;offset+=share;return <path key={item.label} d="M 20 92 A 70 70 0 0 1 160 92" pathLength="100" fill="none" className={item.color} strokeWidth="14" strokeLinecap="round" strokeDasharray={`${Math.max(0,share-gap)} ${100-Math.max(0,share-gap)}`} strokeDashoffset={-start}/>;})}</svg><div className="absolute inset-x-0 bottom-1 text-center"><p className="text-title-1-medium tabular-nums text-text-primary">{value}</p><p className="text-caption-2-regular text-text-tertiary">{caption}</p></div></div><div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-2">{segments.map(item=><span key={item.label} className="inline-flex items-center gap-1.5 text-body-2-regular text-text-secondary"><span className={cx("size-2.5 rounded-full",item.dot)}/>{item.label} <strong className="text-body-2-medium text-text-primary">{item.display}</strong></span>)}</div></div>;}
-
-function MetricCard({title,value,caption,segments,children,className}:{title:string;value:string;caption:string;segments:Segment[];children?:React.ReactNode;className?:string}){return <article className={cx("rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-card",className)}><h3 className="text-title-3-semibold text-text-primary">{title}</h3><SegmentedGauge segments={segments} value={value} caption={caption}/>{children}</article>;}
+function MetricCard({title,value,caption,segments,children,className}:{title:string;value:string;caption:string;segments:Segment[];children?:React.ReactNode;className?:string}){return <article className={cx("rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-card",className)}><SegmentedGauge title={title} segments={segments} value={value} caption={caption}/>{children}</article>;}
 function DetailRow({title,items}:{title:string;items:Segment[]}){return <div className="mt-5 border-t border-separator-border pt-4"><p className="text-caption-1-semibold text-text-tertiary">{title}</p><div className="mt-3 flex flex-wrap gap-2">{items.map(item=><span key={item.label} className="inline-flex items-center gap-1.5 rounded-full bg-background-secondary-default px-3 py-1.5 text-caption-1-semibold text-text-secondary"><span className={cx("size-2 rounded-full",item.dot)}/>{item.label}<span className="text-text-primary">{item.display}</span></span>)}</div></div>;}
 
 export function BusinessPerformance({google,demandGen,meta,reddit,edm}:{google:GoogleSearchTest;demandGen:DemandGenData;meta:MetaCampaignTest;reddit:RedditTestingData;edm:EdmTestingData}){

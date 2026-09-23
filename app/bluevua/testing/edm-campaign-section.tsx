@@ -2,6 +2,7 @@ import { RiMailLine } from "@remixicon/react";
 import { EmailLightbox } from "@/components/application/media/email-lightbox";
 import { Chip } from "@/components/base/badges/chip";
 import type { EdmTestingData } from "@/lib/testing-edm";
+import { CampaignStatusChip } from "./campaign-status-chip";
 
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -23,9 +24,10 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
                   <span>EDM ·</span>
                   <Chip variant="caption" color="yellow">A/B TEST</Chip>
                   <span>CAMPAIGN</span>
+                  <CampaignStatusChip status={campaign.campaignStatus} />
                 </div>
                 <h2 className="mt-1 break-words text-title-2-semibold text-text-primary">{campaign.campaignName}</h2>
-                <p className="mt-1 text-body-regular text-text-secondary">Second-module click-through comparison · {campaign.campaignStatus}</p>
+                <p className="mt-1 text-body-regular text-text-secondary">Second-module click-through comparison</p>
               </div>
             </div>
             <p className="shrink-0 rounded-xl bg-background-secondary-default px-3 py-2 text-body-medium text-text-secondary">

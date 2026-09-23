@@ -10,7 +10,7 @@ const definitions=[
 
 export type DemandGenMetricRow={spend:number;revenue:number;orders:number;impressions:number;clicks:number;cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null};
 export type DemandGenAd=DemandGenMetricRow&{adId:string;name:string;adType:string;previewType:string;previewUrl:string|null;videoUrl:string|null};
-export type DemandGenCampaign=DemandGenMetricRow&{key:string;title:string;campaignName:string;adGroupName:string;adGroupId:string;mediaType:"image"|"video";previewUrl:string|null;groups:Array<{label:"Group A"|"Group B"}>};
+export type DemandGenCampaign=DemandGenMetricRow&{key:string;title:string;campaignName:string;campaignStatus:string;adGroupName:string;adGroupId:string;mediaType:"image"|"video";previewUrl:string|null;groups:Array<{label:"Group A"|"Group B"}>};
 export type DemandGenData={period:{start:string;end:string}|null;periodLabel:string;campaigns:DemandGenCampaign[]};
 
 const num=(value:unknown)=>Number(value??0);const ratio=(a:number,b:number)=>b>0?a/b:null;
@@ -20,8 +20,9 @@ async function latestAndPeriod(input:TestingPeriodInput){const latest=await db.q
 export async function getDemandGenData(input:TestingPeriodInput={}):Promise<DemandGenData>{
   await connection();const preset=input.preset??"lastWeek";const period=await latestAndPeriod(input);if(!period)return {period:null,periodLabel:testingPeriodLabels[preset],campaigns:[]};const ids=definitions.map(item=>item.adGroupId);
   const totals=await db.query<Record<string,unknown>>(`SELECT ad_group_id,SUM(cost_micros)/1000000.0 spend,SUM(conversions_value) revenue,SUM(conversions) orders,SUM(impressions) impressions,SUM(clicks) clicks FROM fact_ad_group_daily WHERE ad_group_id=ANY($1::text[]) AND date BETWEEN $2::date AND $3::date GROUP BY ad_group_id`,[ids,period.start,period.end]);
+  const statuses=await db.query<{campaign_name:string;campaign_status:string}>(`SELECT campaign_name,campaign_status FROM dim_campaign WHERE campaign_name=ANY($1::text[])`,[definitions.map(item=>item.campaignName)]);
   const previews=await db.query<Record<string,unknown>>(`SELECT ad_group_id,ad_id,MAX(preview_type) preview_type,MAX(preview_thumbnail_url) preview_thumbnail_url,MAX(youtube_video_url) youtube_video_url,SUM(spend) spend FROM v_ad_performance_daily WHERE ad_group_id=ANY($1::text[]) AND date BETWEEN $2::date AND $3::date GROUP BY ad_group_id,ad_id ORDER BY ad_group_id,spend DESC,ad_id`,[ids,period.start,period.end]);
-  const campaigns=definitions.map(def=>{const row=totals.rows.find(item=>String(item.ad_group_id)===def.adGroupId)??{};const preview=previews.rows.find(item=>String(item.ad_group_id)===def.adGroupId&&(def.mediaType!=="video"||Boolean(item.youtube_video_url)));return {...def,...metrics(row),previewUrl:preview?.preview_thumbnail_url?String(preview.preview_thumbnail_url):null,groups:[{label:"Group A" as const},{label:"Group B" as const}]};});
+  const campaigns=definitions.map(def=>{const row=totals.rows.find(item=>String(item.ad_group_id)===def.adGroupId)??{};const preview=previews.rows.find(item=>String(item.ad_group_id)===def.adGroupId&&(def.mediaType!=="video"||Boolean(item.youtube_video_url)));return {...def,campaignStatus:statuses.rows.find(item=>item.campaign_name===def.campaignName)?.campaign_status??"Unknown",...metrics(row),previewUrl:preview?.preview_thumbnail_url?String(preview.preview_thumbnail_url):null,groups:[{label:"Group A" as const},{label:"Group B" as const}]};});
   return {period,periodLabel:testingPeriodLabels[preset],campaigns};
 }
 

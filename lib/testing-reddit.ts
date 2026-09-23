@@ -10,7 +10,7 @@ type RawMetric={campaign_id?:string;ad_group_id?:string;ad_id?:string;impression
 export type RedditMetrics={spend:number;impressions:number;clicks:number;reach:number;ctr:number|null;cpm:number|null;costPerThousandReach:number|null;orders:number;revenue:number;cpa:number|null;cvr:number|null;roas:number|null;cpc:number|null};
 export type RedditAd=RedditMetrics&{adId:string;name:string;headline:string|null;body:string|null;contentType:"Image"|"Video"|"Message";thumbnailUrl:string|null;videoUrl:string|null;postUrl:string|null};
 export type RedditGroup=RedditMetrics&{adGroupId:string;name:string;activeAds:RedditAd[]};
-export type RedditCampaign=RedditMetrics&{campaignId:string;name:string;kind:"Awareness"|"Conversion";groups:RedditGroup[]};
+export type RedditCampaign=RedditMetrics&{campaignId:string;name:string;campaignStatus?:string;kind:"Awareness"|"Conversion";groups:RedditGroup[]};
 export type RedditTestingData={period:{start:string;end:string};periodLabel:string;campaigns:RedditCampaign[]};
 let tokenCache:{value:string;expires:number}|null=null;
 async function credentials(){return JSON.parse(await readFile(path.join(process.cwd(),"credentials/reddit.json"),"utf8")) as Credentials;}

@@ -5,6 +5,7 @@ import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } fr
 const API = "https://a.klaviyo.com/api";
 const CAMPAIGNS = [
   {id:"01M2RCYC6M4WQKYVZWZJGZHV29",modulePattern:/\/collections\/shop-all(?:[?#]|$)/i},
+  {id:"01M32R5G4AH5ZCDSA64EVQNTA7",modulePattern:/\/collections\/shop-all(?:[?#]|$)/i},
 ] as const;
 const PLACED_ORDER_METRIC_ID = "SHDwgQ";
 const CLICKED_EMAIL_METRIC_ID = "VYRRt4";
