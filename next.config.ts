@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
     webpackMemoryOptimizations: true,
     webpackBuildWorker: true,
   },
+  webpack(config, { dev }) {
+    // The deployment volume is intentionally small. A production build cache
+    // is disposable and can otherwise consume hundreds of MB before exit.
+    if (!dev) config.cache = false;
+    return config;
+  },
   async headers() {
     return [{
       source: "/:path*",
