@@ -15,8 +15,9 @@ export class CodexBridgeError extends Error{
 }
 
 const wait=(milliseconds:number,signal?:AbortSignal)=>new Promise<void>((resolve,reject)=>{
- const timer=setTimeout(resolve,milliseconds);
- if(signal)signal.addEventListener("abort",()=>{clearTimeout(timer);reject(new DOMException("The operation was aborted.","AbortError"))},{once:true});
+ const onAbort=()=>{clearTimeout(timer);reject(new DOMException("The operation was aborted.","AbortError"))};
+ const timer=setTimeout(()=>{signal?.removeEventListener("abort",onAbort);resolve()},milliseconds);
+ if(signal){if(signal.aborted)return onAbort();signal.addEventListener("abort",onAbort,{once:true})}
 });
 
 function configuration(){
