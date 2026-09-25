@@ -863,3 +863,18 @@ input[type="search"]::-webkit-search-cancel-button {
     transform: none;
   }
 }
+
+/* The dashboard card already supplies the visual boundary for Ask AI. Keep
+ * Astryx chat content fluid instead of adding a second centered max-width. */
+.astryx-chat .max-w-2xl,
+.astryx-chat .max-w-3xl {
+  max-width: none;
+}
+
+.astryx-chat div:has(+ h4.text-center) {
+  display: none;
+}
+
+.astryx-chat div:has(+ h4.text-center) + h4 {
+  margin-top: 0;
+}

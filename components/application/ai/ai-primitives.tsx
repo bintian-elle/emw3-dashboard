@@ -1,6 +1,6 @@
 "use client";
 
-import { RiArrowDownSLine, RiCheckboxCircleLine } from "@remixicon/react";
+import { RiArrowDownSLine, RiCheckboxCircleLine, RiSparkling2Line } from "@remixicon/react";
 import { cx } from "@/utils/cx";
 
 export function AiPixelMark({active=false,className}:{active?:boolean;className?:string}){
@@ -19,4 +19,4 @@ export function AiActivityTrace({steps,elapsed,label}:{steps:string[];elapsed:nu
  </details>
 }
 
-export function AiAnswerHeader({label}:{label:string}){return <div className="flex items-center gap-3"><AiPixelMark/><h3 className="text-title-3-semibold text-accent-700">{label}</h3></div>}
+export function AiAnswerHeader({label}:{label:string}){return <div className="flex items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-accent-700"><RiSparkling2Line className="size-5" aria-hidden/></span><h3 className="text-title-3-semibold text-accent-700">{label}</h3></div>}
