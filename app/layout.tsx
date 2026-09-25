@@ -18,5 +18,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return <html lang="en" className={`${inter.variable} ${mono.variable}`}><body>{children}</body></html>;
+  return <html lang="en" className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><body suppressHydrationWarning>{children}</body></html>;
 }

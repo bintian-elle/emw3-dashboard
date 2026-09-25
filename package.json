@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "prebuild": "node scripts/clean-next-build-cache.mjs",
     "build": "next build --webpack",
     "start": "next start",
@@ -13,7 +13,12 @@
   "dependencies": {
     "@internationalized/date": "^3.12.3",
     "@remixicon/react": "^4.9.0",
+    "@streamdown/cjk": "^1.0.3",
+    "@streamdown/code": "^1.1.1",
+    "@streamdown/math": "^1.0.2",
+    "@streamdown/mermaid": "^1.0.2",
     "@tanstack/react-table": "^8.21.3",
+    "ai": "^7.0.114",
     "class-variance-authority": "^0.7.1",
     "lucide-react": "^1.46.0",
     "motion": "^12.43.0",
@@ -24,7 +29,9 @@
     "react-aria-components": "^1.20.0",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
-    "tailwind-merge": "^3.6.0"
+    "streamdown": "^2.6.0",
+    "tailwind-merge": "^3.6.0",
+    "use-stick-to-bottom": "^1.1.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

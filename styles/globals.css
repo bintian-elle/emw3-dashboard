@@ -844,3 +844,22 @@ input[type="search"]::-webkit-search-cancel-button {
     transform: scaleY(0.7);
   }
 }
+
+/* Beautiful UI-inspired pixel activity mark. The static grid remains visible
+ * when motion is reduced, so progress never depends on animation alone. */
+@keyframes bui-ai-pixel-pulse {
+  0%, 100% { opacity: 0.18; transform: scale(0.72); }
+  45% { opacity: 1; transform: scale(1); }
+}
+
+.bui-ai-pixel {
+  animation: bui-ai-pixel-pulse 1.35s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bui-ai-pixel {
+    animation: none;
+    opacity: 0.72;
+    transform: none;
+  }
+}

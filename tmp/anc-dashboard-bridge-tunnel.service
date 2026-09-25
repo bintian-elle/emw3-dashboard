@@ -1,0 +1,29 @@
+[Unit]
+Description=SSH tunnel from EMW3 Dashboard to ANC Codex Bridge
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+ExecStart=/usr/bin/ssh -N -T -i /home/ubuntu/.ssh/anc-dashboard-bridge -o IdentitiesOnly=yes -o UserKnownHostsFile=/home/ubuntu/.ssh/known_hosts_bridge -o StrictHostKeyChecking=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes -L 127.0.0.1:18788:127.0.0.1:8788 ubuntu@54.148.73.186
+Restart=always
+RestartSec=10
+TimeoutStopSec=15
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

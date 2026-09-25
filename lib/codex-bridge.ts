@@ -5,7 +5,8 @@ import type { DashboardRequest } from "@/lib/klaviyo-dashboard";
 type BridgeMode="insights"|"question"|"suggested_questions";
 type BridgeStatus="queued"|"running"|"completed"|"failed"|"cancelled";
 type BridgeError={type?:string;code?:string};
-type BridgeEnvelope<T>={job_id:string;request_id:string;mode:BridgeMode;status:BridgeStatus;result:T|null;error:BridgeError|null};
+export type BridgeProgress={stage:string;status:BridgeStatus;jobId:string;message?:string};
+type BridgeEnvelope<T>={job_id:string;request_id:string;mode:BridgeMode;status:BridgeStatus;result:T|null;error:BridgeError|null;progress?:{stage?:string;message?:string}|null};
 type InsightResult={headline:string;executive_summary:string;performance_status:string;key_insights:unknown[];recommended_actions:unknown[]};
 type QuestionResult={answer_markdown:string};
 type SuggestedQuestionsResult={questions:string[]};
@@ -45,14 +46,19 @@ async function bridgeFetch<T>(path:string,init:RequestInit,signal?:AbortSignal){
  return payload as T;
 }
 
-async function runJob<T>(body:Record<string,unknown>,signal?:AbortSignal):Promise<{jobId:string;result:T}>{
+async function runJob<T>(body:Record<string,unknown>,signal?:AbortSignal,onProgress?:(progress:BridgeProgress)=>void):Promise<{jobId:string;result:T}>{
  const accepted=await bridgeFetch<BridgeEnvelope<T>>("/v1/codex/jobs",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)},signal);
+ const report=(job:BridgeEnvelope<T>)=>onProgress?.({stage:job.progress?.stage||job.status,status:job.status,jobId:job.job_id,message:job.progress?.message});
  let job=accepted;
+ let progressKey="";
+ const reportChange=()=>{const key=`${job.status}:${job.progress?.stage||""}:${job.progress?.message||""}`;if(key!==progressKey){progressKey=key;report(job)}};
+ reportChange();
  const deadline=Date.now()+190_000;
  while(job.status==="queued"||job.status==="running"){
   if(Date.now()>=deadline)throw new CodexBridgeError("The AI request timed out. Please retry.","client_poll_timeout");
   await wait(2_000,signal);
   job=await bridgeFetch<BridgeEnvelope<T>>(`/v1/codex/jobs/${accepted.job_id}`,{method:"GET"},signal);
+  reportChange();
  }
  if(job.status!=="completed"||!job.result)throw errorMessage(job);
  return{jobId:job.job_id,result:job.result};
@@ -75,8 +81,8 @@ export async function generateCodexInsights(input:DashboardRequest,analysisPaylo
  return{result:{...insights.result,suggested_questions:suggestions.result.questions},jobId:insights.jobId,model:"codex-bridge"};
 }
 
-export async function askCodex(input:DashboardRequest,analysisPayload:Record<string,unknown>,question:string,signal?:AbortSignal){
- const job=await runJob<QuestionResult>({request_id:randomUUID(),mode:"question",...common(input,analysisPayload),question},signal);
+export async function askCodex(input:DashboardRequest,analysisPayload:Record<string,unknown>,question:string,signal?:AbortSignal,onProgress?:(progress:BridgeProgress)=>void){
+ const job=await runJob<QuestionResult>({request_id:randomUUID(),mode:"question",...common(input,analysisPayload),question},signal,onProgress);
  const answer=job.result.answer_markdown?.trim();
  if(!answer)throw new CodexBridgeError("The AI returned an empty response. Please retry.","empty_answer");
  return{answer,jobId:job.jobId,model:"codex-bridge"};
