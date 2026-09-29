@@ -34,7 +34,7 @@ else
   echo "Dependencies unchanged; keeping node_modules."
 fi
 
-echo "3. Building Next.js (preserving build cache)..."
+echo "3. Building Next.js (using configured cache policy)..."
 npm run build
 
 echo "4. Restarting application..."

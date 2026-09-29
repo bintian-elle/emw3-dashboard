@@ -1,6 +1,6 @@
 # Remote team analysis memory
 
-Implementation is prepared; production enablement is a separate deployment step.
+Deployed and enabled on 2026-09-29.
 Memory lives in the remote Dashboard Bridge, not in the analytics database.
 
 ## Chat commands
@@ -43,8 +43,16 @@ Only explicit confirmed preference operations write to the remote memory store.
 - Covered: draft/confirmation, duplicate confirmations, restart persistence,
   period isolation, disabling, expiry, prompt isolation from history/attachments,
   old request fingerprints, and existing Slack/native permission regressions.
-- Not yet performed: production deployment, real-model draft quality, browser
-  end-to-end acceptance. No production preferences or cached insights were changed.
+- Production validation: real Codex drafted a synthetic-only analysis preference;
+  explicit confirmation persisted it, and a fresh Codex task used the requested
+  Observation / Evidence / Next check structure. Public HTTPS login and the
+  streaming chat list/confirm/disable flow passed. The synthetic preference was
+  disabled afterward; there are no active test preferences. Existing insight
+  caches were not regenerated. Browser visual rendering was not re-tested.
 - Remote branch: codex/dashboard-team-memory, based on 8616539 plus the existing
-  uncommitted attachment changes preserved from production. No commits or push
-  were made for this feature; do not replace production with a clean old HEAD.
+  uncommitted attachment changes preserved from production. Remote deployment
+  applied only the reviewed Dashboard files; Slack and shared Codex process IDs
+  stayed unchanged. Do not replace production with a clean old HEAD.
+- Remote rollback backup: .state/backups/20260929-team-memory (code archive and
+  SQLite-consistent job backup). The memory store is private (0600); history is
+  retained locally on that server, not copied into this repository.
