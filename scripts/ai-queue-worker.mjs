@@ -37,7 +37,14 @@ async function tick(){
    await client.query(`update ai_job_queue set next_poll_at=now()+$2*interval '1 second',updated_at=now() where id=$1`,[job.id,delay]);
   }else{
    const payload=await response.json();
-   if(!response.ok)throw new Error(`Bridge HTTP ${response.status}: ${payload?.error?.code||'error'}`);
+   if(!response.ok){
+    const message=`Bridge HTTP ${response.status}: ${payload?.error?.code||'error'}`;
+    if(!job.remote_id&&[400,401,403,409,413,422].includes(response.status)){
+     await client.query(`update ai_job_queue set status='failed',error=$2,updated_at=now() where id=$1`,[job.id,message]);
+     await client.query('commit');console.error(message);return;
+    }
+    throw new Error(message);
+   }
    if(!payload.job_id||!['queued','running','completed','failed','cancelled'].includes(payload.status))throw new Error('Invalid Bridge envelope');
    const status=payload.status==='completed'?'completed':['failed','cancelled'].includes(payload.status)?'failed':'running';
    await client.query(`update ai_job_queue set remote_id=$2,status=$3,result=$4::jsonb,error=$5,next_poll_at=now()+interval '5 seconds',updated_at=now() where id=$1`,[job.id,payload.job_id,status,JSON.stringify(payload.result),payload.error?JSON.stringify(payload.error):null]);
