@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
     webpackBuildWorker: true,
   },
   webpack(config, { dev }) {
+    if (!dev && process.env.NEXT_DISABLE_BUILD_CACHE === "true") {
+      config.cache = false;
+      return config;
+    }
     if (!dev && config.cache && typeof config.cache === "object" && config.cache.type === "filesystem") {
       // Persist artifacts on disk without retaining extra cache generations in
       // the 2 GiB deployment host's heap.
