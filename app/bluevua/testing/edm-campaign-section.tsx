@@ -12,7 +12,6 @@ const date = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short
 export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
   return (
     <section className="mt-8 space-y-6">
-      {data.warning && <div role="status" className="rounded-2xl border border-border-error-default bg-background-primary-default p-4 text-body-2-regular text-text-error-primary">{data.warning}</div>}
       {data.campaigns.map((campaign) => (
         <article key={campaign.campaignId} className="overflow-hidden rounded-3xl border border-border-button-default bg-background-primary-default shadow-card">
           <div className="flex flex-col gap-4 border-b border-border-table p-6 sm:flex-row sm:items-start sm:justify-between">
