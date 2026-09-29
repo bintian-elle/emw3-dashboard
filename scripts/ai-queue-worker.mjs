@@ -28,6 +28,11 @@ async function tick(){
   const job=rows.rows[0];
   activeJob=job;
   if(!job||new Date(job.next_poll_at)>new Date()){await client.query('commit');return}
+  if(job.status==='queued'){
+   // Persist submission intent before network I/O so a crash cannot free the slot.
+   await client.query(`update ai_job_queue set status='running',updated_at=now() where id=$1`,[job.id]);
+   await client.query('commit');return;
+  }
   const response=await fetch(job.remote_id?`${base}/v1/codex/jobs/${job.remote_id}`:`${base}/v1/codex/jobs`,{
    method:job.remote_id?'GET':'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},
    ...(job.remote_id?{}:{body:JSON.stringify({...job.body,request_id:job.request_id})}),signal:AbortSignal.timeout(20000)
