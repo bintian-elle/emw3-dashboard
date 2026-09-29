@@ -41,8 +41,9 @@ export async function POST(request:Request){
  const stream=new ReadableStream<Uint8Array>({
   start(controller){
    let closed=false;
-   const emit=(event:StreamEvent)=>{if(!closed)controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))};
-   const close=()=>{if(!closed){closed=true;controller.close()}};
+   const emit=(event:StreamEvent)=>{if(!closed){try{controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))}catch{closed=true}}};
+   const heartbeat=setInterval(()=>{if(!closed){try{controller.enqueue(encoder.encode(': keep-alive\n\n'))}catch{closed=true;clearInterval(heartbeat)}}},15000);
+   const close=()=>{clearInterval(heartbeat);if(!closed){closed=true;try{controller.close()}catch{}}};
    void(async()=>{
     try{
      emit({type:"progress",stage:"loading_data",status:"running"});

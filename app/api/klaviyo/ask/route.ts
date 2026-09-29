@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { existingInsightContext } from '@/lib/ai-job-queue';
 import { cachedAiInsight, loadAiDetails, loadDashboard, saveAiInsight, updateCachedAiInsight, type DashboardRequest } from "@/lib/klaviyo-dashboard";
 import { buildPerformanceIntelligence, parseAiInsightResponse, validateAiInsightClaims } from "@/lib/klaviyo-analytics";
-import { askCodex, CodexBridgeError, generateCodexInsights } from "@/lib/codex-bridge";
+import { askCodex, AiJobPending, CodexBridgeError, generateCodexInsights } from "@/lib/codex-bridge";
 
 type AskRequest=DashboardRequest&{question?:string;mode?:"question"|"summary";debug?:boolean};
 
@@ -17,11 +18,13 @@ export async function POST(request:Request){
   if(!valid(input.range)||!valid(input.comparison))return NextResponse.json({error:"Select a valid date range of no more than 365 days."},{status:400});
   if(mode==="summary"&&!input.debug){const cached=await cachedAiInsight(input);if(cached){const normalized=parseAiInsightResponse(JSON.stringify(cached.insights));if(normalized){if(!Array.isArray((cached.insights as Partial<typeof normalized>).suggested_questions)||(cached.insights as Partial<typeof normalized>).suggested_questions?.length!==5)await updateCachedAiInsight(input,normalized);return NextResponse.json({...cached,insights:normalized,cached:true})}}}
 
-  const[data,details]=await Promise.all([loadDashboard(input),loadAiDetails(input)]);
-  const context=buildPerformanceIntelligence(data,details) as Record<string,unknown>;
+  const persisted=mode==='summary'?await existingInsightContext(input):undefined;
+  const loaded=persisted?null:await Promise.all([loadDashboard(input),loadAiDetails(input)]);
+  const context=persisted||(buildPerformanceIntelligence(loaded![0],loaded![1]) as Record<string,unknown>);
+  const dataUpdatedThrough=loaded?.[0].dataUpdatedThrough;
   if(mode==="question"){
    const result=await askCodex(input,context,question,request.signal);
-   return NextResponse.json({...result,dataUpdatedThrough:data.dataUpdatedThrough});
+   return NextResponse.json({...result,dataUpdatedThrough});
   }
 
   const generated=await generateCodexInsights(input,context,request.signal);
@@ -31,8 +34,9 @@ export async function POST(request:Request){
   if(validationWarnings.length&&process.env.NODE_ENV!=="production")console.warn("[api/klaviyo/ask] Fact validation warnings",{validationWarnings,model:generated.model,jobId:generated.jobId});
   await saveAiInsight(input,insights,generated.model);
   const debug=input.debug&&process.env.NODE_ENV!=="production"?{fact_guardrails:(context as {fact_guardrails?:unknown}).fact_guardrails,validation_warnings:validationWarnings,final_json:insights,bridge_job_id:generated.jobId}:undefined;
-  return NextResponse.json({insights,model:generated.model,dataUpdatedThrough:data.dataUpdatedThrough,cached:false,validationWarnings,debug});
+  return NextResponse.json({insights,model:generated.model,dataUpdatedThrough,cached:false,validationWarnings,debug});
  }catch(error){
+  if(error instanceof AiJobPending)return NextResponse.json({status:error.status,pending:true},{status:202,headers:{'Retry-After':'5','Cache-Control':'no-store'}});
   if(error instanceof CodexBridgeError){console.warn("[api/klaviyo/ask] Codex Bridge failed",{code:error.code});return NextResponse.json({error:error.message,cached:false},{status:502})}
   const message=error instanceof Error?(error.name==="AbortError"?"The AI request was cancelled.":error.message):"The AI analysis could not be completed.";
   return NextResponse.json({error:message},{status:500});

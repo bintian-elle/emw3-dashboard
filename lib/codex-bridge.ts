@@ -1,5 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { enqueueAiJob, readAiJob } from "@/lib/ai-job-queue";
 import type { DashboardRequest } from "@/lib/klaviyo-dashboard";
 
 type BridgeMode="insights"|"question"|"suggested_questions";
@@ -15,6 +16,9 @@ export type BridgeAttachment={kind:"image"|"text";name:string;mime_type:string;d
 export class CodexBridgeError extends Error{
  constructor(message:string,public code="bridge_error"){super(message);this.name="CodexBridgeError"}
 }
+export class AiJobPending extends Error{
+ constructor(public status:string){super('AI analysis is queued or running.');}
+}
 
 const wait=(milliseconds:number,signal?:AbortSignal)=>new Promise<void>((resolve,reject)=>{
  const onAbort=()=>{clearTimeout(timer);reject(new DOMException("The operation was aborted.","AbortError"))};
@@ -29,40 +33,17 @@ function configuration(){
  return{baseUrl,apiKey};
 }
 
-function errorMessage(envelope:BridgeEnvelope<unknown>){
- const code=envelope.error?.code||envelope.status;
- if(envelope.status==="cancelled")return new CodexBridgeError("The AI request was cancelled.",code);
- if(envelope.error?.type==="validation")return new CodexBridgeError("The AI returned an invalid response. Please retry.",code);
- if(envelope.error?.type==="timeout")return new CodexBridgeError("The AI request timed out. Please retry.",code);
- return new CodexBridgeError("The remote AI service could not complete the request. Please retry.",code);
-}
-
-async function bridgeFetch<T>(path:string,init:RequestInit,signal?:AbortSignal){
- const{baseUrl,apiKey}=configuration();
- let response:Response;
- try{response=await fetch(`${baseUrl}${path}`,{...init,headers:{authorization:`Bearer ${apiKey}`,...init.headers},cache:"no-store",signal})}
- catch(error){if(error instanceof Error&&error.name==="AbortError")throw error;throw new CodexBridgeError("The remote AI service is unavailable. Please retry.","bridge_network_error")}
- const payload=await response.json().catch(()=>null);
- if(!response.ok){const code=payload?.error?.code||`http_${response.status}`;throw new CodexBridgeError(response.status===429?"The AI service is busy. Please retry shortly.":"The remote AI service rejected the request. Please retry.",code)}
- return payload as T;
-}
 
 async function runJob<T>(body:Record<string,unknown>,signal?:AbortSignal,onProgress?:(progress:BridgeProgress)=>void):Promise<{jobId:string;result:T}>{
- const accepted=await bridgeFetch<BridgeEnvelope<T>>("/v1/codex/jobs",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)},signal);
- const report=(job:BridgeEnvelope<T>)=>onProgress?.({stage:job.progress?.stage||job.status,status:job.status,jobId:job.job_id,message:job.progress?.message});
- let job=accepted;
- let progressKey="";
- const reportChange=()=>{const key=`${job.status}:${job.progress?.stage||""}:${job.progress?.message||""}`;if(key!==progressKey){progressKey=key;report(job)}};
- reportChange();
- const deadline=Date.now()+190_000;
- while(job.status==="queued"||job.status==="running"){
-  if(Date.now()>=deadline)throw new CodexBridgeError("The AI request timed out. Please retry.","client_poll_timeout");
-  await wait(2_000,signal);
-  job=await bridgeFetch<BridgeEnvelope<T>>(`/v1/codex/jobs/${accepted.job_id}`,{method:"GET"},signal);
-  reportChange();
+ configuration();
+ let job=await enqueueAiJob(String(body.request_id),body);
+ while(job.status==='queued'||job.status==='running'){
+  onProgress?.({stage:job.status,status:job.status,jobId:job.id});
+  await wait(5000,signal);
+  job=await readAiJob(job.id);
  }
- if(job.status!=="completed"||!job.result)throw errorMessage(job);
- return{jobId:job.job_id,result:job.result};
+ if(job.status!=='completed'||!job.result)throw new CodexBridgeError('The remote AI task failed. Please retry.','job_failed');
+ return{jobId:job.remote_id!,result:job.result as T};
 }
 
 function common(input:DashboardRequest,analysisPayload:Record<string,unknown>){return{
@@ -75,11 +56,18 @@ function common(input:DashboardRequest,analysisPayload:Record<string,unknown>){r
 }}
 
 export async function generateCodexInsights(input:DashboardRequest,analysisPayload:Record<string,unknown>,signal?:AbortSignal){
- const shared=common(input,analysisPayload);
- const insights=await runJob<InsightResult>({request_id:randomUUID(),mode:"insights",...shared},signal);
- const suggestions=await runJob<SuggestedQuestionsResult>({request_id:randomUUID(),mode:"suggested_questions",...shared,insight_job_id:insights.jobId},signal);
- if(!Array.isArray(suggestions.result.questions)||suggestions.result.questions.length!==5)throw new CodexBridgeError("The AI returned an invalid set of suggested questions. Please retry.","suggested_questions_invalid");
- return{result:{...insights.result,suggested_questions:suggestions.result.questions},jobId:insights.jobId,model:"codex-bridge"};
+ configuration();
+ const id=`summary:${input.language||'en'}:${input.range.start}:${input.range.end}:${input.comparison.start}:${input.comparison.end}`;
+ const insights=await enqueueAiJob(id,{mode:'insights',...common(input,analysisPayload)});
+ if(insights.status==='failed')throw new CodexBridgeError('The insight generation failed. Please contact the administrator.','job_failed');
+ if(insights.status!=='completed')throw new AiJobPending(insights.status);
+ // Reuse the exact persisted snapshot required by the Bridge dependency contract.
+ const suggestions=await enqueueAiJob(`${id}:questions`,{...insights.body,mode:'suggested_questions',insight_job_id:insights.remote_id});
+ if(suggestions.status==='failed')throw new CodexBridgeError('Suggested question generation failed. Please contact the administrator.','job_failed');
+ if(suggestions.status!=='completed')throw new AiJobPending(suggestions.status);
+ const result=suggestions.result as SuggestedQuestionsResult;
+ if(!Array.isArray(result?.questions)||result.questions.length!==5)throw new CodexBridgeError('The AI returned invalid suggested questions.','suggested_questions_invalid');
+ return{result:{...(insights.result as InsightResult),suggested_questions:result.questions},jobId:insights.remote_id!,model:'codex-bridge'};
 }
 
 export async function askCodex(input:DashboardRequest,analysisPayload:Record<string,unknown>,question:string,signal?:AbortSignal,onProgress?:(progress:BridgeProgress)=>void,attachments:BridgeAttachment[]=[]){
