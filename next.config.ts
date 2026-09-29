@@ -2,17 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    // Keep production builds within the memory available on the small
-    // self-hosted deployment instance. Development also uses Webpack so this
-    // hook is unambiguous under Next.js 16.
+    // Disk was expanded, but the deployment host still has only 2 GiB RAM.
+    // Keep memory protection while allowing Next's default filesystem cache.
     webpackMemoryOptimizations: true,
     webpackBuildWorker: true,
-  },
-  webpack(config, { dev }) {
-    // The deployment volume is intentionally small. A production build cache
-    // is disposable and can otherwise consume hundreds of MB before exit.
-    if (!dev) config.cache = false;
-    return config;
   },
   async headers() {
     return [{

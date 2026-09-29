@@ -70,8 +70,11 @@ export async function generateCodexInsights(input:DashboardRequest,analysisPaylo
  return{result:{...(insights.result as InsightResult),suggested_questions:result.questions},jobId:insights.remote_id!,model:'codex-bridge'};
 }
 
-export async function askCodex(input:DashboardRequest,analysisPayload:Record<string,unknown>,question:string,signal?:AbortSignal,onProgress?:(progress:BridgeProgress)=>void,attachments:BridgeAttachment[]=[]){
- const job=await runJob<QuestionResult>({request_id:randomUUID(),mode:"question",...common(input,analysisPayload),question,...(attachments.length?{attachments}: {})},signal,onProgress);
+export async function askCodex(input:DashboardRequest,analysisPayload:Record<string,unknown>,question:string,signal?:AbortSignal,onProgress?:(progress:BridgeProgress)=>void,attachments:BridgeAttachment[]=[],latestUserMessage=question){
+ // Enable only after the Bridge memory protocol is deployed. Never derive
+ // confirmation commands from the history-wrapped prompt or attachments.
+ const memoryInput=process.env.CODEX_BRIDGE_TEAM_MEMORY_ENABLED==="true"?{latest_user_message:latestUserMessage}:{};
+ const job=await runJob<QuestionResult>({request_id:randomUUID(),mode:"question",...common(input,analysisPayload),question,...memoryInput,...(attachments.length?{attachments}: {})},signal,onProgress);
  const answer=job.result.answer_markdown?.trim();
  if(!answer)throw new CodexBridgeError("The AI returned an empty response. Please retry.","empty_answer");
  return{answer,jobId:job.jobId,model:"codex-bridge"};

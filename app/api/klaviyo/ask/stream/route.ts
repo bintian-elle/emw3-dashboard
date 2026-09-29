@@ -51,7 +51,7 @@ export async function POST(request:Request){
      emit({type:"progress",stage:"building_context",status:"running"});
      const context=buildPerformanceIntelligence(data,details) as Record<string,unknown>;
      const onProgress=(progress:BridgeProgress)=>emit({type:"progress",stage:progress.stage,status:progress.status,message:progress.message,jobId:progress.jobId});
-     const result=await askCodex(input,context,contextualQuestion,request.signal,onProgress,attachments);
+     const result=await askCodex(input,context,contextualQuestion,request.signal,onProgress,attachments,question);
      emit({type:"result",...result,dataUpdatedThrough:data.dataUpdatedThrough,citations:collectEvidence(result.answer,context)});
     }catch(error){
      const message=error instanceof Error?(error.name==="AbortError"?"The AI request was cancelled.":error.message):"The AI analysis could not be completed.";
