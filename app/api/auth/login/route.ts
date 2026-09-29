@@ -19,6 +19,7 @@ export async function POST(request: Request) {
   }
 
   const response = NextResponse.json({ ok: true, returnTo: safeReturnPath(body?.returnTo) });
+  response.headers.set("Cache-Control", "no-store, max-age=0");
   response.cookies.set({
     name: ACCESS_COOKIE,
     value: await accessToken(secret),

@@ -47,6 +47,14 @@ const number=(n:number)=>new Intl.NumberFormat("en-US",{maximumFractionDigits:0}
 const compactNumber=(n:number)=>new Intl.NumberFormat("en-US",{notation:"compact",maximumFractionDigits:1}).format(n||0);
 const percent=(n:number)=>`${((n||0)*100).toFixed(2)}%`;
 const change=(a:number,b:number)=>b?(a-b)/Math.abs(b):null;
+async function jsonResponse(response:Response){
+ const text=await response.text();
+ try{return JSON.parse(text) as Record<string,unknown>}
+ catch{
+  if(response.status===502||response.status===503||response.status===504||/^\s*</.test(text))throw new Error("The AI service is temporarily unavailable. Please retry.");
+  throw new Error("The dashboard received an invalid response. Please retry.");
+ }
+}
 
 function Delta({value,base,label="PoP",inverse=false}:{value:number;base:number;label?:string;inverse?:boolean}){const d=change(value,base),good=d!==null&&(inverse?d<=0:d>=0);return <Badge variant={d===null?"secondary":good?"success":"danger"}>{d===null?`--% ${label}`:`${d>=0?"↑":"↓"} ${Math.abs(d*100).toFixed(1)}% ${label}`}</Badge>}
 function Section({index,title,children}:{index:number;title:string;children:React.ReactNode}){return <DashboardSection eyebrow={`0${index}`} title={title}>{children}</DashboardSection>}
@@ -97,7 +105,7 @@ function ExecutiveSummary({data}:{data:DashboardData}){
  const [language,setLanguage]=useState<"en"|"zh">("en"),[insights,setInsights]=useState<InsightResponse|null>(null),[loadingInsights,setLoadingInsights]=useState(true),[insightError,setInsightError]=useState(""),[insightsExpanded,setInsightsExpanded]=useState(false);
  const aiSectionRef=useRef<HTMLDivElement>(null),reduceMotion=useReducedMotion();
  const insightCache=useRef<Record<string,InsightResponse>>({}),clientKey=`${data.range.start}:${data.range.end}:${data.comparison.start}:${data.comparison.end}:${language}`;
- const loadInsights=useCallback(async()=>{const cached=insightCache.current[clientKey];if(cached){setInsights(cached);setInsightError("");setLoadingInsights(false);return}setLoadingInsights(true);setInsightError("");setInsights(null);try{const response=await fetch("/api/klaviyo/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({mode:"summary",language,range:data.range,comparison:data.comparison,presetLabel:data.presetLabel,comparisonLabel:data.comparisonLabel})});const payload=await response.json();if(!response.ok)throw new Error(payload.error||"AI insights failed.");const normalized=normalizeInsightResponse(payload.insights);insightCache.current[clientKey]=normalized;setInsights(normalized)}catch(error){setInsightError(error instanceof Error?error.message:"AI insights failed.")}finally{setLoadingInsights(false)}},[clientKey,data.range,data.comparison,data.presetLabel,data.comparisonLabel,language]);
+ const loadInsights=useCallback(async()=>{const cached=insightCache.current[clientKey];if(cached){setInsights(cached);setInsightError("");setLoadingInsights(false);return}setLoadingInsights(true);setInsightError("");setInsights(null);try{const response=await fetch("/api/klaviyo/ask",{method:"POST",headers:{"content-type":"application/json"},cache:"no-store",body:JSON.stringify({mode:"summary",language,range:data.range,comparison:data.comparison,presetLabel:data.presetLabel,comparisonLabel:data.comparisonLabel})});const payload=await jsonResponse(response);if(!response.ok)throw new Error(typeof payload.error==="string"?payload.error:"AI insights failed.");const normalized=normalizeInsightResponse(payload.insights);insightCache.current[clientKey]=normalized;setInsights(normalized)}catch(error){setInsightError(error instanceof Error?error.message:"AI insights failed.")}finally{setLoadingInsights(false)}},[clientKey,data.range,data.comparison,data.presetLabel,data.comparisonLabel,language]);
  useEffect(()=>{void loadInsights()},[loadInsights]);
  const focusAiView=()=>window.requestAnimationFrame(()=>aiSectionRef.current?.scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"start"}));
  const collapseInsights=()=>{const section=aiSectionRef.current;if(!section){setInsightsExpanded(false);return}if(reduceMotion){section.scrollIntoView({behavior:"auto",block:"start"});setInsightsExpanded(false);return}let completed=false;let fallback=0;const finish=()=>{if(completed)return;completed=true;window.clearTimeout(fallback);window.removeEventListener("scrollend",finish);setInsightsExpanded(false)};window.addEventListener("scrollend",finish,{once:true});section.scrollIntoView({behavior:"smooth",block:"start"});fallback=window.setTimeout(finish,1200)};

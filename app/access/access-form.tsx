@@ -1,18 +1,27 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { RiEyeLine, RiEyeOffLine, RiKey2Line, RiLock2Line } from "@remixicon/react";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 
 export function AccessForm({ returnTo }: { returnTo: string }) {
-  const router = useRouter();
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  const [pendingReturnTo, setPendingReturnTo] = useState(returnTo);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const stored = window.sessionStorage.getItem("emw3_return_to");
+    if (returnTo !== "/") {
+      window.sessionStorage.setItem("emw3_return_to", returnTo);
+      setPendingReturnTo(returnTo);
+    } else if (stored?.startsWith("/") && !stored.startsWith("//")) {
+      setPendingReturnTo(stored);
+    }
+  }, [returnTo]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,15 +37,20 @@ export function AccessForm({ returnTo }: { returnTo: string }) {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key, returnTo }),
+        cache: "no-store",
+        body: JSON.stringify({ key: key.trim(), returnTo: pendingReturnTo }),
       });
-      const payload = await response.json();
+      const responseText = await response.text();
+      const payload = (() => {
+        try { return JSON.parse(responseText) as { error?: string; returnTo?: string }; }
+        catch { return null; }
+      })();
+      if (!payload) throw new Error("The dashboard is temporarily unavailable. Please try again.");
       if (!response.ok) throw new Error(payload.error || "Access could not be verified.");
-      router.replace(payload.returnTo || "/");
-      router.refresh();
+      window.sessionStorage.removeItem("emw3_return_to");
+      window.location.replace(payload.returnTo || pendingReturnTo || "/");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Access could not be verified.");
-    } finally {
       setLoading(false);
     }
   }
