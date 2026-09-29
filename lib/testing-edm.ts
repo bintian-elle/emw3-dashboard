@@ -18,10 +18,21 @@ type ClickRow={dimensions:[string,string];measurements:{unique:number[]}};
 
 export type EdmTest={label:"Test A"|"Test B";variationId:string;fromLabel:string;subject:string;previewText:string;html:string;secondModuleClickRate:number|null;openRate:number|null;clickRate:number|null;orders:number;revenue:number;delivered:number;clicks:number};
 export type EdmTestCampaign={campaignId:string;campaignName:string;campaignStatus:string;tests:EdmTest[]};
-export type EdmTestingData={period:{start:string;end:string};periodLabel:string;campaigns:EdmTestCampaign[];tests:EdmTest[]};
+export type EdmTestingData={period:{start:string;end:string};periodLabel:string;campaigns:EdmTestCampaign[];tests:EdmTest[];warning?:string};
 
 function headers(){const apiKey=process.env.KLAVIYO_API_KEY?.trim(),revision=process.env.KLAVIYO_REVISION?.trim()||"2026-07-15";if(!apiKey)throw new Error("KLAVIYO_API_KEY is not configured.");return {Authorization:`Klaviyo-API-Key ${apiKey}`,accept:"application/vnd.api+json","content-type":"application/vnd.api+json",revision};}
-async function klaviyo<T>(path:string,init:RequestInit={}):Promise<T>{const response=await fetch(`${API}${path}`,{...init,headers:{...headers(),...(init.headers??{})},next:{revalidate:3600}});if(!response.ok)throw new Error(`Klaviyo API failed (${response.status}): ${(await response.text()).slice(0,300)}`);return response.json() as Promise<T>;}
+const wait=(milliseconds:number)=>new Promise(resolve=>setTimeout(resolve,milliseconds));
+async function klaviyo<T>(path:string,init:RequestInit={}):Promise<T>{
+  for(let attempt=1;attempt<=4;attempt++){
+    const response=await fetch(`${API}${path}`,{...init,headers:{...headers(),...(init.headers??{})},next:{revalidate:3600}});
+    if(response.ok)return response.json() as Promise<T>;
+    const body=(await response.text()).slice(0,300);
+    if(response.status!==429||attempt===4)throw new Error(`Klaviyo API failed (${response.status}): ${body}`);
+    const retryAfter=Number(response.headers.get("retry-after"));
+    await wait((Number.isFinite(retryAfter)&&retryAfter>0?retryAfter*1_000:1_000)+attempt*150);
+  }
+  throw new Error("Klaviyo API retry limit reached.");
+}
 const iso=(date:Date)=>date.toISOString().slice(0,10);
 const nextDay=(value:string)=>{const date=new Date(`${value}T12:00:00Z`);date.setUTCDate(date.getUTCDate()+1);return iso(date);};
 const ratio=(a:number,b:number)=>b>0?a/b:null;
@@ -41,6 +52,12 @@ async function campaignTest(campaignId:string,modulePattern:RegExp,period:{start
 export async function getEdmTestingData(input:TestingPeriodInput={}):Promise<EdmTestingData>{
   await connection();
   const latest=iso(new Date(Date.now()-86_400_000)),preset=input.preset??"lastWeek",period=resolveTestingPeriod(latest,input);
-  const campaigns=await Promise.all(CAMPAIGNS.map(campaign=>campaignTest(campaign.id,campaign.modulePattern,period)));
-  return {period,periodLabel:testingPeriodLabels[preset],campaigns,tests:campaigns.flatMap(campaign=>campaign.tests)};
+  const campaigns:EdmTestCampaign[]=[];
+  let failedCampaigns=0;
+  for(const campaign of CAMPAIGNS){
+    try{campaigns.push(await campaignTest(campaign.id,campaign.modulePattern,period))}
+    catch(error){failedCampaigns++;console.warn("[testing-edm] Campaign data unavailable",{campaignId:campaign.id,error:error instanceof Error?error.message:"Unknown error"})}
+  }
+  const warning=failedCampaigns?`${failedCampaigns} EDM testing ${failedCampaigns===1?"campaign is":"campaigns are"} temporarily unavailable. Other channel data is still shown.`:undefined;
+  return {period,periodLabel:testingPeriodLabels[preset],campaigns,tests:campaigns.flatMap(campaign=>campaign.tests),warning};
 }
