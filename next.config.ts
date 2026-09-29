@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
     webpackMemoryOptimizations: true,
     webpackBuildWorker: true,
   },
+  webpack(config, { dev }) {
+    if (!dev && config.cache && typeof config.cache === "object" && config.cache.type === "filesystem") {
+      // Persist artifacts on disk without retaining extra cache generations in
+      // the 2 GiB deployment host's heap.
+      config.cache.maxMemoryGenerations = 0;
+      config.cache.allowCollectingMemory = true;
+    }
+    return config;
+  },
   async headers() {
     return [{
       source: "/:path*",
