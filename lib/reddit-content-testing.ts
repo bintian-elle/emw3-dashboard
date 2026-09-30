@@ -1,5 +1,5 @@
 export const redditContentTests = [
-  { name: "EM-Reddit-Conversion-July26", kind: "Conversion", groups: ["Prospecting_WaterFilter", "HydroHomies"], ads: {
+  { name: "EM-Reddit-Conversion-July26", kind: "Conversion", groups: ["Prospecting_WaterFilter + HydroHomies"], ads: {
     Video: ["Prospecting-Video-PitcherVersusRO", "Conv-WF-Video-RO-OrangeJuice"],
     Image: ["SingleImage-MicroplasticPitcherVsRO", "SingleImage-ReplaceFilterPitcherVsRO", "SingleImage-TastePitchervsRO", "SingleImage-PitcherSafeEnough-ROPOTUV-4:5"],
     Message: [],
@@ -30,4 +30,8 @@ export function redditContentMetrics(kind: "Awareness" | "Conversion", format: "
     { key: "revenue", label: "Purchase: Web Total Value" },
     ...(kind === "Awareness" || format === "Image" ? [{ key: "roas", label: "Purchase ROAS (Return On Ad Spend)" }] : []),
   ] as Array<{ key: "impressions" | "cpc" | "ctr" | "revenue" | "roas"; label: string }>;
+}
+
+export function redditTestGroup(campaignName: string, groupName: string) {
+  return redditContentTests.find(test => test.name === campaignName)?.groups.some(name => name === groupName.trim()) ?? false;
 }

@@ -45,10 +45,10 @@ function AnimatedMetricValue({value,className}:{value:string;className:string}){
 
   useEffect(()=>{
     const next=numberDisplay(value);
-    if(!next){current.current=null;setDisplay(value);return;}
+    if(!next){current.current=null;const frame=requestAnimationFrame(()=>setDisplay(value));return ()=>cancelAnimationFrame(frame);}
     const start=current.current??next.numeric;
     current.current=next.numeric;
-    if(reduceMotion||start===next.numeric){setDisplay(next.format(next.numeric));return;}
+    if(reduceMotion||start===next.numeric){const frame=requestAnimationFrame(()=>setDisplay(next.format(next.numeric)));return ()=>cancelAnimationFrame(frame);}
     const controls=animate(start,next.numeric,{duration:0.35,ease:[0.2,0,0,1],onUpdate:latest=>setDisplay(next.format(latest))});
     return ()=>controls.stop();
   },[value,reduceMotion]);
@@ -79,7 +79,6 @@ export function SegmentedGauge({ title, value, caption, segments }: { title: str
   const gap = positiveIndexes.length > 1 ? 7.5 : 0;
   const displayTitle = activeIndex == null ? title : selected?.label ?? title;
   const displayValue = activeIndex == null ? value : selected?.display ?? value;
-  let offset = 0;
   const transition = reduceMotion ? { duration: 0 } : { duration: 0.22, ease: [0.2, 0, 0, 1] as const };
 
   const select = (index:number) => setActiveIndex(index);
@@ -98,9 +97,8 @@ export function SegmentedGauge({ title, value, caption, segments }: { title: str
         {segments.map((item, index) => {
           const share = actualShares[index];
           const visualShare = visualShares[index];
-          const rawStart = offset;
-          const rawEnd = offset+visualShare;
-          offset += visualShare;
+          const rawStart = visualShares.slice(0,index).reduce((sum,share)=>sum+share,0);
+          const rawEnd = rawStart+visualShare;
           if(share<=0)return null;
           let visibleStart = rawStart+(index===firstPositiveIndex?0:gap/2);
           let visibleEnd = rawEnd+(index===lastPositiveIndex?0:-gap/2);
@@ -118,7 +116,7 @@ export function SegmentedGauge({ title, value, caption, segments }: { title: str
             onMouseEnter={()=>select(index)}
             onFocus={()=>select(index)}
             onBlur={reset}
-            initial={reduceMotion?false:{pathLength:0,opacity:0}}
+            initial={reduceMotion?false:{pathLength:0,strokeWidth:isSelected?16:14,opacity:0}}
             animate={{pathLength:1,strokeWidth:isSelected?16:14,opacity:activeIndex!=null&&!isSelected?0.25:1}}
             transition={reduceMotion?{duration:0}:{pathLength:{duration:0.65,delay:index*0.1,ease:[0.2,0,0,1]},strokeWidth:{duration:0.15,ease:[0.2,0,0,1]},opacity:{duration:0.15,ease:[0.2,0,0,1]}}}
           />;
