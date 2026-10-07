@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { AccountHeader } from "@/components/application/dashboard/account-header";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "@/styles/globals.css";
@@ -18,5 +20,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return <html lang="en" className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><body suppressHydrationWarning>{children}</body></html>;
+  return <html lang="en" className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><body suppressHydrationWarning><Suspense><AccountHeader/></Suspense>{children}</body></html>;
 }

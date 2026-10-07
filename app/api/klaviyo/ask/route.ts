@@ -4,6 +4,8 @@ import { cachedAiInsight, loadAiDetails, loadDashboard, saveAiInsight, updateCac
 import { buildPerformanceIntelligence, parseAiInsightResponse, validateAiInsightClaims } from "@/lib/klaviyo-analytics";
 import { askCodex, AiJobPending, CodexBridgeError, generateCodexInsights } from "@/lib/codex-bridge";
 
+import { currentSiteUser } from "@/lib/current-site-user";
+
 type AskRequest=DashboardRequest&{question?:string;mode?:"question"|"summary";debug?:boolean};
 
 function valid(range:DashboardRequest["range"]){const start=Date.parse(`${range?.start}T00:00:00Z`),end=Date.parse(`${range?.end}T00:00:00Z`);return Number.isFinite(start)&&Number.isFinite(end)&&end>=start&&(end-start)/86_400_000<365}
@@ -12,6 +14,8 @@ export async function POST(request:Request){
  try{
   const input=await request.json() as AskRequest;
   const mode=input.mode==="summary"?"summary":"question";
+  const user=mode==="question"?await currentSiteUser():null;
+  if(mode==="question"&&!user)return NextResponse.json({error:"Unauthorized"},{status:401});
   input.language=input.language==="zh"?"zh":"en";
   const question=String(input.question||"").trim();
   if(mode==="question"&&(!question||question.length>500))return NextResponse.json({error:"Enter a question of no more than 500 characters."},{status:400});
@@ -23,7 +27,7 @@ export async function POST(request:Request){
   const context=persisted||(buildPerformanceIntelligence(loaded![0],loaded![1]) as Record<string,unknown>);
   const dataUpdatedThrough=loaded?.[0].dataUpdatedThrough;
   if(mode==="question"){
-   const result=await askCodex(input,context,question,request.signal);
+   const result=await askCodex(input,context,question,request.signal,undefined,[],question,user!);
    return NextResponse.json({...result,dataUpdatedThrough});
   }
 

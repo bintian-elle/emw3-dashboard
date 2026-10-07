@@ -1,13 +1,13 @@
 [Unit]
 Description=Serial persistent dashboard AI queue
-After=network-online.target anc-dashboard-bridge-tunnel.service
+After=network-online.target anc-dashboard-bridge.service
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/emw3-dashboard
-ExecStart=/usr/bin/node scripts/ai-queue-worker.mjs
+WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/ai-queue-worker.mjs
 Restart=always
 RestartSec=10
 

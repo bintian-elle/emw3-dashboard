@@ -3,6 +3,9 @@ import { randomUUID } from "node:crypto";
 import { enqueueAiJob, readAiJob } from "@/lib/ai-job-queue";
 import type { DashboardRequest } from "@/lib/klaviyo-dashboard";
 
+import type { SiteUser } from "@/lib/site-auth";
+import { askConversation, persistentConversationsEnabled } from "@/lib/ai-conversation";
+
 type BridgeMode="insights"|"question"|"suggested_questions";
 type BridgeStatus="queued"|"running"|"completed"|"failed"|"cancelled";
 type BridgeError={type?:string;code?:string};
@@ -58,7 +61,7 @@ function common(input:DashboardRequest,analysisPayload:Record<string,unknown>){r
 export async function generateCodexInsights(input:DashboardRequest,analysisPayload:Record<string,unknown>,signal?:AbortSignal){
  configuration();
  const id=`summary:${input.language||'en'}:${input.range.start}:${input.range.end}:${input.comparison.start}:${input.comparison.end}`;
- const insights=await enqueueAiJob(id,{mode:'insights',...common(input,analysisPayload)});
+ const insights=await enqueueAiJob(id,{mode:'insights',...common(input,analysisPayload),...(persistentConversationsEnabled()?{conversation:{project:'bluevua',kind:'insights'}}:{})});
  if(insights.status==='failed')throw new CodexBridgeError('The insight generation failed. Please contact the administrator.','job_failed');
  if(insights.status!=='completed')throw new AiJobPending(insights.status);
  // Reuse the exact persisted snapshot required by the Bridge dependency contract.
@@ -70,12 +73,22 @@ export async function generateCodexInsights(input:DashboardRequest,analysisPaylo
  return{result:{...(insights.result as InsightResult),suggested_questions:result.questions},jobId:insights.remote_id!,model:'codex-bridge'};
 }
 
-export async function askCodex(input:DashboardRequest,analysisPayload:Record<string,unknown>,question:string,signal?:AbortSignal,onProgress?:(progress:BridgeProgress)=>void,attachments:BridgeAttachment[]=[],latestUserMessage=question){
+export async function askCodex(input:DashboardRequest,analysisPayload:Record<string,unknown>,question:string,signal?:AbortSignal,onProgress?:(progress:BridgeProgress)=>void,attachments:BridgeAttachment[]=[],latestUserMessage=question,user?:SiteUser){
  // Enable only after the Bridge memory protocol is deployed. Never derive
  // confirmation commands from the history-wrapped prompt or attachments.
  const memoryInput=process.env.CODEX_BRIDGE_TEAM_MEMORY_ENABLED==="true"?{latest_user_message:latestUserMessage}:{};
- const job=await runJob<QuestionResult>({request_id:randomUUID(),mode:"question",...common(input,analysisPayload),question,...memoryInput,...(attachments.length?{attachments}: {})},signal,onProgress);
+ const persistent=persistentConversationsEnabled();
+ if(persistent&&!user)throw new CodexBridgeError("Sign in before asking a question.","identity_required");
+ const job=await runJob<QuestionResult>({request_id:randomUUID(),mode:"question",...common(input,analysisPayload),question,...memoryInput,...(persistent?{conversation:askConversation(user!),latest_user_message:latestUserMessage}:{}),...(attachments.length?{attachments}: {})},signal,onProgress);
  const answer=job.result.answer_markdown?.trim();
  if(!answer)throw new CodexBridgeError("The AI returned an empty response. Please retry.","empty_answer");
  return{answer,jobId:job.jobId,model:"codex-bridge"};
+}
+
+export async function conversationHistory(user:SiteUser){
+ if(!persistentConversationsEnabled())return{title:null,turns:[]};
+ const{baseUrl,apiKey}=configuration();
+ const response=await fetch(`${baseUrl}/v1/codex/conversations/history`,{method:"POST",headers:{authorization:`Bearer ${apiKey}`,"content-type":"application/json"},body:JSON.stringify(askConversation(user)),cache:"no-store",signal:AbortSignal.timeout(15000)});
+ if(!response.ok)throw new CodexBridgeError("Conversation history is unavailable.","history_unavailable");
+ return response.json();
 }

@@ -1,6 +1,5 @@
 import nextEnv from '@next/env';
 import pg from 'pg';
-import { createHmac } from 'node:crypto';
 nextEnv.loadEnvConfig(process.cwd());
 const pool=new pg.Pool({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},max:1});
 const base=process.env.CODEX_BRIDGE_URL?.replace(/\/$/,'');
@@ -11,8 +10,8 @@ async function finalize(){
  const rows=await pool.query(`select * from ai_job_queue where status='completed' and finalized=false and body->>'mode' in ('insights','suggested_questions') order by created_at limit 1`);
  const job=rows.rows[0];if(!job)return;
  const body=job.body;
- const cookie=createHmac('sha256',process.env.SITE_ACCESS_KEY.trim()).update('emw3-dashboard-access-v1').digest('hex');
- const response=await fetch('http://127.0.0.1:3000/api/klaviyo/ask',{method:'POST',headers:{'content-type':'application/json',cookie:`emw3_access=${cookie}`},body:JSON.stringify({mode:'summary',language:body.language==='zh-CN'?'zh':'en',range:body.period,comparison:body.comparison,presetLabel:body.preset_label,comparisonLabel:body.comparison_label}),signal:AbortSignal.timeout(45000)});
+ if(!process.env.AI_WORKER_SECRET?.trim())throw new Error('AI_WORKER_SECRET is not configured');
+ const response=await fetch('http://127.0.0.1:3000/api/klaviyo/ask',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${process.env.AI_WORKER_SECRET.trim()}`},body:JSON.stringify({mode:'summary',language:body.language==='zh-CN'?'zh':'en',range:body.period,comparison:body.comparison,presetLabel:body.preset_label,comparisonLabel:body.comparison_label}),signal:AbortSignal.timeout(45000)});
  if(!response.ok)throw new Error(`Finalize HTTP ${response.status}`);
  await pool.query('update ai_job_queue set finalized=true where id=$1',[job.id]);
 }

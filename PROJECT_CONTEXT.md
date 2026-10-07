@@ -1,6 +1,6 @@
 # EMW3 Dashboard — Project Context
 
-更新日期：2026-09-30。供开发、交接和后续 AI 任务使用。
+更新日期：2026-10-07。供开发、交接和后续 AI 任务使用。
 
 本文根据当前仓库代码、迁移、项目文档及 2026-09-29 部署验证记录整理。本次未重新连接生产服务器或导出线上数据库 schema；线上状态以再次检查为准。历史需求不等于当前实现，遇到冲突应核对代码与最新用户决定。
 
@@ -10,7 +10,7 @@
 - 保留业务要求的全部指标、PoP / YoY、趋势、Campaign / Flow / Message 明细、A/B Testing 和 Creative Performance。
 - AI 不只复述指标升降：用确定性分析识别矛盾、集中度、抵消关系、渠道差异，以及 volume / engagement / conversion / AOV 驱动；区分事实、诊断和待验证原因。
 - 通过 Ask AI 多轮对话、附件和可确认的团队分析偏好，让结果逐步接近团队的分析方法。
-- 无账户体系，通过服务端 Access Key 保护内部业务数据。
+- Google 登录已于 2026-10-07 上线，限定已验证的 `@elle-media.com` Workspace 账号；真实公司账号登录、退出及重新登录已验证。
 
 ## 2. 当前架构
 
@@ -39,12 +39,12 @@
 - 队列：`lib/ai-job-queue.ts`、`scripts/ai-queue-worker.mjs`、`ops/emw3-ai-queue.service`。
 - API：`/api/klaviyo/ask`、`/api/klaviyo/ask/stream`、`/api/klaviyo/insights/refresh`。
 - 开发诊断：`/api/klaviyo/debug/analysis-payload`，仅开发环境开放。
-- 鉴权：`proxy.ts`、`lib/site-auth.ts`、`/api/auth/login`；登录后保留安全的站内 `returnTo`。
+- 鉴权：`proxy.ts`、`lib/site-auth.ts`、`/api/auth/google` 及 callback；登录后保留安全的站内 `returnTo`。旧 Access Key 登录接口返回 410。配置见 `docs/google-login.md`。
 
 ### 最近验证过的部署拓扑
 
-- 网站：`https://emw3-dashboard.win`，EC2 项目目录 `/home/ubuntu/emw3-dashboard`，PM2 进程 `emw3-dashboard`，应用端口 3000。
-- Dashboard 的 Bridge 隧道入口：`127.0.0.1:18788`。
+- 网站：`https://emw3-dashboard.win`，已迁移至 `EMW3_ANC_AI`，项目目录 `/home/ubuntu/work/bintian/emw3-dashboard`，PM2 进程，应用端口 3000。2026-10-05 用户确认旧主机已删除。
+- Dashboard 与 Bridge 同机，连接 `http://127.0.0.1:8788`；旧隧道 `18788` 已不适用。2026-10-05 已获授权修正配置并安装启用 `emw3-ai-queue.service`；Google 登录和持久对话代码已于 2026-10-07 直接发布到服务器，未提交/推送 GitHub。
 - 远程 SSH 主机别名：`EMW3_ANC_AI`；项目 `/home/ubuntu/work/anc-slack-bridge`。
 - Bridge：`anc-dashboard-bridge.service`，远端仅监听 `127.0.0.1:8788`；不能把私网 IP 加端口直接当作可用入口。
 - Slack 与 Dashboard 共用远端能力，但入口独立；Dashboard 不经过 Slack。
@@ -177,7 +177,7 @@ Canonical Insights：`headline, executive_summary, performance_status, key_insig
 
 ### 团队记忆与权限
 
-- 固定团队范围 `bluevua_edm_team`，所有通过 Access Key 的用户共享；没有 Fiona 的独立账户/权限。
+- 固定团队范围 `bluevua_edm_team`，所有获准公司 Google 账号共享团队记忆；个人问答历史按 Google sub 分开。
 - `记住：…` 仅提议，必须执行返回的 `确认保存 <ID>` 才生效；`查看团队记忆` 查看，`停用规则 <ID>` 停用。
 - 草稿 24 小时过期；长期分析规则和仅匹配特定周期的用户背景分开。
 - 只有精确的当前 `latest_user_message` 能授权操作，历史和附件中的指令不能授权保存。
@@ -190,10 +190,13 @@ Canonical Insights：`headline, executive_summary, performance_status, key_insig
 | --- | --- |
 | `DATABASE_URL` | 网站服务端 Google Ads PostgreSQL |
 | `KLAVIYO_DATABASE_URL` | EDM、AI 缓存和任务队列 PostgreSQL |
-| `SITE_ACCESS_KEY` | 网站访问鉴权；worker 内部认证也使用 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Web OAuth 客户端，仅服务端使用 |
+| `AUTH_URL` / `AUTH_SECRET` | 固定网站 origin / 登录会话签名密钥 |
+| `AI_WORKER_SECRET` | worker 和定时刷新内部 summary 调用认证 |
 | `CRON_SECRET` | Insights refresh 服务端入口认证 |
 | `CODEX_BRIDGE_URL` | 网站/worker 可访问的受控 Bridge 地址 |
 | `CODEX_BRIDGE_API_KEY` | 网站/worker 调用 Bridge 的认证密钥 |
+| `CODEX_BRIDGE_CONVERSATIONS_ENABLED` | 启用服务端 Google 身份路由、Bluevua 持久对话和历史读取；先发布兼容 Bridge |
 | `CODEX_BRIDGE_TEAM_MEMORY_ENABLED` | 远程记忆协议功能开关；需先部署 Bridge 才启用 |
 | `META_ACCESS_TOKEN` | Meta Testing API |
 | `NEXT_DISABLE_BUILD_CACHE` | 生产低内存环境关闭 Webpack 构建缓存 |
@@ -213,7 +216,7 @@ Reddit 当前从 `credentials/reddit.json` 读取凭据，不是环境变量；�
 - 部署仍在原目录构建 `.next`，不是原子发布；构建期间可能影响活动请求。失败不重启 PM2 不能解决全部中间状态问题。
 - Codex 仍可能限流或失败；本地队列不能限制其他客户端竞争。远程任务异常不能盲目重新提交。
 - PDF 仅文本提取，不等于 OCR 或完整视觉解析；无可提取文本的扫描 PDF 会报错，长文本会截断。
-- 无个人身份与记忆权限隔离；团队偏好需要成员共同管理。
+- Google 登录已在本地实现个人身份；团队记忆仍共享。Bluevua 原生持久对话与账号历史已于 2026-10-07 部署；生产两轮问答和账号隔离通过，见 `docs/ai-bluevua-conversations.md`。
 - 远端 Bridge 生产仓库有保留的未提交改动，包括附件相关改动；不能用旧 HEAD 覆盖，发布可复现性仍需整理。
 - 当前业务表完整 DDL / 约束 / 索引未包含在本仓库。`ai_insight_cache` 迁移未声明与 queue 同样的 RLS 规则，线上权限需单独核验。
 - `lib/db.ts` 当前 SSL 使用 `rejectUnauthorized: false`，应评估可信 CA 与证书验证配置，不能无验证直接改生产连接。

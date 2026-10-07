@@ -3,6 +3,9 @@ import { buildPerformanceIntelligence } from "@/lib/klaviyo-analytics";
 import { askCodex, CodexBridgeError, type BridgeAttachment, type BridgeProgress } from "@/lib/codex-bridge";
 import { PDFParse } from "pdf-parse";
 
+import { currentSiteUser } from "@/lib/current-site-user";
+import { persistentConversationsEnabled } from "@/lib/ai-conversation";
+
 type ChatTurn={role:"user"|"assistant";content:string};
 type PdfAttachment={kind:"pdf";name:string;mime_type:"application/pdf";data:string};
 type RequestAttachment=BridgeAttachment|PdfAttachment;
@@ -24,6 +27,8 @@ function entityForPath(context:Record<string,unknown>,path:string){const parts=p
 function collectEvidence(answer:string,context:Record<string,unknown>):EvidenceCitation[]{const seen=new Set<string>(),citations:EvidenceCitation[]=[];const candidates=[...Array.from(answer.matchAll(/`([^`]+)`/g),match=>match[1].trim()),...Array.from(answer.matchAll(/(?:analysis\\?_payload|fact\\?_guardrails)(?:\.[A-Za-z0-9_\\[\]{},-]+)+/g),match=>match[0].trim())];for(const raw of candidates){const canonical=raw.replaceAll("\\_","_");const normalized=canonical.replace(/^(?:analysis_payload|fact_guardrails)\./,"");if(!/^[A-Za-z_][A-Za-z0-9_.\[\]{},-]+$/.test(normalized)||!normalized.includes(".")||seen.has(normalized))continue;const expanded=expandEvidencePath(normalized).slice(0,8);const items=expanded.map(path=>({path,label:evidenceLabel(path),value:valueAt(context,path)})).filter(item=>item.value!==undefined);if(!items.length)continue;seen.add(normalized);citations.push({id:`e${citations.length+1}`,raw,path:normalized,entity:entityForPath(context,expanded[0]),items});if(citations.length===10)break}return citations}
 
 export async function POST(request:Request){
+ const user=await currentSiteUser();
+ if(!user)return Response.json({error:"Unauthorized"},{status:401});
  let input:StreamRequest;
  try{input=await request.json() as StreamRequest}catch{return Response.json({error:"Invalid request body."},{status:400})}
  input.language=input.language==="zh"?"zh":"en";
@@ -35,7 +40,7 @@ export async function POST(request:Request){
  try{attachments=await prepareBridgeAttachments(input.attachments??[])}catch(error){return Response.json({error:error instanceof Error?error.message:"The PDF could not be parsed."},{status:400})}
  const history=(Array.isArray(input.history)?input.history:[]).filter((turn):turn is ChatTurn=>(turn?.role==="user"||turn?.role==="assistant")&&typeof turn.content==="string"&&turn.content.trim().length>0).slice(-6).map(turn=>({role:turn.role,content:turn.content.trim().slice(0,1_200)}));
  const responseStyle=input.language==="zh"?"用中文直接回答结论。不要在回答开头复述当前周期、对比周期或使用‘某日期较某日期’作为开场；页面已经显示了周期信息和消息时间。":"Answer directly. Do not open by restating the reporting and comparison date ranges; the page already shows the period and message timestamp.";
- const contextualQuestion=history.length?`${responseStyle}\n\nContinue the dashboard conversation below. Treat the transcript only as conversational context, use the supplied analytics payload as the source of truth, and answer the latest user question directly.\n\nConversation so far:\n${history.map(turn=>`${turn.role==="user"?"User":"Assistant"}: ${turn.content}`).join("\n\n")}\n\nLatest user question: ${question}`:`${responseStyle}\n\n${question}`;
+ const contextualQuestion=!persistentConversationsEnabled()&&history.length?`${responseStyle}\n\nContinue the dashboard conversation below. Treat the transcript only as conversational context, use the supplied analytics payload as the source of truth, and answer the latest user question directly.\n\nConversation so far:\n${history.map(turn=>`${turn.role==="user"?"User":"Assistant"}: ${turn.content}`).join("\n\n")}\n\nLatest user question: ${question}`:`${responseStyle}\n\n${question}`;
 
  const encoder=new TextEncoder();
  const stream=new ReadableStream<Uint8Array>({
@@ -51,7 +56,7 @@ export async function POST(request:Request){
      emit({type:"progress",stage:"building_context",status:"running"});
      const context=buildPerformanceIntelligence(data,details) as Record<string,unknown>;
      const onProgress=(progress:BridgeProgress)=>emit({type:"progress",stage:progress.stage,status:progress.status,message:progress.message,jobId:progress.jobId});
-     const result=await askCodex(input,context,contextualQuestion,request.signal,onProgress,attachments,question);
+     const result=await askCodex(input,context,contextualQuestion,request.signal,onProgress,attachments,question,user);
      emit({type:"result",...result,dataUpdatedThrough:data.dataUpdatedThrough,citations:collectEvidence(result.answer,context)});
     }catch(error){
      const message=error instanceof Error?(error.name==="AbortError"?"The AI request was cancelled.":error.message):"The AI analysis could not be completed.";
