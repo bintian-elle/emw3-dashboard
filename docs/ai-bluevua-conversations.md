@@ -58,3 +58,7 @@ Its next text-only turn recalled the PDF marker. Both answers completed through 
 ### 2026-10-07 native tools and prompt update
 
 The independent Bridge worktree is `/home/ubuntu/work/anc-dashboard-native-prompts-dev`. New native validation conversations successfully retrieved the original Google document through MCP. The website restores historical answers with a visible end-of-history boundary and keeps suggested questions below the conversation. Previous restricted-thread verification above records historical behavior, not the current policy.
+
+Legacy service-owned Dashboard threads retain their original native ID and history. Their old persisted base prompt and loaded tool configuration are reconciled with host defaults on an idle resume; active turns are never unloaded. A real legacy-thread probe retrieved Google document metadata after migration. The captured native base instructions are stored only in the protected host state directory, not in the website or browser. Bridge regression: 386 tests passed.
+
+The previous Bridge execution timeout of 180 seconds interrupted the first full-prompt Insights regeneration. After confirming the native turn was interrupted, only that shared Insights mapping was unblocked for an explicit retry. Production `DASHBOARD_TIMEOUT_SECONDS` is now 1200. Existing successful caches remain visible during generation; authorized replacement occurs only after both languages and their suggested questions have succeeded.
