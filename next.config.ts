@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // PDF.js resolves its native canvas dependency relative to the loaded module.
+  // Keep PDF packages in node_modules so builds can move between release paths.
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist", "@napi-rs/canvas"],
   experimental: {
     // Disk was expanded, but the deployment host still has only 2 GiB RAM.
     // Keep memory protection while allowing Next's default filesystem cache.

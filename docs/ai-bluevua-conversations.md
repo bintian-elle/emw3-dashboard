@@ -12,7 +12,9 @@ The website derives the Ask AI owner from the verified Google session. SHA-256 o
 - Private mapping and readable turn projection: `conversations.sqlite3` in the configured Dashboard Bridge state directory. Existing jobs and native rollouts remain separate records.
 - `GET /api/klaviyo/ask/history` verifies the session and fetches only its owner's latest 100 turns. Refresh restores these messages. Clear view clears the browser display; it does not delete remote history or create a new conversation.
 
-Both native starts and resumes apply existing thread-local tool restrictions. Background loading is server-owned, without arbitrary caller paths: 17 allowlisted Markdown files including inherited rules, project indexes, brand, marketing, KOL, design and Q4 activity context. Each is dated and hashed, reread every model turn. Private `.local`, credentials, unrelated projects and symlinks are excluded. Current report metrics always come from the current Dashboard snapshot. Project documents provide dated background and methodology, not substitute metrics or approvals. This integration does not fetch source links or grant external tool access.
+Dashboard no longer supplies a restricted base prompt, tool-disable flags, file allowlist or a read-only/no-network turn sandbox. New native threads inherit the host Codex configuration and Bluevua project instructions, including available source tools. Host approvals remain host decisions. Ask AI sends the user's question without an application-wide evidence-only instruction. EDM Insights alone load `prompts/insights/edm.md`; other dashboards and Ask AI do not load that analytical prompt. Original-source freshness depends on what Codex actually retrieves; answers must not imply a live source was read when only a project summary was consulted.
+
+The prompt is read when a new Insights job is created. It contains the complete six-page `docs/EDM Prompt.pdf` text as the primary guidance, followed by the existing diagnostic refinements. Editing it does not alter an already queued job or cached result. Synchronize local edits to the production path listed in `prompts/insights/README.md`.
 
 Memory list/confirm/disable responses are also saved in the private readable history even when returned directly without a model turn. Memory proposals that use the model retain the native turn as well. Team-memory scope and exact latest-message authorization are unchanged.
 
@@ -40,3 +42,19 @@ Keep the flag disabled against the old strict Bridge schema. Existing cache/job 
 - Production build passed. Real company Google login, logout, re-login and account header were verified in the browser. Two website questions under an isolated synthetic test identity passed through the production queue/worker to the same persistent native thread; trusted email title and different-account history isolation passed.
 - Worker and daily 07:45 UTC timer are active. Configuration-only scheduled-refresh check passed; existing Insights caches were not regenerated.
 - Protected rollback artifacts: `/home/ubuntu/work/bintian/.dashboard-ops-backups/release-20261007` (old sources/build/dependencies/environment and consistent Bridge SQLite backups). Test history is labelled `integration-test@elle-media.com`, separate from real user history.
+
+### Streaming endpoint follow-up
+
+The first publication bundled PDF.js with an absolute path to the staging dependency directory. Moving dependencies into production caused the streaming route to fail during module initialization (`DOMMatrix is not defined`), before a question entered the queue. Restoring dependency resolution recovered the route. The permanent build configuration externalizes `pdf-parse`, `pdfjs-dist` and `@napi-rs/canvas` so Node resolves the deployed modules at runtime.
+
+An authenticated request through the public production streaming endpoint completed with a real Google document link and saved a third turn under the synthetic test email. The initial probe omitted required reporting labels and was rejected by Bridge; the successful probe used the same complete fields as the page. No real user's failed question was automatically resubmitted.
+
+The rebuilt website passed authentication checks after removing the temporary dependency-path link. A PDF probe extracted its text and reached Bridge, exposing a second issue: a loaded native thread could return its previous full-access sandbox despite restricted resume parameters. Bridge correctly rejected it before starting a model turn. The remote SDK fix explicitly uses `thread/settings/update` for that service-owned thread, resumes again and checks the resulting sandbox; each Dashboard turn also sends a read-only/no-network sandbox and `approvalPolicy: never`. Two real cross-connection resumes retained the original thread and passed permission checks. Shared Slack/native services and their permissions remain unchanged.
+
+The remote SDK fix passed all 384 Bridge tests and was published with consistent SQLite backups under `native-resume-fix` in the protected release backup directory. Only the synthetic test mapping was unblocked after verifying its failed job had neither a native thread identity nor a turn identity recorded. The public streaming endpoint then completed a synthetic PDF question on the original durable conversation.
+
+Its next text-only turn recalled the PDF marker. Both answers completed through the public streaming route and history returned six test turns (including the retained failed test), with the trusted synthetic email title. No Git commit/push was performed.
+
+### 2026-10-07 native tools and prompt update
+
+The independent Bridge worktree is `/home/ubuntu/work/anc-dashboard-native-prompts-dev`. New native validation conversations successfully retrieved the original Google document through MCP. The website restores historical answers with a visible end-of-history boundary and keeps suggested questions below the conversation. Previous restricted-thread verification above records historical behavior, not the current policy.

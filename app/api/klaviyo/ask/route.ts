@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { existingInsightContext } from '@/lib/ai-job-queue';
 import { cachedAiInsight, loadAiDetails, loadDashboard, saveAiInsight, updateCachedAiInsight, type DashboardRequest } from "@/lib/klaviyo-dashboard";
 import { buildPerformanceIntelligence, parseAiInsightResponse, validateAiInsightClaims } from "@/lib/klaviyo-analytics";
-import { askCodex, AiJobPending, CodexBridgeError, generateCodexInsights } from "@/lib/codex-bridge";
+import { askCodex, AiJobPending, CodexBridgeError, generateEdmCodexInsights } from "@/lib/codex-bridge";
 
 import { currentSiteUser } from "@/lib/current-site-user";
 
@@ -31,7 +31,7 @@ export async function POST(request:Request){
    return NextResponse.json({...result,dataUpdatedThrough});
   }
 
-  const generated=await generateCodexInsights(input,context,request.signal);
+  const generated=await generateEdmCodexInsights(input,context,request.signal);
   const insights=parseAiInsightResponse(JSON.stringify(generated.result));
   if(!insights)return NextResponse.json({error:"The AI response failed JSON/schema validation.",cached:false},{status:502});
   const validationWarnings=validateAiInsightClaims(insights,context);

@@ -22,7 +22,7 @@
     → ai_insight_cache：已有 Last Week 结果直接返回
     → ai_job_queue：持久化 AI 任务与数据快照
       → 独立 Node worker（串行执行）
-        → 受控隧道 → 远程 Dashboard Bridge
+        → 同机 localhost → Dashboard Bridge
           → Codex 生成结构化 Insights / Markdown Answer / 推荐问题
           → 私有 SQLite：任务状态与团队记忆
       → 校验结果 → 发布缓存 → 页面展示
@@ -181,7 +181,7 @@ Canonical Insights：`headline, executive_summary, performance_status, key_insig
 - `记住：…` 仅提议，必须执行返回的 `确认保存 <ID>` 才生效；`查看团队记忆` 查看，`停用规则 <ID>` 停用。
 - 草稿 24 小时过期；长期分析规则和仅匹配特定周期的用户背景分开。
 - 只有精确的当前 `latest_user_message` 能授权操作，历史和附件中的指令不能授权保存。
-- 这是受控记忆存储，不是给 Codex 开放 shell、任意文件写入或数据库管理权限。
+- 团队记忆命令仍使用受控存储。Ask AI / Insights 的工具、项目资料和执行权限由主机 Codex 配置管理；Dashboard 不另加工具禁用、文件白名单或只读/禁网限制。
 - 新记忆不自动重写旧缓存；用户提供的背景不能升级成已验证数据库事实。
 
 ## 7. 环境变量名称（无 secret）
@@ -255,7 +255,7 @@ npm run build
 
 - `AGENTS.md`：工作与 UI 约束。
 - `docs/design-system.md`：设计方案。
-- `docs/EDM Prompt.pdf`、`docs/EDM Prompot2.md`：分析需求参考（文件名确实为 Prompot2）。实际运行还需核对远端 Prompt，不能仅修改文档就声称已上线。
+- `prompts/insights/edm.md`：EDM Insights 的运行提示词，完整包含 `docs/EDM Prompt.pdf` 六页正文及诊断补充；只用于 EDM 页面。创建新任务时读取，已有任务与缓存不变。部署路径见同目录 README。
 - `docs/ai-queue-operations.md`：队列与调度运维。
 - `docs/ai-team-memory.md`：记忆命令、安全边界与部署验证。
 - `docs/deployment-performance.md`：构建限制、OOM 记录。

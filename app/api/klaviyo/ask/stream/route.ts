@@ -39,8 +39,7 @@ export async function POST(request:Request){
  let attachments:BridgeAttachment[];
  try{attachments=await prepareBridgeAttachments(input.attachments??[])}catch(error){return Response.json({error:error instanceof Error?error.message:"The PDF could not be parsed."},{status:400})}
  const history=(Array.isArray(input.history)?input.history:[]).filter((turn):turn is ChatTurn=>(turn?.role==="user"||turn?.role==="assistant")&&typeof turn.content==="string"&&turn.content.trim().length>0).slice(-6).map(turn=>({role:turn.role,content:turn.content.trim().slice(0,1_200)}));
- const responseStyle=input.language==="zh"?"用中文直接回答结论。不要在回答开头复述当前周期、对比周期或使用‘某日期较某日期’作为开场；页面已经显示了周期信息和消息时间。":"Answer directly. Do not open by restating the reporting and comparison date ranges; the page already shows the period and message timestamp.";
- const contextualQuestion=!persistentConversationsEnabled()&&history.length?`${responseStyle}\n\nContinue the dashboard conversation below. Treat the transcript only as conversational context, use the supplied analytics payload as the source of truth, and answer the latest user question directly.\n\nConversation so far:\n${history.map(turn=>`${turn.role==="user"?"User":"Assistant"}: ${turn.content}`).join("\n\n")}\n\nLatest user question: ${question}`:`${responseStyle}\n\n${question}`;
+ const contextualQuestion=!persistentConversationsEnabled()&&history.length?`Conversation so far:\n${history.map(turn=>`${turn.role==="user"?"User":"Assistant"}: ${turn.content}`).join("\n\n")}\n\nLatest user question: ${question}`:question;
 
  const encoder=new TextEncoder();
  const stream=new ReadableStream<Uint8Array>({

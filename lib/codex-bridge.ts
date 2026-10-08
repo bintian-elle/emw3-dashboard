@@ -5,6 +5,7 @@ import type { DashboardRequest } from "@/lib/klaviyo-dashboard";
 
 import type { SiteUser } from "@/lib/site-auth";
 import { askConversation, persistentConversationsEnabled } from "@/lib/ai-conversation";
+import { readEdmInsightPrompt } from "@/lib/ai-insight-prompt";
 
 type BridgeMode="insights"|"question"|"suggested_questions";
 type BridgeStatus="queued"|"running"|"completed"|"failed"|"cancelled";
@@ -58,10 +59,10 @@ function common(input:DashboardRequest,analysisPayload:Record<string,unknown>){r
  analysis_payload:analysisPayload,
 }}
 
-export async function generateCodexInsights(input:DashboardRequest,analysisPayload:Record<string,unknown>,signal?:AbortSignal){
+export async function generateEdmCodexInsights(input:DashboardRequest,analysisPayload:Record<string,unknown>,signal?:AbortSignal){
  configuration();
  const id=`summary:${input.language||'en'}:${input.range.start}:${input.range.end}:${input.comparison.start}:${input.comparison.end}`;
- const insights=await enqueueAiJob(id,{mode:'insights',...common(input,analysisPayload),...(persistentConversationsEnabled()?{conversation:{project:'bluevua',kind:'insights'}}:{})});
+ const insights=await enqueueAiJob(id,{mode:'insights',...common(input,analysisPayload),dashboard_id:'bluevua-edm',insight_prompt:await readEdmInsightPrompt(),...(persistentConversationsEnabled()?{conversation:{project:'bluevua',kind:'insights'}}:{})});
  if(insights.status==='failed')throw new CodexBridgeError('The insight generation failed. Please contact the administrator.','job_failed');
  if(insights.status!=='completed')throw new AiJobPending(insights.status);
  // Reuse the exact persisted snapshot required by the Bridge dependency contract.
