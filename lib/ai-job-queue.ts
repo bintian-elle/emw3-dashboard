@@ -1,5 +1,6 @@
 import 'server-only';
 import { Pool } from 'pg';
+import { bilingualInsightJobId } from './ai-insight-job';
 import { randomUUID } from 'node:crypto';
 
 const pool=new Pool({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},max:3});
@@ -14,7 +15,7 @@ export async function readAiJob(id:string):Promise<QueuedJob>{
  return result.rows[0];
 }
 export async function existingInsightContext(input:{language?:string;range:{start:string;end:string};comparison:{start:string;end:string}}){
- const id=`summary:${input.language||'en'}:${input.range.start}:${input.range.end}:${input.comparison.start}:${input.comparison.end}`;
- const result=await pool.query<QueuedJob>('select body from ai_job_queue where id=$1',[id]);
+ const legacy=`summary:${input.language||'en'}:${input.range.start}:${input.range.end}:${input.comparison.start}:${input.comparison.end}`;
+ const result=await pool.query<QueuedJob>('select body from ai_job_queue where id in ($1,$2) order by case when id=$1 then 0 else 1 end limit 1',[bilingualInsightJobId(input),legacy]);
  return result.rows[0]?.body.analysis_payload as Record<string,unknown>|undefined;
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { existingInsightContext } from '@/lib/ai-job-queue';
-import { cachedAiInsight, loadAiDetails, loadDashboard, saveAiInsight, updateCachedAiInsight, type DashboardRequest } from "@/lib/klaviyo-dashboard";
+import { cachedAiInsight, loadAiDetails, loadDashboard, saveBilingualAiInsight, updateCachedAiInsight, type DashboardRequest } from "@/lib/klaviyo-dashboard";
 import { buildPerformanceIntelligence, parseAiInsightResponse, validateAiInsightClaims } from "@/lib/klaviyo-analytics";
 import { askCodex, AiJobPending, CodexBridgeError, generateEdmCodexInsights } from "@/lib/codex-bridge";
 
@@ -32,11 +32,13 @@ export async function POST(request:Request){
   }
 
   const generated=await generateEdmCodexInsights(input,context,request.signal);
-  const insights=parseAiInsightResponse(JSON.stringify(generated.result));
-  if(!insights)return NextResponse.json({error:"The AI response failed JSON/schema validation.",cached:false},{status:502});
+  const en=parseAiInsightResponse(JSON.stringify(generated.translations.en));
+  const zh=parseAiInsightResponse(JSON.stringify(generated.translations.zh));
+  if(!en||!zh)return NextResponse.json({error:"The AI response failed JSON/schema validation.",cached:false},{status:502});
+  const insights=input.language==='zh'?zh:en;
   const validationWarnings=validateAiInsightClaims(insights,context);
   if(validationWarnings.length&&process.env.NODE_ENV!=="production")console.warn("[api/klaviyo/ask] Fact validation warnings",{validationWarnings,model:generated.model,jobId:generated.jobId});
-  await saveAiInsight(input,insights,generated.model);
+  await saveBilingualAiInsight(input,{en,zh},generated.model);
   const debug=input.debug&&process.env.NODE_ENV!=="production"?{fact_guardrails:(context as {fact_guardrails?:unknown}).fact_guardrails,validation_warnings:validationWarnings,final_json:insights,bridge_job_id:generated.jobId}:undefined;
   return NextResponse.json({insights,model:generated.model,dataUpdatedThrough,cached:false,validationWarnings,debug});
  }catch(error){

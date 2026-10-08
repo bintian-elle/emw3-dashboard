@@ -210,3 +210,8 @@ Generate candidate stories, then select the most valuable based on business impa
 For report metrics, cite the available metric paths, values, periods and units so readers can verify claims. For business context, cite the sources actually consulted and their dates. Distinguish a project summary from an original source that was retrieved for this analysis.
 
 Produce the dashboard's structured Insights result: headline, executive_summary, performance_status, key_insights and recommended_actions. Each insight includes title, observation, interpretation, supporting_evidence, driver, business_implication, next_step and confidence. Confidence should reflect evidence strength.
+
+
+## 双语交付：一次分析，中文忠实翻译
+
+完整分析只进行一次，以英文形成最终结论、证据与行动，并生成 5 个基于这些洞察的推荐问题。随后将同一份英文结果和推荐问题忠实翻译成简体中文；不为翻译重新分析、检索或提出不同结论。两种语言的洞察及行动顺序、数字、日期、币种、证据路径、来源链接、confidence、priority 和 performance_status 必须一致。保留品牌、Campaign、Flow、产品和指标专名。按本次双语输出 schema 的 en / zh 字段在同一次返回中交付；每个语言版本都包含 suggested_questions。

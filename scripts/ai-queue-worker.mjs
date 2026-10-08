@@ -7,7 +7,7 @@ const key=process.env.CODEX_BRIDGE_API_KEY;
 if(!base||!key)throw new Error('Bridge configuration missing');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function finalize(){
- const rows=await pool.query(`select * from ai_job_queue where status='completed' and finalized=false and body->>'mode' in ('insights','suggested_questions') order by created_at limit 1`);
+ const rows=await pool.query(`select * from ai_job_queue where status='completed' and finalized=false and body->>'mode' in ('insights','suggested_questions','bilingual_insights') order by created_at limit 1`);
  const job=rows.rows[0];if(!job)return;
  const body=job.body;
  if(!process.env.AI_WORKER_SECRET?.trim())throw new Error('AI_WORKER_SECRET is not configured');

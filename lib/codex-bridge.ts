@@ -5,16 +5,16 @@ import type { DashboardRequest } from "@/lib/klaviyo-dashboard";
 
 import type { SiteUser } from "@/lib/site-auth";
 import { askConversation, persistentConversationsEnabled } from "@/lib/ai-conversation";
+import { bilingualInsightJobId } from "@/lib/ai-insight-job";
 import { readEdmInsightPrompt } from "@/lib/ai-insight-prompt";
 
-type BridgeMode="insights"|"question"|"suggested_questions";
+type BridgeMode="bilingual_insights"|"insights"|"question"|"suggested_questions";
 type BridgeStatus="queued"|"running"|"completed"|"failed"|"cancelled";
 type BridgeError={type?:string;code?:string};
 export type BridgeProgress={stage:string;status:BridgeStatus;jobId:string;message?:string};
 type BridgeEnvelope<T>={job_id:string;request_id:string;mode:BridgeMode;status:BridgeStatus;result:T|null;error:BridgeError|null;progress?:{stage?:string;message?:string}|null};
 type InsightResult={headline:string;executive_summary:string;performance_status:string;key_insights:unknown[];recommended_actions:unknown[]};
 type QuestionResult={answer_markdown:string};
-type SuggestedQuestionsResult={questions:string[]};
 export type BridgeAttachment={kind:"image"|"text";name:string;mime_type:string;data?:string;text?:string};
 
 export class CodexBridgeError extends Error{
@@ -61,17 +61,15 @@ function common(input:DashboardRequest,analysisPayload:Record<string,unknown>){r
 
 export async function generateEdmCodexInsights(input:DashboardRequest,analysisPayload:Record<string,unknown>,signal?:AbortSignal){
  configuration();
- const id=`summary:${input.language||'en'}:${input.range.start}:${input.range.end}:${input.comparison.start}:${input.comparison.end}`;
- const insights=await enqueueAiJob(id,{mode:'insights',...common(input,analysisPayload),dashboard_id:'bluevua-edm',insight_prompt:await readEdmInsightPrompt(),...(persistentConversationsEnabled()?{conversation:{project:'bluevua',kind:'insights'}}:{})});
- if(insights.status==='failed')throw new CodexBridgeError('The insight generation failed. Please contact the administrator.','job_failed');
- if(insights.status!=='completed')throw new AiJobPending(insights.status);
- // Reuse the exact persisted snapshot required by the Bridge dependency contract.
- const suggestions=await enqueueAiJob(`${id}:questions`,{...insights.body,mode:'suggested_questions',insight_job_id:insights.remote_id});
- if(suggestions.status==='failed')throw new CodexBridgeError('Suggested question generation failed. Please contact the administrator.','job_failed');
- if(suggestions.status!=='completed')throw new AiJobPending(suggestions.status);
- const result=suggestions.result as SuggestedQuestionsResult;
- if(!Array.isArray(result?.questions)||result.questions.length!==5)throw new CodexBridgeError('The AI returned invalid suggested questions.','suggested_questions_invalid');
- return{result:{...(insights.result as InsightResult),suggested_questions:result.questions},jobId:insights.remote_id!,model:'codex-bridge'};
+ const id=bilingualInsightJobId(input);
+ const job=await enqueueAiJob(id,{mode:'bilingual_insights',...common({...input,language:'en'},analysisPayload),dashboard_id:'bluevua-edm',insight_prompt:await readEdmInsightPrompt(),...(persistentConversationsEnabled()?{conversation:{project:'bluevua',kind:'insights'}}:{})});
+ if(job.status==='failed')throw new CodexBridgeError('The insight generation failed. Please contact the administrator.','job_failed');
+ if(job.status!=='completed')throw new AiJobPending(job.status);
+ const result=job.result as Record<'en'|'zh',InsightResult&{suggested_questions:string[]}>;
+ for(const language of ['en','zh'] as const){
+  if(!result?.[language]||result[language].suggested_questions?.length!==5)throw new CodexBridgeError('The AI returned invalid bilingual insights.','bilingual_insights_invalid');
+ }
+ return{result:result[input.language==='zh'?'zh':'en'],translations:result,jobId:job.remote_id!,model:'codex-bridge'};
 }
 
 export async function askCodex(input:DashboardRequest,analysisPayload:Record<string,unknown>,question:string,signal?:AbortSignal,onProgress?:(progress:BridgeProgress)=>void,attachments:BridgeAttachment[]=[],latestUserMessage=question,user?:SiteUser){

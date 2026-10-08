@@ -135,7 +135,7 @@
 - 内部证据路径的呈现清理 / 引用适配；原始 JSON path 本身不是可访问链接。
 - 从 OpenRouter 运行路径迁移到远程 Codex Bridge。
 - 持久化串行 AI 队列、请求幂等、远程任务复用、429 退避、页面断开后继续处理。
-- Insights 成功后再生成五个推荐问题，使用相同数据快照并缓存；英文、中文依次完成。
+- EDM 新任务一次生成英文分析、中文忠实翻译及两种语言各五个推荐问题，共用一个数据快照和原生轮次。
 - Access Key 登录、站内登录回跳、API 鉴权、防索引响应头。robots 指令不是安全边界，真正保护依赖鉴权。
 - 团队记忆：明确“记住”→ 草稿 → 带 ID 确认保存；可查看、停用；周期背景与长期方法区分。
 - 部署脚本增加锁、依赖签名复用、失败不重启；保留低内存构建配置。
@@ -167,11 +167,11 @@ Canonical Insights：`headline, executive_summary, performance_status, key_insig
 ### 缓存与串行执行
 
 - 当前缓存 key：`last_week:<language>:<start>:<end>:<comparison_start>:<comparison_end>`，不追加模型或 prompt 版本。
-- 相同日期、对比期、语言有有效成功结果就复用，不因为刷新或模型变化重复调用。写入 `ON CONFLICT DO NOTHING`，默认过期为生成后 8 天。
+- 相同日期、对比期、语言有有效成功结果就复用，不因为刷新或模型变化重复调用。常规读取复用成功缓存；新双语结果在一个事务内发布两种语言，默认过期为生成后 8 天。
 - Last 30 days 不进入定时 Insight 缓存；普通 summary 仍可能复用持久化队列任务，这与定时缓存是两层机制。
-- 队列 summary ID 同样包含日期、对比期、语言；推荐问题任务后缀 `:questions`，依赖成功 insight_job_id。
+- EDM 新队列任务 ID 为 `summary:bilingual:<start>:<end>:<comparison_start>:<comparison_end>`，切换语言复用同一任务。旧单语言 / `:questions` 任务保留兼容。
 - 一个 running 任务未解决前不提交下一个；问题优先于尚未执行的后台任务。
-- 07:45 UTC 依次推进英文 Insight → 英文问题 → 中文 Insight → 中文问题；两种语言成功后再清旧周期缓存。
+- 07:45 UTC 触发一次双语生成，成功后同一事务发布两种语言缓存，再清旧周期缓存。
 - 失败任务不因刷新自动创建新任务；先诊断，再明确重试。只删除 cache 未必触发重新生成，因为 queue 还可能复用结果。
 - 此队列只串行 Dashboard，不控制 Slack 等其他远端使用者。
 
