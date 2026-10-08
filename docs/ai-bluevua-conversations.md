@@ -74,3 +74,9 @@ The prior native turns inherited `gpt-6-astra / max`. Successful model execution
 Real synthetic native validation returned both editions and five questions per language in exactly one native thread/turn (86 seconds; a small contract probe, not a production-report latency benchmark). Production build and TypeScript checks passed. The new website and Dashboard Bridge are deployed; host model/effort and shared Codex/Slack services were unchanged. Existing successful report caches were preserved.
 
 Production browser verification at `https://emw3-dashboard.win/bluevua/edm` (existing Chrome through Playwright; Browser plugin unavailable): default Chinese rendered, English selection updated the visible heading, reloading restored Chinese, and no page runtime errors occurred. Public history and both cached language responses returned 200; existing cache timestamps remained unchanged. Both real native editions passed the website parser. Daily refresh configuration check passed without submitting a new report.
+
+### Four questions and medium reasoning
+
+Dashboard native turns now explicitly send `effort: medium`; the host model is retained and Slack still sends its existing `high`. New bilingual editions each require four unique suggested questions. The legacy standalone five-question protocol remains supported for old jobs. Website normalization and rendering retain the first four existing cached questions without reanalyzing the report.
+
+Verified and deployed: 389 Bridge tests, 14 analytics tests, TypeScript and production build passed. A real synthetic native turn returned four questions in each edition and its rollout confirmed `gpt-6-astra / medium` (31.7s; not a full-report benchmark). Browser checks confirmed Chinese and English each display four questions, desktop uses two rows of two, refresh defaults to Chinese, and no console/page errors occurred. Public cached responses retain their previous generation timestamp and analysis body.

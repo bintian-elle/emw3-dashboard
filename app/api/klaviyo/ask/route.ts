@@ -20,7 +20,7 @@ export async function POST(request:Request){
   const question=String(input.question||"").trim();
   if(mode==="question"&&(!question||question.length>500))return NextResponse.json({error:"Enter a question of no more than 500 characters."},{status:400});
   if(!valid(input.range)||!valid(input.comparison))return NextResponse.json({error:"Select a valid date range of no more than 365 days."},{status:400});
-  if(mode==="summary"&&!input.debug){const cached=await cachedAiInsight(input);if(cached){const normalized=parseAiInsightResponse(JSON.stringify(cached.insights));if(normalized){if(!Array.isArray((cached.insights as Partial<typeof normalized>).suggested_questions)||(cached.insights as Partial<typeof normalized>).suggested_questions?.length!==5)await updateCachedAiInsight(input,normalized);return NextResponse.json({...cached,insights:normalized,cached:true})}}}
+  if(mode==="summary"&&!input.debug){const cached=await cachedAiInsight(input);if(cached){const normalized=parseAiInsightResponse(JSON.stringify(cached.insights));if(normalized){if(!Array.isArray((cached.insights as Partial<typeof normalized>).suggested_questions)||(cached.insights as Partial<typeof normalized>).suggested_questions?.length!==4)await updateCachedAiInsight(input,normalized);return NextResponse.json({...cached,insights:normalized,cached:true})}}}
 
   const persisted=mode==='summary'?await existingInsightContext(input):undefined;
   const loaded=persisted?null:await Promise.all([loadDashboard(input),loadAiDetails(input)]);

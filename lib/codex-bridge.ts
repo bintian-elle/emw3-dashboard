@@ -67,7 +67,8 @@ export async function generateEdmCodexInsights(input:DashboardRequest,analysisPa
  if(job.status!=='completed')throw new AiJobPending(job.status);
  const result=job.result as Record<'en'|'zh',InsightResult&{suggested_questions:string[]}>;
  for(const language of ['en','zh'] as const){
-  if(!result?.[language]||result[language].suggested_questions?.length!==5)throw new CodexBridgeError('The AI returned invalid bilingual insights.','bilingual_insights_invalid');
+  if(!result?.[language]||!Array.isArray(result[language].suggested_questions)||result[language].suggested_questions.length<4)throw new CodexBridgeError('The AI returned invalid bilingual insights.','bilingual_insights_invalid');
+  result[language]={...result[language],suggested_questions:result[language].suggested_questions.slice(0,4)};
  }
  return{result:result[input.language==='zh'?'zh':'en'],translations:result,jobId:job.remote_id!,model:'codex-bridge'};
 }
