@@ -1,6 +1,6 @@
 const testingRoot="/bluevua/testing";
 export function safeTestingReturnTo(value:string|undefined|null,fallback:string){
- if(typeof value!=="string"||!value.startsWith(`${testingRoot}/`)||/[\\\u0000-\u001f]/.test(value))return fallback;
+ if(typeof value!=="string"||!(value===testingRoot||value.startsWith(`${testingRoot}?`)||value.startsWith(`${testingRoot}#`)||value.startsWith(`${testingRoot}/`))||/[\\\u0000-\u001f]/.test(value))return fallback;
  try{const url=new URL(value,"https://dashboard.local");if(url.origin!=="https://dashboard.local")return fallback;return `${url.pathname}${url.search}${url.hash}`;}catch{return fallback;}
 }
 export function withTestingReturnTo(href:string,parent:string){

@@ -17,3 +17,11 @@ test("return paths stay inside testing and default for direct navigation",()=>{
  for(const invalid of ["https://example.com","//example.com","/api/private","/bluevua/testing/\\evil"]){assert.equal(safeTestingReturnTo(invalid,"fallback"),"fallback");}
  assert.equal(isConcludedTestingNavigation(arm),true);assert.equal(isConcludedTestingNavigation("/bluevua/testing/google/search/123"),false);
 });
+
+test("overview origin preserves its selected reporting period",()=>{
+ const overview="/bluevua/testing?period=custom&start=2026-09-01&end=2026-09-10";
+ assert.equal(safeTestingReturnTo(overview,"fallback"),overview);
+ const arm=withTestingReturnTo("/bluevua/testing/google/concluded/test/treatment",overview);
+ assert.equal(isConcludedTestingNavigation("/bluevua/testing/google/concluded/test/treatment",overview),false);
+ assert.ok(arm.includes(encodeURIComponent(overview)));
+});

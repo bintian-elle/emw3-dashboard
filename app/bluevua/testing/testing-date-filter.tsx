@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { parseDate } from "@internationalized/date";
 import { DateRangePicker, type DateRangeValue } from "@/components/base/date-picker/date-range-picker";
 import { Select, SelectItem } from "@/components/base/select/select";
 import type { TestingPeriodPreset } from "@/lib/testing-google";
+
+import { TestingDataLoading } from "./testing-data-loading";
 
 import { redditSinceStartPreset, redditSinceStartLabel } from "@/lib/reddit-testing-period";
 
@@ -16,11 +18,13 @@ const options:Array<{id:TestingPeriodPreset;label:string}>=[
 ];
 
 export function TestingDateFilter({reddit=false}:{reddit?:boolean}){
+  const [pending,startTransition]=useTransition();
   const router=useRouter();const pathname=usePathname();const searchParams=useSearchParams();
   const availableOptions=reddit?[{id:redditSinceStartPreset,label:redditSinceStartLabel},...options]:options;
   const requested=searchParams.get("period");
   const selected=availableOptions.some(option=>option.id===requested)?requested!:(reddit?redditSinceStartPreset:"lastWeek");
   const customRange=useMemo<DateRangeValue|undefined>(()=>{const start=searchParams.get("start"),end=searchParams.get("end");return start&&end?{start:parseDate(start),end:parseDate(end)}:undefined;},[searchParams]);
-  const update=(period:PeriodPreset,range?:DateRangeValue)=>{const params=new URLSearchParams(searchParams.toString());params.set("period",period);if(period==="custom"&&range){params.set("start",range.start.toString());params.set("end",range.end.toString());}else{params.delete("start");params.delete("end");}router.replace(`${pathname}?${params.toString()}`,{scroll:false});};
+  const update=(period:PeriodPreset,range?:DateRangeValue)=>{if(pending)return;const params=new URLSearchParams(searchParams.toString());params.set("period",period);if(period==="custom"&&range){params.set("start",range.start.toString());params.set("end",range.end.toString());}else{params.delete("start");params.delete("end");}if(params.toString()===searchParams.toString())return;startTransition(()=>router.replace(`${pathname}?${params.toString()}`,{scroll:false}));};
+  if(pending)return <TestingDataLoading compact/>;
   return <section className="flex flex-wrap items-end gap-3 rounded-2xl border border-border-button-default bg-background-primary-default p-3 shadow-card"><div className="w-full sm:w-72"><label className="mb-1.5 block text-caption-1-semibold text-text-secondary">Reporting period</label><Select selectedKey={selected} popoverClassName="overflow-visible" listBoxStyle={{maxHeight:"none",overflow:"visible"}} onSelectionChange={key=>update(String(key) as PeriodPreset)} aria-label="Testing reporting period">{availableOptions.map(option=><SelectItem key={option.id} id={option.id}>{option.label}</SelectItem>)}</Select></div>{selected==="custom"&&<div className="w-full sm:w-auto"><label className="mb-1.5 block text-caption-1-semibold text-text-secondary">Custom range</label><DateRangePicker value={customRange} aria-label="Custom testing reporting period" onChange={range=>{if(range)update("custom",range);}} /></div>}</section>;
 }

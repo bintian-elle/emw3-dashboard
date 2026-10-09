@@ -1,7 +1,5 @@
 import {withTestingReturnTo} from "@/lib/testing-navigation";
-import { concludedTestsForChannel } from "@/lib/concluded-tests";
-import { readConcludedSnapshot } from "@/lib/concluded-test-snapshot";
-import { concludedReportForPeriod } from "@/lib/concluded-test-period";
+import {getConcludedGooglePerformance} from "@/lib/concluded-google-performance";
 import { GoogleTestSection } from "../google-test-section";
 import { TestingPageHeader } from "../testing-page-header";
 import { getGoogleContentTests, testingPeriodInput } from "@/lib/testing-google";
@@ -16,11 +14,7 @@ export default async function GoogleTestingPage({searchParams}:{searchParams:Pro
   const input=testingPeriodInput(params);
   const searches=await getGoogleContentTests(input);
   const selectedPeriod=searches.find(search=>search.period)?.period;
-  const concluded=await Promise.all(concludedTestsForChannel("Google").map(async definition=>{
-    const snapshot=await readConcludedSnapshot(definition.id);
-    const report=snapshot&&selectedPeriod?concludedReportForPeriod(snapshot.report,snapshot.dailyGroups??[],selectedPeriod,searches[0].periodLabel):null;
-    return report?<GoogleTestSection key={definition.id} compact test={report} creativeLinks={Object.fromEntries(report.groups.map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/concluded/${definition.id}/${group.label==="Group A"?"treatment":"control"}`,returnTo)]))} description={definition.name} concludedOn={snapshot?.report.period?.end??definition.lifetime?.end} resourcesHref={definition.resourcesHref}/>:null;
-  }));
+  const concluded=await getConcludedGooglePerformance(selectedPeriod,searches[0].periodLabel);
   const activeCards=[...searches].sort((a,b)=>(b.testingStartDate??"").localeCompare(a.testingStartDate??"")||a.campaignName.localeCompare(b.campaignName));
-  return <><TestingPageHeader section="Google" title="Google Testing Performance" description="Nonbrand Search content testing across all ad groups." /><div className="grid gap-6">{activeCards.map(test=><GoogleTestSection key={test.campaignName} test={test} creativeLinks={Object.fromEntries(test.groups.map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/search/${group.adGroupId}`,returnTo)]))} compact description="Content testing · All ad groups"/>)}{concluded}</div><footer className="py-8 text-center text-caption-2-regular text-text-tertiary">Source: Google Ads via Supabase</footer></>;
+  return <><TestingPageHeader section="Google" title="Google Testing Performance" description="Nonbrand Search content testing across all ad groups." /><div className="grid gap-6">{activeCards.map(test=><GoogleTestSection key={test.campaignName} test={test} creativeLinks={Object.fromEntries(test.groups.map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/search/${group.adGroupId}`,returnTo)]))} compact description="Content testing · All ad groups"/>)}{concluded.map(({definition,report,concludedOn})=><GoogleTestSection key={definition.id} compact test={report} creativeLinks={Object.fromEntries(report.groups.map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/concluded/${definition.id}/${group.label==="Group A"?"treatment":"control"}`,returnTo)]))} description={definition.name} concludedOn={concludedOn} resourcesHref={definition.resourcesHref}/>)}</div><footer className="py-8 text-center text-caption-2-regular text-text-tertiary">Source: Google Ads via Supabase</footer></>;
 }
