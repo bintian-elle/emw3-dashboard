@@ -1,0 +1,12 @@
+[Unit]
+Description=Freeze concluded test results after the attribution window
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
+Environment=NODE_ENV=production
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/concluded-test-snapshots.mjs
+UMask=0077

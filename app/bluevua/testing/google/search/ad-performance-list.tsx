@@ -1,0 +1,21 @@
+"use client";
+
+import {Fragment,useState} from "react";
+import {RiArrowDownSLine,RiArrowRightSLine} from "@remixicon/react";
+import {Button} from "@/components/base/buttons/button";
+import {Chip} from "@/components/base/badges/chip";
+import {SearchAdPreview} from "./search-ad-preview";
+import type {ArchivedAsset,CreativeArchive} from "@/lib/google-creative-archive";
+import type {GoogleAdMetrics} from "@/lib/google-ad-performance";
+import {emptyGoogleAdMetrics} from "@/lib/google-ad-performance";
+
+type AdRow=CreativeArchive["ads"][number];
+const currency=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:2});
+const decimal=new Intl.NumberFormat("en-US",{maximumFractionDigits:2});
+const percent=new Intl.NumberFormat("en-US",{style:"percent",maximumFractionDigits:2,minimumFractionDigits:2});
+const columns:Array<{label:string;key:keyof GoogleAdMetrics;format:"currency"|"decimal"|"percent"}>=[{label:"CPA",key:"cpa",format:"currency"},{label:"CVR",key:"cvr",format:"percent"},{label:"ROAS",key:"roas",format:"decimal"},{label:"Orders",key:"orders",format:"decimal"},{label:"Revenue",key:"revenue",format:"currency"},{label:"Spend",key:"spend",format:"currency"},{label:"CTR",key:"ctr",format:"percent"},{label:"CPC",key:"cpc",format:"currency"}];
+function formatted(value:number|null|undefined,format:typeof columns[number]["format"]){return value==null?"—":format==="currency"?currency.format(value):format==="percent"?percent.format(value):decimal.format(value);}
+export function AdPerformanceList({ads,metrics,businessName,logo,sitelinks}:{ads:AdRow[];metrics:Record<string,GoogleAdMetrics>|null;businessName:string;logo?:string;sitelinks:ArchivedAsset[]}){
+ const [previewId,setPreviewId]=useState<string|null>(null);
+ return <section aria-label="Ad performance" className="@container overflow-hidden rounded-3xl border border-border-button-default bg-background-primary-default"><div className="border-b border-border-table p-5"><h2 className="text-title-3-semibold text-text-primary">Ads and Creative Performance</h2><p className="mt-1 text-body-regular text-text-secondary">Select an ad to view its preview.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[1050px] border-collapse"><thead><tr className="border-b border-border-table text-left text-caption-1-semibold text-text-tertiary"><th className="px-5 py-3">Ad</th><th className="px-3 py-3">Status</th>{columns.map(column=><th key={column.key} className="px-4 py-3 text-right">{column.label}</th>)}</tr></thead><tbody>{ads.map(row=>{const {ad,status}=row.adGroupAd;const metric=metrics?(metrics[ad.id]??emptyGoogleAdMetrics):null;const open=previewId===ad.id;return <Fragment key={ad.id}><tr className="border-b border-border-table hover:bg-background-primary-hover"><td className="max-w-80 px-5 py-4"><Button variant="ghost" size="small" leadingIcon={open?RiArrowDownSLine:RiArrowRightSLine} aria-expanded={open} aria-controls={`preview-${ad.id}`} onClick={()=>setPreviewId(open?null:ad.id)} className="h-auto max-w-80 justify-start whitespace-normal bg-transparent text-status-blue-text hover:bg-background-secondary-hover"><span className="max-w-64 whitespace-normal break-words text-left">{ad.name||ad.responsiveSearchAd?.headlines?.[0]?.text||`Ad ${ad.id}`}</span></Button><p className="mt-1 pl-6 text-caption-1-regular text-text-tertiary">Ad {ad.id}</p></td><td className="px-3 py-4"><Chip color={status==="ENABLED"||status==="ACTIVE"?"lime":"soft"} variant="caption">{status}</Chip></td>{columns.map(column=><td key={column.key} className="px-4 py-4 text-right text-body-medium tabular-nums text-text-primary">{formatted(metric?.[column.key],column.format)}</td>)}</tr>{open&&<tr><td colSpan={columns.length+2} className="border-b border-border-table bg-background-secondary-default p-4"><div id={`preview-${ad.id}`} className="grid max-w-full grid-cols-1 gap-4 @3xl:grid-cols-3" style={{width:"calc(100cqw - 2rem)"}} role="region" aria-label={`Preview ad ${ad.id}`}>{[0,1,2].map(variant=><SearchAdPreview key={variant} ad={ad} variant={variant} businessName={businessName} logo={logo} sitelinks={sitelinks}/>)}</div></td></tr>}</Fragment>;})}</tbody></table></div></section>;
+}

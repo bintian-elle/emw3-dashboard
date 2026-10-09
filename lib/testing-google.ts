@@ -2,6 +2,12 @@ import "server-only";
 import { connection } from "next/server";
 import { db } from "@/lib/db";
 
+export const googleContentTestingCampaigns = [
+  "EM-Search-Nonbrand-Purchase-Apr26",
+  "EM-Search-Nonbrand-TIS-April26",
+  "EM-Search-Nonbrand-Competitor-IS-Jun25",
+] as const;
+
 const GOOGLE_SEARCH_CAMPAIGN = "EM-Search-Nonbrand-Purchase-Apr26";
 
 type GoogleTestRow = {
@@ -17,7 +23,7 @@ type GoogleTestRow = {
 };
 
 export type GoogleTestGroup = {
-  label: "Group A" | "Group B";
+  label: "Group A" | "Group B" | "";
   name: string;
   adGroupId: string;
   spend: number;
@@ -35,6 +41,8 @@ export type GoogleTestGroup = {
 export type GoogleSearchTest = {
   campaignName: string;
   campaignStatus: string;
+  /** Earliest recorded activity for the test groups, independent of reporting range. */
+  testingStartDate?: string | null;
   periodLabel: string;
   period: { start: string; end: string } | null;
   groups: GoogleTestGroup[];
@@ -84,16 +92,19 @@ export function resolveTestingPeriod(latest:string,input:TestingPeriodInput) {
   return {start:moveDays(currentTuesday,-7),end:moveDays(currentTuesday,-1)};
 }
 
-export async function getGoogleSearchTest(input:TestingPeriodInput={}): Promise<GoogleSearchTest> {
+export async function getGoogleSearchTest(input:TestingPeriodInput={},campaignName:string=GOOGLE_SEARCH_CAMPAIGN,allAdGroups=false): Promise<GoogleSearchTest> {
   await connection();
-  const latestResult=await db.query<{latest_date:string;campaign_status:string}>(`
-    SELECT MAX(f.date)::text AS latest_date, MAX(c.campaign_status) AS campaign_status
+  const latestResult=await db.query<{latest_date:string;campaign_status:string;testing_start_date:string}>(`
+    SELECT MAX(f.date)::text AS latest_date, MAX(c.campaign_status) AS campaign_status,
+      MIN(f.date) FILTER (WHERE $2::boolean OR f.ad_group_id IN (
+        SELECT ad_group_id FROM dim_ad_group WHERE ad_group_name IN ('countertop ro','countertop water filter')
+      ))::text AS testing_start_date
     FROM fact_ad_group_daily f
     JOIN dim_campaign c USING (customer_id, campaign_id)
     WHERE c.campaign_name=$1 AND f.date<CURRENT_DATE
-  `,[GOOGLE_SEARCH_CAMPAIGN]);
+  `,[campaignName,allAdGroups]);
   const preset=input.preset??"lastWeek";
-  if(!latestResult.rows[0]?.latest_date)return {campaignName:GOOGLE_SEARCH_CAMPAIGN,campaignStatus:latestResult.rows[0]?.campaign_status??"Unknown",periodLabel:testingPeriodLabels[preset],period:null,groups:[]};
+  if(!latestResult.rows[0]?.latest_date)return {campaignName,campaignStatus:latestResult.rows[0]?.campaign_status??"Unknown",periodLabel:testingPeriodLabels[preset],period:null,groups:[]};
   const period=resolveTestingPeriod(latestResult.rows[0].latest_date,input);
   const result = await db.query<GoogleTestRow>(`
     SELECT
@@ -106,20 +117,21 @@ export async function getGoogleSearchTest(input:TestingPeriodInput={}): Promise<
       SUM(f.conversions) AS orders,
       SUM(f.impressions) AS impressions,
       SUM(f.clicks) AS clicks
-    FROM fact_ad_group_daily f
+    FROM dim_ad_group g
     JOIN dim_campaign c USING (customer_id, campaign_id)
-    JOIN dim_ad_group g USING (customer_id, campaign_id, ad_group_id)
-    WHERE c.campaign_name = $1
+    LEFT JOIN fact_ad_group_daily f ON f.customer_id=g.customer_id
+      AND f.campaign_id=g.campaign_id AND f.ad_group_id=g.ad_group_id
       AND f.date BETWEEN $2::date AND $3::date
+    WHERE c.campaign_name = $1 AND ($4::boolean OR f.ad_group_id IS NOT NULL)
     GROUP BY g.ad_group_name, g.ad_group_id
     ORDER BY CASE g.ad_group_name
       WHEN 'countertop ro' THEN 1
       WHEN 'countertop water filter' THEN 2
       ELSE 3
     END, g.ad_group_name
-  `, [GOOGLE_SEARCH_CAMPAIGN,period.start,period.end]);
+  `, [campaignName,period.start,period.end,allAdGroups]);
 
-  const groups = result.rows.slice(0, 2).map((row, index) => {
+  const groups = (allAdGroups?result.rows:result.rows.slice(0, 2)).map((row, index) => {
     const spend = Number(row.spend);
     const revenue = Number(row.revenue);
     const orders = Number(row.orders);
@@ -127,7 +139,7 @@ export async function getGoogleSearchTest(input:TestingPeriodInput={}): Promise<
     const clicks = Number(row.clicks);
 
     return {
-      label: index === 0 ? "Group A" as const : "Group B" as const,
+      label: allAdGroups ? "" as const : index === 0 ? "Group A" as const : "Group B" as const,
       name: row.ad_group_name,
       adGroupId: row.ad_group_id,
       spend,
@@ -144,10 +156,15 @@ export async function getGoogleSearchTest(input:TestingPeriodInput={}): Promise<
   });
 
   return {
-    campaignName: GOOGLE_SEARCH_CAMPAIGN,
+    campaignName: campaignName,
     campaignStatus: latestResult.rows[0].campaign_status,
+    testingStartDate: latestResult.rows[0].testing_start_date,
     periodLabel: testingPeriodLabels[preset],
     period,
     groups,
   };
+}
+
+export async function getGoogleContentTests(input:TestingPeriodInput={}) {
+  return Promise.all(googleContentTestingCampaigns.map(name=>getGoogleSearchTest(input,name,true)));
 }

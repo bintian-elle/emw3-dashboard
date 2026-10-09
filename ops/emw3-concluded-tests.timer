@@ -1,0 +1,10 @@
+[Unit]
+Description=Check concluded tests daily for final archival
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 UTC
+Persistent=true
+Unit=emw3-concluded-tests.service
+
+[Install]
+WantedBy=timers.target
