@@ -1,4 +1,3 @@
-import type { DemandGenData } from "@/lib/testing-demand-gen";
 import type { EdmTestingData } from "@/lib/testing-edm";
 import type { GoogleSearchTest } from "@/lib/testing-google";
 import type { MetaCampaignTest } from "@/lib/testing-meta";
@@ -19,15 +18,14 @@ const showRatio=(value:number|null,suffix="")=>value==null?"—":`${value.toFixe
 function MetricCard({title,value,caption,segments,children,className}:{title:string;value:string;caption:string;segments:Segment[];children?:React.ReactNode;className?:string}){return <article className={cx("rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-card",className)}><SegmentedGauge title={title} segments={segments} value={value} caption={caption}/>{children}</article>;}
 function DetailRow({title,items}:{title:string;items:Segment[]}){return <div className="mt-5 border-t border-separator-border pt-4"><p className="text-caption-1-semibold text-text-tertiary">{title}</p><div className="mt-3 flex flex-wrap gap-2">{items.map(item=><span key={item.label} className="inline-flex items-center gap-1.5 rounded-full bg-background-secondary-default px-3 py-1.5 text-caption-1-semibold text-text-secondary"><span className={cx("size-2 rounded-full",item.dot)}/>{item.label}<span className="text-text-primary">{item.display}</span></span>)}</div></div>;}
 
-export function BusinessPerformance({google,concludedGoogle=[],demandGen,meta,reddit,edm}:{google:GoogleSearchTest;concludedGoogle?:GoogleSearchTest[];demandGen:DemandGenData;meta:MetaCampaignTest;reddit:RedditTestingData;edm:EdmTestingData}){
-  const searchGroups=[google,...concludedGoogle].flatMap(test=>test.groups);
+export function BusinessPerformance({google,meta,reddit,edm}:{google:GoogleSearchTest[];meta:MetaCampaignTest;reddit:RedditTestingData;edm:EdmTestingData}){
+  const searchGroups=google.flatMap(test=>test.groups);
   const channels:Record<keyof typeof channelStyle,Metric>={Google:empty(),Meta:empty(),Reddit:empty(),EDM:empty()};
-  searchGroups.forEach(row=>add(channels.Google,row));demandGen.campaigns.forEach(row=>add(channels.Google,row));add(channels.Meta,meta.totals);reddit.campaigns.forEach(row=>add(channels.Reddit,row));edm.tests.forEach(row=>add(channels.EDM,{spend:0,revenue:row.revenue,orders:row.orders,clicks:row.clicks}));
-  const assetCounts={Message:searchGroups.length+edm.tests.length,Picture:demandGen.campaigns.filter(row=>row.mediaType==="image").reduce((sum,row)=>sum+row.groups.length,0),Video:demandGen.campaigns.filter(row=>row.mediaType==="video").reduce((sum,row)=>sum+row.groups.length,0)};
+  searchGroups.forEach(row=>add(channels.Google,row));add(channels.Meta,meta.totals);reddit.campaigns.flatMap(campaign=>campaign.groups).flatMap(group=>group.activeAds).forEach(row=>add(channels.Reddit,row));edm.tests.forEach(row=>add(channels.EDM,{spend:0,revenue:row.revenue,orders:row.orders,clicks:row.clicks}));
+  const assetCounts={Message:searchGroups.length+edm.tests.length,Picture:0,Video:0};
   const assetMetrics:Record<keyof typeof assetStyle,Metric>={Message:empty(),Picture:empty(),Video:empty()},paidAssetMetrics:Record<keyof typeof assetStyle,Metric>={Message:empty(),Picture:empty(),Video:empty()};
   const assetRows:Array<Metric&{type:keyof typeof assetStyle;paid:boolean}>=[];
   searchGroups.forEach(row=>assetRows.push({...row,type:"Message",paid:true}));
-  demandGen.campaigns.forEach(row=>assetRows.push({...row,type:row.mediaType==="image"?"Picture":"Video",paid:true}));
   meta.adGroups.flatMap(group=>group.activeAds).forEach(row=>{assetCounts[row.mediaType==="Image"?"Picture":"Video"]++;assetRows.push({...row,type:row.mediaType==="Image"?"Picture":"Video",paid:true});});
   reddit.campaigns.flatMap(campaign=>campaign.groups).flatMap(group=>group.activeAds).forEach(row=>{const type=row.contentType==="Image"?"Picture":row.contentType==="Video"?"Video":"Message";assetCounts[type]++;assetRows.push({...row,type,paid:true});});
   edm.tests.forEach(row=>assetRows.push({spend:0,revenue:row.revenue,orders:row.orders,clicks:row.clicks,type:"Message",paid:false}));
