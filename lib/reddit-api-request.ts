@@ -4,6 +4,7 @@ export function createRedditRequester({fetcher, pause = (ms: number) => new Prom
   pause?: (ms: number) => Promise<void>;
   concurrency?: number;
 }) {
+  const successful=new Map<string,{expires:number;value:unknown}>();
   const pending = new Map<string, Promise<unknown>>();
   let active = 0;
   const waiting: Array<() => void> = [];
@@ -12,7 +13,8 @@ export function createRedditRequester({fetcher, pause = (ms: number) => new Prom
     else active++;
     try {
       for (let attempt = 0; attempt < 3; attempt++) {
-        const response = await fetcher(endpoint, init);
+        let response:Response;
+        try{response=await fetcher(endpoint,init);}catch(error){if(attempt===2)throw new Error("Reddit reporting timed out. Please try again shortly.",{cause:error});await pause(500*2**attempt);continue;}
         if (response.ok) return await response.json();
         if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 2) {
           throw new Error(`Reddit reporting is temporarily unavailable (HTTP ${response.status}). Please try again shortly.`);
@@ -31,9 +33,10 @@ export function createRedditRequester({fetcher, pause = (ms: number) => new Prom
   }
   return function request<T>(endpoint: string, init: RequestInit = {}): Promise<T> {
     const key = JSON.stringify([endpoint, init.method ?? "GET", init.body ?? null]);
+    const cached=successful.get(key);if(cached&&cached.expires>Date.now())return Promise.resolve(cached.value as T);
     let result = pending.get(key);
     if (!result) {
-      result = run(endpoint, init).finally(() => pending.delete(key));
+      result = run(endpoint, init).then(value=>{if(successful.size>=100)successful.delete(successful.keys().next().value!);successful.set(key,{expires:Date.now()+3600000,value});return value;}).finally(() => pending.delete(key));
       pending.set(key, result);
     }
     return result as Promise<T>;

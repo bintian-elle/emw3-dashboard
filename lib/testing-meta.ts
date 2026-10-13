@@ -3,12 +3,7 @@ import { connection } from "next/server";
 import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } from "@/lib/testing-google";
 
 const META_API_VERSION="v25.0";
-const META_CAMPAIGN_IDS=[
-  "120220339814410383",
-  "120250932457990383",
-  "120250932092010383",
-  "120250932192210383",
-] as const;
+const META_CAMPAIGN_IDS=["120251709189500383"] as const;
 type MetaAction={action_type:string;value:string};
 type MetaInsightRow={ad_id?:string;ad_name?:string;adset_id:string;adset_name:string;spend?:string;impressions?:string;clicks?:string;actions?:MetaAction[];action_values?:MetaAction[]};
 type MetaAdRow={id:string;name:string;adset_id:string;configured_status?:string;effective_status?:string;creative?:{id?:string;thumbnail_url?:string;video_id?:string}};
@@ -51,8 +46,7 @@ async function campaignTest(campaignId:string,period:{start:string;end:string}):
 export async function getMetaCampaignTest(input:TestingPeriodInput={}):Promise<MetaCampaignTest>{
   await connection();
   const preset=input.preset??"lastWeek";
-  const summaries=await Promise.all(META_CAMPAIGN_IDS.map(id=>graph<{data:Array<{date_stop:string}>}>(`${id}/insights`,{date_preset:"last_30d",fields:"campaign_id",level:"campaign"})));
-  const latest=summaries.flatMap(result=>result.data).map(row=>row.date_stop).sort().at(-1)??new Date(Date.now()-86_400_000).toISOString().slice(0,10);
+  const latest=new Date(Date.now()-86_400_000).toISOString().slice(0,10);
   const period=resolveTestingPeriod(latest,input);
   const campaigns:MetaCampaign[]=[];
   for(const campaignId of META_CAMPAIGN_IDS)campaigns.push(await campaignTest(campaignId,period));

@@ -1,5 +1,8 @@
 import "server-only";
 import { connection } from "next/server";
+import {resolveTestingPeriod} from "@/lib/testing-period";
+export {resolveTestingPeriod} from "@/lib/testing-period";
+import {readGoogleTestingApiData,apiGoogleSearchReport} from "@/lib/google-testing-api";
 import { db } from "@/lib/db";
 
 export const googleContentTestingCampaigns = [
@@ -68,29 +71,6 @@ function ratio(numerator: number, denominator: number) {
   return denominator > 0 ? numerator / denominator : null;
 }
 
-const iso = (date:Date) => date.toISOString().slice(0,10);
-const moveDays = (value:string,days:number) => { const date=new Date(`${value}T12:00:00Z`);date.setUTCDate(date.getUTCDate()+days);return iso(date); };
-const validDate = (value?:string) => Boolean(value&&/^\d{4}-\d{2}-\d{2}$/.test(value));
-
-export function resolveTestingPeriod(latest:string,input:TestingPeriodInput) {
-  const preset=input.preset??"lastWeek";
-  if(preset==="custom"&&validDate(input.start)&&validDate(input.end)) {
-    const end=input.end!>latest?latest:input.end!;
-    return {start:input.start!<=end?input.start!:end,end};
-  }
-  if(preset==="last7")return {start:moveDays(latest,-6),end:latest};
-  if(preset==="last30")return {start:moveDays(latest,-29),end:latest};
-  if(preset==="last90")return {start:moveDays(latest,-89),end:latest};
-  const latestDate=new Date(`${latest}T12:00:00Z`);
-  if(preset==="mtd")return {start:iso(new Date(Date.UTC(latestDate.getUTCFullYear(),latestDate.getUTCMonth(),1))),end:latest};
-  if(preset==="ytd")return {start:iso(new Date(Date.UTC(latestDate.getUTCFullYear(),0,1))),end:latest};
-  const today=moveDays(latest,1);
-  const todayDate=new Date(`${today}T12:00:00Z`);
-  const daysSinceTuesday=(todayDate.getUTCDay()+5)%7;
-  const currentTuesday=moveDays(today,-daysSinceTuesday);
-  if(preset==="wtd")return {start:currentTuesday,end:latest};
-  return {start:moveDays(currentTuesday,-7),end:moveDays(currentTuesday,-1)};
-}
 
 export async function getGoogleSearchTest(input:TestingPeriodInput={},campaignName:string=GOOGLE_SEARCH_CAMPAIGN,allAdGroups=false): Promise<GoogleSearchTest> {
   await connection();
@@ -104,8 +84,10 @@ export async function getGoogleSearchTest(input:TestingPeriodInput={},campaignNa
     WHERE c.campaign_name=$1 AND f.date<CURRENT_DATE
   `,[campaignName,allAdGroups]);
   const preset=input.preset??"lastWeek";
+  if(!latestResult.rows[0]?.latest_date&&allAdGroups){const period=resolveTestingPeriod(new Date(Date.now()-86400000).toISOString().slice(0,10),input);return apiGoogleSearchReport(await readGoogleTestingApiData(),campaignName,period,testingPeriodLabels[preset]);}
   if(!latestResult.rows[0]?.latest_date)return {campaignName,campaignStatus:latestResult.rows[0]?.campaign_status??"Unknown",periodLabel:testingPeriodLabels[preset],period:null,groups:[]};
-  const period=resolveTestingPeriod(latestResult.rows[0].latest_date,input);
+  const latest=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  const period=resolveTestingPeriod(latest,input);
   const result = await db.query<GoogleTestRow>(`
     SELECT
       g.ad_group_name,
@@ -131,6 +113,9 @@ export async function getGoogleSearchTest(input:TestingPeriodInput={},campaignNa
     END, g.ad_group_name
   `, [campaignName,period.start,period.end,allAdGroups]);
 
+  if(allAdGroups&&(latestResult.rows[0].latest_date<period.end||!result.rows.some(row=>row.period_start))){
+    return apiGoogleSearchReport(await readGoogleTestingApiData(),campaignName,period,testingPeriodLabels[preset],result.rows.map(row=>({name:row.ad_group_name,id:row.ad_group_id})),latestResult.rows[0].testing_start_date);
+  }
   const groups = (allAdGroups?result.rows:result.rows.slice(0, 2)).map((row, index) => {
     const spend = Number(row.spend);
     const revenue = Number(row.revenue);
