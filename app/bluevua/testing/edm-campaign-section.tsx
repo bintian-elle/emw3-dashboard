@@ -12,6 +12,7 @@ const date = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short
 export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
   return (
     <section className="mt-8 space-y-6">
+      {!data.campaigns.length&&<p className="rounded-3xl border border-border-button-default bg-background-primary-default p-6 text-body-regular text-text-secondary">No A/B campaigns were sent or scheduled in this reporting period.</p>}
       {data.campaigns.map((campaign) => (
         <article key={campaign.campaignId} className="overflow-hidden rounded-3xl border border-border-button-default bg-background-primary-default shadow-card">
           <div className="flex flex-col gap-4 border-b border-border-table p-6 sm:flex-row sm:items-start sm:justify-between">
@@ -24,10 +25,11 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
                   <span>EDM ·</span>
                   <Chip variant="caption" color="yellow">A/B TEST</Chip>
                   <span>CAMPAIGN</span>
-                  <CampaignStatusChip status={campaign.campaignStatus} />
+                  <CampaignStatusChip status={campaign.campaignStatus} /><Chip variant="caption" color={campaign.hasData?"blue":"yellow"}>{campaign.hasData?"Performance available":"Awaiting report"}</Chip>
                 </div>
                 <h2 className="mt-1 break-words text-title-2-semibold text-text-primary">{campaign.campaignName}</h2>
-                <p className="mt-1 text-body-regular text-text-secondary">Second-module click-through comparison</p>
+                <p className="mt-1 text-body-regular text-text-secondary">A/B message performance</p>
+                {campaign.sendDate&&<p className="mt-2 text-caption-1-regular text-text-tertiary">{campaign.hasData?"Sent":"Scheduled"} · {date(campaign.sendDate)}</p>}
               </div>
             </div>
             <p className="shrink-0 rounded-xl bg-background-secondary-default px-3 py-2 text-body-medium text-text-secondary">
@@ -50,9 +52,9 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
                   <Metric label="Module 2 CTR" value={test.secondModuleClickRate == null ? "—" : percent.format(test.secondModuleClickRate)} emphasized />
                   <Metric label="Open Rate" value={test.openRate == null ? "—" : percent.format(test.openRate)} />
                   <Metric label="Click Rate" value={test.clickRate == null ? "—" : percent.format(test.clickRate)} />
-                  <Metric label="Orders" value={number.format(test.orders)} />
-                  <Metric label="Total Revenue" value={currency.format(test.revenue)} />
-                  <Metric label="Delivered" value={number.format(test.delivered)} />
+                  <Metric label="Orders" value={test.hasData?number.format(test.orders):"—"} />
+                  <Metric label="Total Revenue" value={test.hasData?currency.format(test.revenue):"—"} />
+                  <Metric label="Delivered" value={test.hasData?number.format(test.delivered):"—"} />
                 </dl>
               </div>
             ))}
