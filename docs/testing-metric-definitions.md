@@ -10,7 +10,7 @@ Local verification: four videos and three images identified from the current Met
 
 Business Performance uses compact horizontal segmented bars and three columns of headline metrics followed by two wider ratio cards on wide screens, two columns on medium screens and one on phones. Existing font sizes and per-channel/asset legends are preserved.
 
-Content Testing navigation separates Google Search, Google PMAX and Google Demand Gen at the same level as Meta, Reddit and EDM. Only explicitly confirmed creative tests are included; PMAX and Demand Gen remain empty until confirmed. The Brand_AbsTopPageTest placement experiment retains its stored definition and snapshots but is excluded from content-test listings and totals via testScope=placement.
+Content Testing navigation separates Google Search, Google PMAX and Google Demand Gen at the same level as Meta, Reddit and EDM. Only explicitly confirmed creative tests are included; PMAX and Demand Gen remain empty until confirmed. The Brand_AbsTopPageTest placement experiment retains its stored definition and snapshots and remains visible under Concluded Test → Google Search; it is excluded only from active content-performance listings and totals via testScope=placement.
 
 ## Social Media (local implementation)
 
@@ -19,3 +19,8 @@ Content Testing navigation separates Google Search, Google PMAX and Google Deman
 Views, reach, likes, comments, shares and saved are available for all ten selected posts. Follows is available for four feed/carousel posts but API code 100 explicitly rejects it for the six Reels. Missing metrics render a dash, never zero. Media insights are lifetime values, not September-only activity. Actual UTC publication dates span September 7–October 1, 2026; the final supplied URL is the October 1 post and remains in the selection.
 
 Private `.state/social/instagram-posts.json` caches results for six hours; requests coalesce within the server and use combined metric calls per post. API failures retain the last saved snapshot with a stale notice. No credentials or paging access tokens are saved to the cache or sent to the browser. Cached media thumbnail URLs can expire and refresh with the snapshot. The first visit discovers the selected media and retrieves insights; subsequent visits use the snapshot. No periodic worker or production deployment is configured for this page.
+
+
+Social Media now shows Organic and Paid rows per selected original post without adding page explanations. Paid traffic comes from the configured Meta ad account, filtered to Instagram placements and actual delivered ads since the first selected post. Creative source/effective Instagram media IDs and exact permalink shortcodes link promoted copies to original posts. Graph batch GET reads creative metadata; publisher-platform filtering excludes Facebook. Each post uses one account-level Insights query filtered to all linked ad IDs so Meta deduplicates paid reach across ads. Paid video Views use video_play_actions; image/carousel Views use impressions. Missing attributed follows remain unavailable. Organic and paid reach are not added together. Full pagination and six-hour version-2 snapshots prevent repeated ad scans and invalidate prior organic-only caches.
+
+Concluded archive filtering is separate from content-performance eligibility. Non-content experiments retain their archive entries, lifetime snapshots and supporting materials. Legacy /concluded/google links still resolve to Google Search.

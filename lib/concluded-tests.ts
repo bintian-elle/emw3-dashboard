@@ -22,5 +22,5 @@ export type ConcludedTest = {
 export const concludedTests: readonly ConcludedTest[] = definitions as ConcludedTest[];
 
 export function concludedTestsForChannel(channel: ConcludedChannel | "Google") {
-  return concludedTests.filter(test => test.testScope !== "placement" && (test.channel === channel || (channel === "Google Search" && test.channel === "Google")));
+  return concludedTests.filter(test => (channel === "Google" ? test.channel.startsWith("Google") : test.channel === channel || (channel === "Google Search" && test.channel === "Google")));
 }

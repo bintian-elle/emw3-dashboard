@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, readSession, safeReturnPath } from "@/lib/site-auth";
 
+import {CODEX_SITE_COOKIE,codexReadPath,validCodexSiteToken} from "@/lib/codex-site-access";
+
 const crawlerPattern = /(?:googlebot|bingbot|duckduckbot|baiduspider|yandexbot|gptbot|chatgpt-user|oai-searchbot|claudebot|claude-web|anthropic-ai|ccbot|perplexitybot|google-extended|bytespider|amazonbot|applebot-extended|cohere-ai|meta-externalagent|meta-externalfetch)/i;
 const publicPaths = new Set(["/access", "/api/auth/login", "/api/auth/google", "/api/auth/google/callback", "/robots.txt"]);
 
@@ -13,6 +15,11 @@ function blockedResponse() {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const serviceToken=request.cookies.get(CODEX_SITE_COOKIE)?.value||request.headers.get("authorization")?.replace(/^Bearer /, "");
+  if(await validCodexSiteToken(serviceToken)){
+    if(!codexReadPath(request.method,pathname))return NextResponse.json({error:"Codex service access is read-only."},{status:403});
+    const response=NextResponse.next();response.headers.set("Cache-Control","private, no-store");return response;
+  }
   if (crawlerPattern.test(request.headers.get("user-agent") || "")) return blockedResponse();
   if (publicPaths.has(pathname)) return NextResponse.next();
 

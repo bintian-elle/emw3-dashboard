@@ -24,7 +24,7 @@ export function TestingSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const concludedContext=isConcludedTestingNavigation(pathname,searchParams.get("returnTo"));
-  const activePath=concludedContext&&pathname.startsWith("/bluevua/testing/google/")?"/bluevua/testing/concluded/google-search":pathname;
+  const activePath=concludedContext&&pathname.startsWith("/bluevua/testing/google/")?"/bluevua/testing/concluded/google-search":pathname==="/bluevua/testing/concluded/google"?"/bluevua/testing/concluded/google-search":pathname;
   const navigationParams=new URLSearchParams(searchParams.toString());navigationParams.delete("returnTo");
   const query = navigationParams.toString();
   const performanceNavigation=[...navigation,{label:"Social Media",href:"/bluevua/testing/social",icon:RiInstagramLine}];
