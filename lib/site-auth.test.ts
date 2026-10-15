@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { allowedGoogleUser, safeReturnPath, signAuthPayload, readSession, verifyAuthPayload } from "./site-auth.ts";
+import { authOrigin, allowedGoogleUser, safeReturnPath, signAuthPayload, readSession, verifyAuthPayload } from "./site-auth.ts";
 
 process.env.AUTH_SECRET = "synthetic-test-secret-at-least-32-characters";
 test("only verified company Workspace users are admitted", () => {
@@ -21,4 +21,18 @@ test("sessions reject tampering, wrong purpose, expiry and old key cookies",asyn
 test("return paths cannot redirect outside the site",()=>{
   for(const path of ["https://evil.test","//evil.test","/\\evil.test","/\nevil.test"])assert.equal(safeReturnPath(path),"/");
   assert.equal(safeReturnPath("/bluevua/testing/reddit?period=last7"),"/bluevua/testing/reddit?period=last7");
+});
+
+test("development loopback login stays local while production origin stays pinned",()=>{
+ const original={NODE_ENV:process.env.NODE_ENV,AUTH_URL:process.env.AUTH_URL};
+ try{
+ Object.assign(process.env,{NODE_ENV:"development",AUTH_URL:"https://emw3-dashboard.win"});
+ assert.equal(authOrigin("http://localhost:3000/api/auth/google"),"http://localhost:3000");
+ assert.equal(authOrigin("http://127.0.0.1:3001/api/auth/google/callback"),"http://127.0.0.1:3001");
+ assert.equal(authOrigin("http://[::1]:3000/access"),"http://[::1]:3000");
+ assert.equal(authOrigin("https://evil.test/api/auth/google"),"https://emw3-dashboard.win");
+ assert.equal(authOrigin("https://localhost.evil.test/access"),"https://emw3-dashboard.win");
+ Object.assign(process.env,{NODE_ENV:"production"});
+ assert.equal(authOrigin("http://localhost:3000/api/auth/google"),"https://emw3-dashboard.win");
+ }finally{for(const [key,value] of Object.entries(original)){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
 });

@@ -1,11 +1,12 @@
 import definitions from "@/config/concluded-tests.json";
 
 /** Explicit test conclusions; platform delivery status is not a test conclusion. */
-export const concludedChannels = ["Google", "Meta", "Reddit", "EDM"] as const;
+export const concludedChannels = ["Google Search", "Google PMAX", "Google Demand Gen", "Meta", "Reddit", "EDM"] as const;
 export type ConcludedChannel = (typeof concludedChannels)[number];
 export type ConcludedTest = {
   id: string;
-  channel: ConcludedChannel;
+  channel: ConcludedChannel | "Google";
+  testScope?: "content" | "placement";
   name: string;
   campaignName: string;
   concludedOn?: string;
@@ -20,6 +21,6 @@ export type ConcludedTest = {
 // Populate only from confirmed conclusions, never from paused/removed campaigns.
 export const concludedTests: readonly ConcludedTest[] = definitions as ConcludedTest[];
 
-export function concludedTestsForChannel(channel: ConcludedChannel) {
-  return concludedTests.filter(test => test.channel === channel);
+export function concludedTestsForChannel(channel: ConcludedChannel | "Google") {
+  return concludedTests.filter(test => test.testScope !== "placement" && (test.channel === channel || (channel === "Google Search" && test.channel === "Google")));
 }

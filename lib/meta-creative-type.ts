@@ -1,0 +1,2 @@
+export type MetaCreative={id?:string;thumbnail_url?:string;video_id?:string;object_type?:string;asset_feed_spec?:{videos?:Array<{video_id?:string}>};object_story_spec?:{video_data?:{video_id?:string}}};
+export function isMetaVideo(name:string,creative?:MetaCreative){return Boolean(creative?.video_id||creative?.object_type==="VIDEO"||creative?.asset_feed_spec?.videos?.length||creative?.object_story_spec?.video_data?.video_id||/(^|[_\s-])video\d*([_\s-]|$)/i.test(name));}

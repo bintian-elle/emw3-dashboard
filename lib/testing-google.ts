@@ -43,6 +43,7 @@ export type GoogleTestGroup = {
 
 export type GoogleSearchTest = {
   campaignName: string;
+  reach?:number|null;
   campaignStatus: string;
   /** Earliest recorded activity for the test groups, independent of reporting range. */
   testingStartDate?: string | null;

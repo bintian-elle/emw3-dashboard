@@ -1,4 +1,5 @@
 import "server-only";
+import {edmUniqueRecipients} from "@/lib/edm-unique-recipients";
 import { Pool } from "pg";
 import { connection } from "next/server";
 import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } from "@/lib/testing-google";
@@ -20,7 +21,7 @@ type CreativeRow={campaign_message_id:string;image_url:string|null;destination_u
 
 export type EdmTest={label:string;hasData:boolean;variationId:string;fromLabel:string;subject:string;previewText:string;html:string;secondModuleClickRate:number|null;openRate:number|null;clickRate:number|null;orders:number;revenue:number;delivered:number;clicks:number};
 export type EdmTestCampaign={campaignId:string;campaignName:string;campaignStatus:string;sendDate:string|null;hasData:boolean;tests:EdmTest[]};
-export type EdmTestingData={period:{start:string;end:string};periodLabel:string;campaigns:EdmTestCampaign[];tests:EdmTest[]};
+export type EdmTestingData={period:{start:string;end:string};periodLabel:string;campaigns:EdmTestCampaign[];tests:EdmTest[];uniqueRecipients:number|null};
 
 let pool:Pool|undefined;
 function database(){
@@ -86,5 +87,6 @@ export async function getEdmTestingData(input:TestingPeriodInput={}):Promise<Edm
         or coalesce(c.send_time,c.scheduled_at)::date between $1::date and $2::date)
     order by coalesce(c.send_time,c.scheduled_at) desc nulls last,c.campaign_id`,[period.start,period.end]);
   const campaigns=(await Promise.all(selected.rows.map(campaign=>campaignTest(campaign.campaign_id,MODULE_PATTERNS[campaign.campaign_id],period)))).filter((campaign):campaign is EdmTestCampaign=>Boolean(campaign));
-  return{period,periodLabel:testingPeriodLabels[preset],campaigns,tests:campaigns.flatMap(campaign=>campaign.tests).filter(test=>test.hasData)};
+  const uniqueRecipients=await edmUniqueRecipients(period,campaigns.filter(campaign=>campaign.hasData).map(campaign=>campaign.campaignId));
+  return{uniqueRecipients,period,periodLabel:testingPeriodLabels[preset],campaigns,tests:campaigns.flatMap(campaign=>campaign.tests).filter(test=>test.hasData)};
 }

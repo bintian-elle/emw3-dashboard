@@ -56,7 +56,7 @@ function AnimatedMetricValue({value,className}:{value:string;className:string}){
   return <span className={className}>{display}</span>;
 }
 
-export function SegmentedGauge({ title, value, caption, segments }: { title: string; value: string; caption: string; segments: GaugeSegment[] }) {
+export function SegmentedGauge({ title, value, caption, segments, preserveTotal=false, compact=false }: { title: string; value: string; caption: string; segments: GaugeSegment[];preserveTotal?:boolean;compact?:boolean }) {
   const reduceMotion = useReducedMotion();
   const headingId = useId();
   const [activeIndex, setActiveIndex] = useState<number|null>(null);
@@ -77,12 +77,23 @@ export function SegmentedGauge({ title, value, caption, segments }: { title: str
   // The normalized arc is ~220px long. An 8-unit centerline gap leaves
   // visible space after the 14–16px round caps extend into it.
   const gap = positiveIndexes.length > 1 ? 7.5 : 0;
-  const displayTitle = activeIndex == null ? title : selected?.label ?? title;
-  const displayValue = activeIndex == null ? value : selected?.display ?? value;
+  const displayTitle = preserveTotal || activeIndex == null ? title : selected?.label ?? title;
+  const displayValue = preserveTotal || activeIndex == null ? value : selected?.display ?? value;
   const transition = reduceMotion ? { duration: 0 } : { duration: 0.22, ease: [0.2, 0, 0, 1] as const };
 
   const select = (index:number) => setActiveIndex(index);
   const reset = () => setActiveIndex(null);
+
+  if(compact)return <div onMouseLeave={reset}>
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0"><h3 id={headingId} className="text-body-2-regular text-text-secondary">{displayTitle}</h3><p className="mt-0.5"><AnimatedMetricValue value={displayValue} className="text-title-2-medium tabular-nums text-text-primary"/></p></div>
+      <div className="shrink-0 text-right"><p><AnimatedMetricValue value={new Intl.NumberFormat("en-US",{style:"percent",maximumFractionDigits:0}).format(selectedShare)} className="text-title-1-medium tabular-nums text-text-primary"/></p><p className="text-caption-2-regular text-text-tertiary">{selected?.label??caption}</p></div>
+    </div>
+    <div role="group" aria-labelledby={headingId} className="mt-2 flex h-6 items-center gap-1">
+      {total>0?segments.map((item,index)=>item.value>0&&<button key={item.label} type="button" aria-label={`${item.label}: ${item.display}, ${Math.round(actualShares[index])}% of ${caption}`} onMouseEnter={()=>select(index)} onFocus={()=>select(index)} onBlur={reset} style={{flexGrow:Math.max(actualShares[index],2)}} className={cx("flex h-6 min-w-0 basis-0 items-center rounded-full outline-none transition-opacity duration-150 focus-visible:ring-2 focus-visible:ring-border-focus-ring motion-reduce:transition-none",activeIndex!=null&&index!==selectedIndex&&"opacity-30")}><span className={cx("h-2 w-full rounded-full",item.dot)}/></button>):<span className="h-2 w-full rounded-full bg-background-tertiary-default"/>}
+    </div>
+    <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1">{segments.map((item,index)=><button key={item.label} type="button" onMouseEnter={()=>select(index)} onFocus={()=>select(index)} onBlur={reset} className={cx("inline-flex min-h-8 items-center gap-1.5 rounded-md px-1 text-body-2-regular text-text-secondary outline-none transition-opacity duration-150 focus-visible:ring-2 focus-visible:ring-border-focus-ring motion-reduce:transition-none",activeIndex!=null&&index!==selectedIndex&&"opacity-40")}><span className={cx("size-2.5 rounded-full",item.dot)}/>{item.label} <strong className="text-body-2-medium text-text-primary">{item.display}</strong></button>)}</div>
+  </div>;
 
   return <div onMouseLeave={reset}>
     <div className="min-h-14">

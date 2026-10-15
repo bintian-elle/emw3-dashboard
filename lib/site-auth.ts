@@ -39,7 +39,12 @@ export function safeReturnPath(value: unknown) {
 export function authCookieOptions(maxAge: number) {
   return { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/", maxAge };
 }
-export function authOrigin() {
+export function authOrigin(requestUrl?:string) {
+  // Only trust an incoming origin for loopback development; production stays pinned.
+  if(process.env.NODE_ENV!=="production"&&requestUrl){
+    const local=new URL(requestUrl);
+    if(["localhost","127.0.0.1","[::1]"].includes(local.hostname)&&["http:","https:"].includes(local.protocol))return local.origin;
+  }
   const url = new URL(process.env.AUTH_URL || process.env.GOOGLE_LOGIN_AUTH_URL || "http://localhost:3000");
   if (process.env.NODE_ENV === "production" && url.protocol !== "https:") throw new Error("AUTH_URL must use HTTPS in production.");
   return url.origin;

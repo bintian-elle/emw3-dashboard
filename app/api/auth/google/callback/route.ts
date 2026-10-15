@@ -5,7 +5,7 @@ import { allowedGoogleUser, OAUTH_COOKIE, SESSION_COOKIE, SESSION_MAX_AGE, verif
 const keys = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 export async function GET(request: NextRequest) {
   const fail = (error: string) => {
-    const response = NextResponse.redirect(new URL(`/access?error=${error}`, authOrigin()));
+    const response = NextResponse.redirect(new URL(`/access?error=${error}`, authOrigin(request.url)));
     response.cookies.set(OAUTH_COOKIE, "", authCookieOptions(0));
     response.headers.set("Cache-Control", "no-store");
     return response;
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (!code || request.nextUrl.searchParams.has("error")) return fail("login");
     const { clientId, clientSecret: secret } = googleCredentials();
     if (!clientId || !secret) return fail("configuration");
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code, client_id: clientId, client_secret: secret, redirect_uri: `${authOrigin()}/api/auth/google/callback`, grant_type: "authorization_code", code_verifier: state.verifier }), cache: "no-store", signal: AbortSignal.timeout(15000) });
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code, client_id: clientId, client_secret: secret, redirect_uri: `${authOrigin(request.url)}/api/auth/google/callback`, grant_type: "authorization_code", code_verifier: state.verifier }), cache: "no-store", signal: AbortSignal.timeout(15000) });
     if (!tokenResponse.ok) return fail("login");
     const tokens = await tokenResponse.json();
     if (typeof tokens.id_token !== "string") return fail("login");
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     if (payload.nonce !== state.nonce) return fail("login");
     const user = allowedGoogleUser(payload);
     if (!user) return fail("domain");
-    const response = NextResponse.redirect(new URL(safeReturnPath(state.returnTo), authOrigin()));
+    const response = NextResponse.redirect(new URL(safeReturnPath(state.returnTo), authOrigin(request.url)));
     response.cookies.set(SESSION_COOKIE, await signAuthPayload(user, "site-session", SESSION_MAX_AGE), authCookieOptions(SESSION_MAX_AGE));
     response.cookies.set(OAUTH_COOKIE, "", authCookieOptions(0));
     response.cookies.set("emw3_access", "", authCookieOptions(0));

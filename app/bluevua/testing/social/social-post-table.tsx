@@ -1,0 +1,9 @@
+"use client";
+import {Table,TableHeader,TableColumn,TableBody,TableRow,TableCell} from "@/components/base/table/table";
+import Image from "next/image";
+import {type SocialPost,socialMetrics} from "@/lib/instagram-posts";
+const number=new Intl.NumberFormat("en-US");
+const labels={views:"Views",reach:"Reach",likes:"Likes",comments:"Comments",shares:"Shares",saved:"Saves",follows:"Follows"};
+export function SocialPostTable({posts}:{posts:SocialPost[]}){
+ return <Table aria-label="Instagram post performance" className="min-w-max"><TableHeader><TableColumn isRowHeader>Post</TableColumn><TableColumn>Published</TableColumn><TableColumn>Format</TableColumn>{socialMetrics.map(metric=><TableColumn key={metric}>{labels[metric]}</TableColumn>)}</TableHeader><TableBody>{posts.map((post,index)=><TableRow key={post.code}><TableCell><a href={post.url} target="_blank" rel="noopener noreferrer" className="flex max-w-xs items-center gap-3 rounded-md text-body-medium text-status-blue-text underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring">{post.thumbnailUrl&&<Image unoptimized width={64} height={64} src={post.thumbnailUrl} alt="" className="size-16 shrink-0 rounded-xl object-cover" loading="lazy" referrerPolicy="no-referrer"/>}<span className="min-w-0"><span className="block">Post {index+1}</span><span className="line-clamp-2 text-caption-1-regular text-text-secondary">{post.caption||post.code}</span></span></a></TableCell><TableCell>{post.publishedAt?new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"}).format(new Date(post.publishedAt)):"—"}</TableCell><TableCell>{post.mediaType??"—"}</TableCell>{socialMetrics.map(metric=><TableCell key={metric}>{post.metrics[metric]==null?"—":number.format(post.metrics[metric])}</TableCell>)}</TableRow>)}</TableBody></Table>;
+}

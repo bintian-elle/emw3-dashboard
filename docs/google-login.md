@@ -21,7 +21,7 @@ AUTH_SECRET=<random-secret-at-least-32-characters>
 AI_WORKER_SECRET=<different-random-service-secret>
 ```
 
-The existing `GOOGLE_LOGIN_CLIENT_ID`, `GOOGLE_LOGIN_CLIENT_SECRET`, `GOOGLE_LOGIN_AUTH_URL` and `GOOGLE_LOGIN_AUTH_SECRET` names are also supported. Standard names above take precedence. For local testing with a production URL in `.env.local`, run `AUTH_URL=http://localhost:3000 npm run dev`.
+The existing `GOOGLE_LOGIN_CLIENT_ID`, `GOOGLE_LOGIN_CLIENT_SECRET`, `GOOGLE_LOGIN_AUTH_URL` and `GOOGLE_LOGIN_AUTH_SECRET` names are also supported. Standard names above take precedence. During `npm run dev`, requests to localhost, 127.0.0.1 or [::1] use their exact incoming origin and port for Google callback, post-login redirects and logout, even if `.env.local` has the production AUTH_URL. Production always uses the configured AUTH_URL; other hostnames do not override it. Register every local callback origin/port used in the Google OAuth client. An explicit `AUTH_URL=http://localhost:3000 npm run dev` remains optional.
 
 Generate secrets in the secure server environment; do not put real values into Git, chat or logs. The website and AI queue worker must use the same AI_WORKER_SECRET. Keep CRON_SECRET and existing database/Bridge variables. SITE_ACCESS_KEY is no longer used and can be removed after migration. Restart/reload both website and queue worker through the approved deployment process; deploy.sh only restarts the website.
 

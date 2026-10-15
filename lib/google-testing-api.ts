@@ -23,16 +23,8 @@ async function load():Promise<Snapshot>{
  try{const cached=JSON.parse(await readFile(filename,"utf8")) as Snapshot;if(cached.version===1&&cached.start<=start&&cached.end>=today&&Date.now()-cached.capturedAt<6*3600000){state.snapshot=cached;return cached;}}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
  if(Date.now()<state.failedUntil)throw Error("Google Ads data refresh is temporarily unavailable. Please retry shortly.");
  try{
- const env=process.env;
- if(!env.GOOGLE_ADS_CLIENT_ID||!env.GOOGLE_ADS_SECRET||!env.GOOGLE_ADS_TOKEN)throw Error("Google Ads OAuth configuration is incomplete");
- const oauth=await fetch("https://oauth2.googleapis.com/token",{method:"POST",body:new URLSearchParams({client_id:env.GOOGLE_ADS_CLIENT_ID,client_secret:env.GOOGLE_ADS_SECRET,refresh_token:env.GOOGLE_ADS_TOKEN,grant_type:"refresh_token"}),signal:AbortSignal.timeout(30000),cache:"no-store"});
- const token=await oauth.json();if(!oauth.ok||!token.access_token)throw Error(`Google Ads OAuth failed (${oauth.status})`);
- const customer=(env.GOOGLE_ADS_CUSTOMER_ID||"").replaceAll("-","");if(!/^\d+$/.test(customer))throw Error("Invalid Google Ads customer ID");
- const headers:Record<string,string>={Authorization:`Bearer ${token.access_token}`,"Content-Type":"application/json"};if(env.GOOGLE_ADS_LOGIN_CUSTOMER_ID)headers["login-customer-id"]=env.GOOGLE_ADS_LOGIN_CUSTOMER_ID.replaceAll("-","");
  const query=`SELECT campaign.id,campaign.name,campaign.status,ad_group.id,ad_group.name,ad_group_ad.ad.id,segments.date,metrics.cost_micros,metrics.conversions,metrics.conversions_value,metrics.impressions,metrics.clicks FROM ad_group_ad WHERE campaign.name IN (${campaigns}) AND segments.date BETWEEN '${start}' AND '${today}' AND ad_group_ad.status IN ('ENABLED','PAUSED','REMOVED')`;
- const response=await fetch(`https://googleads.googleapis.com/v24/customers/${customer}/googleAds:searchStream`,{method:"POST",headers,body:JSON.stringify({query}),signal:AbortSignal.timeout(60000),cache:"no-store"});
- if(!response.ok)throw Error(`Google Ads reporting failed (HTTP ${response.status})`);
- const batches=await response.json();const rows:Row[]=batches.flatMap((batch:{results?:Row[]})=>batch.results||[]);
+ const rows=await queryGoogleTestingApi<Row>(query);
  const snapshot:Snapshot={version:1,capturedAt:Date.now(),start,end:today,rows};
  await mkdir(directory,{recursive:true,mode:0o700});const temporary=`${filename}.${process.pid}.tmp`;await writeFile(temporary,JSON.stringify(snapshot),{mode:0o600});await rename(temporary,filename);state.snapshot=snapshot;return snapshot;
  }catch(error){state.failedUntil=Date.now()+60000;throw error;}
@@ -48,3 +40,16 @@ export function apiGoogleSearchReport(data:Snapshot,campaignName:string,period:{
  return {campaignName,campaignStatus:campaignRows[0]?.campaign.status??"Unknown",testingStartDate:testingStartDate??campaignRows.map(row=>row.segments.date).sort()[0],period,periodLabel,groups};
 }
 export function apiGoogleAdArchive(data:Snapshot):GoogleAdPerformanceArchive{return {version:1,range:{start:data.start,end:data.end},days:data.rows.map(row=>({groupId:row.adGroup.id,adId:row.adGroupAd.ad.id,date:row.segments.date,spend:Number(row.metrics.costMicros||0)/1e6,revenue:Number(row.metrics.conversionsValue||0),orders:Number(row.metrics.conversions||0),impressions:Number(row.metrics.impressions||0),clicks:Number(row.metrics.clicks||0)}))};}
+
+export async function queryGoogleTestingApi<T>(query:string):Promise<T[]>{
+ const env=process.env;
+ if(!env.GOOGLE_ADS_CLIENT_ID||!env.GOOGLE_ADS_SECRET||!env.GOOGLE_ADS_TOKEN)throw Error("Google Ads OAuth configuration is incomplete");
+ const oauth=await fetch("https://oauth2.googleapis.com/token",{method:"POST",body:new URLSearchParams({client_id:env.GOOGLE_ADS_CLIENT_ID,client_secret:env.GOOGLE_ADS_SECRET,refresh_token:env.GOOGLE_ADS_TOKEN,grant_type:"refresh_token"}),signal:AbortSignal.timeout(30000),cache:"no-store"});
+ const token=await oauth.json();if(!oauth.ok||!token.access_token)throw Error(`Google Ads OAuth failed (${oauth.status})`);
+ const customer=(env.GOOGLE_ADS_CUSTOMER_ID||"").replaceAll("-","");if(!/^\d+$/.test(customer))throw Error("Invalid Google Ads customer ID");
+ const headers:Record<string,string>={Authorization:`Bearer ${token.access_token}`,"Content-Type":"application/json"};if(env.GOOGLE_ADS_LOGIN_CUSTOMER_ID)headers["login-customer-id"]=env.GOOGLE_ADS_LOGIN_CUSTOMER_ID.replaceAll("-","");
+ const response=await fetch(`https://googleads.googleapis.com/v24/customers/${customer}/googleAds:searchStream`,{method:"POST",headers,body:JSON.stringify({query}),signal:AbortSignal.timeout(60000),cache:"no-store"});
+ if(!response.ok)throw Error(`Google Ads reporting failed (HTTP ${response.status})`);
+ const batches=await response.json();const rows:T[]=batches.flatMap((batch:{results?:T[]})=>batch.results||[]);
+ return rows;
+}

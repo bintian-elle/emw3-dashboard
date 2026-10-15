@@ -8,7 +8,7 @@ import { concludedChannels, concludedTestsForChannel } from "@/lib/concluded-tes
 
 export default async function ConcludedChannelPage({params}: {params: Promise<{channel: string}>}) {
   const {channel: slug} = await params;
-  const channel = concludedChannels.find(item => item.toLowerCase() === slug);
+  const channel = concludedChannels.find(item => item.toLowerCase().replaceAll(" ","-") === (slug==="google"?"google-search":slug));
   if (!channel) notFound();
   await connection();
   const tests = concludedTestsForChannel(channel);
