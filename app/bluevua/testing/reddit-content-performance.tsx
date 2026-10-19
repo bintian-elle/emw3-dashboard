@@ -1,3 +1,4 @@
+import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import { ImageLightbox } from "@/components/application/media/image-lightbox";
 import { VideoLightbox } from "@/components/application/media/video-lightbox";
 import { Chip } from "@/components/base/badges/chip";
@@ -19,7 +20,7 @@ export function aggregateRedditAds(ads: RedditAd[]) {
 }
 
 function Metrics({ row, kind, format }: { row: Pick<RedditMetrics, "impressions" | "cpc" | "ctr" | "revenue" | "roas">; kind: RedditCampaign["kind"]; format: RedditAd["contentType"] }) {
-  return <dl className="grid grid-cols-2 gap-4 xl:grid-cols-5">{redditContentMetrics(kind, format).map(metric => <div key={metric.key}><dt className="text-caption-1-semibold text-text-tertiary">{metric.label}</dt><dd className="mt-1 text-body-medium tabular-nums text-text-primary">{formatValue(row[metric.key], metric.key)}</dd></div>)}</dl>;
+  return <dl className="grid grid-cols-2 gap-4 xl:grid-cols-5">{orderTestingMetrics(redditContentMetrics(kind, format)).map(metric => <div key={metric.key}><dt className="text-caption-1-semibold text-text-tertiary">{metric.label}</dt><dd className="mt-1 text-body-medium tabular-nums text-text-primary">{formatValue(row[metric.key], metric.key)}</dd></div>)}</dl>;
 }
 
 export function RedditContentPerformance({ campaign }: { campaign: RedditCampaign }) {

@@ -1,3 +1,4 @@
+import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import { notFound } from "next/navigation";
 import { TestingPageHeader } from "../../testing-page-header";
 import { TestingBackNavigation } from "../../testing-back-navigation";
@@ -11,10 +12,10 @@ import { getMetaCampaignTest, type MetaActiveAd } from "@/lib/testing-meta";
 const currency=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
 const decimal=new Intl.NumberFormat("en-US",{maximumFractionDigits:2});
 const percent=new Intl.NumberFormat("en-US",{style:"percent",minimumFractionDigits:2,maximumFractionDigits:2});
-const metrics:Array<{label:string;key:keyof MetaActiveAd;format:"currency"|"decimal"|"percent"|"roas"|"cost"}>=[
-  {label:"CPA",key:"cpa",format:"currency"},{label:"CVR",key:"cvr",format:"percent"},{label:"ROAS",key:"roas",format:"roas"},{label:"Orders",key:"orders",format:"decimal"},{label:"Revenue",key:"revenue",format:"currency"},
+const metrics:Array<{label:string;key:keyof MetaActiveAd;format:"currency"|"decimal"|"percent"|"roas"|"cost"}>=orderTestingMetrics([
+  {label:"CPA",key:"cpa",format:"currency"},{label:"CVR",key:"cvr",format:"percent"},{label:"ROAS",key:"roas",format:"roas"},{label:"#Purchase",key:"orders",format:"decimal"},{label:"Revenue",key:"revenue",format:"currency"},
   {label:"Spend",key:"spend",format:"currency"},{label:"CTR",key:"ctr",format:"percent"},{label:"CPC",key:"cpc",format:"currency"},{label:"CPM",key:"cpm",format:"currency"},{label:"Unique reach",key:"reach",format:"decimal"},{label:"Cost / reach",key:"costPerReach",format:"cost"},{label:"Hook rate",key:"hookRate",format:"percent"},
-];
+]);
 function metric(value:number|null,format:"currency"|"decimal"|"percent"|"roas"|"cost"){if(value==null||!Number.isFinite(value))return "—";if(format==="cost")return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:4}).format(value);if(format==="currency")return currency.format(value);if(format==="percent")return percent.format(value);if(format==="roas")return value.toFixed(2);return decimal.format(value);}
 type SearchParams={period?:string|string[];start?:string|string[];end?:string|string[]};
 

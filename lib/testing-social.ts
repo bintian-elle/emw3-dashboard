@@ -1,5 +1,5 @@
 import "server-only";
-import {connection} from "next/server";
+import {after,connection} from "next/server";
 import {mkdir,readFile,writeFile,rename} from "node:fs/promises";
 import path from "node:path";
 import {matchesInstagramPost,paidInstagramMetrics,type PaidInsight,type InstagramAdCreative} from "@/lib/instagram-paid-metrics";
@@ -53,13 +53,25 @@ async function refresh(cached:Snapshot|null):Promise<SocialPerformance>{
   return {...result,stale:false,error:false};
  }catch{return {capturedAt:cached?.capturedAt??"",posts:cached?.posts??instagramPostCodes.map(emptyPost),stale:!!cached,error:true};}
 }
-export async function getSocialPerformance():Promise<SocialPerformance>{
- await connection();
+function refreshOnce(cached:Snapshot|null):Promise<SocialPerformance>{
  if(globalThis.emw3SocialRequest)return globalThis.emw3SocialRequest;
- const request=(async()=>{const cached=await snapshot();if(cached?.version===2&&Date.now()-Date.parse(cached.capturedAt)<ttl)return {...cached,stale:false,error:false};return refresh(cached);})();
+ const request=refresh(cached);
  globalThis.emw3SocialRequest=request;
+ // Also back off failed refreshes, rather than repeating the API scan on every visit.
  void request.finally(()=>{setTimeout(()=>{if(globalThis.emw3SocialRequest===request)globalThis.emw3SocialRequest=undefined;},60000).unref();});
  return request;
+}
+export async function getSocialPerformance():Promise<SocialPerformance>{
+ await connection();
+ const cached=await snapshot();
+ if(cached?.version===2&&Array.isArray(cached.posts)&&cached.posts.length){
+  const stale=!Number.isFinite(Date.parse(cached.capturedAt))||Date.now()-Date.parse(cached.capturedAt)>=ttl;
+  // Rendering never waits for an expired snapshot to refresh, even if another
+  // request already started that refresh. after keeps the work alive on the server.
+  if(stale)after(async()=>{await refreshOnce(cached);});
+  return {...cached,stale,error:false};
+ }
+ return refreshOnce(cached);
 }
 
 async function adCreatives(ids:string[]){

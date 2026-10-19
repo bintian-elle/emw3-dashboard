@@ -1,4 +1,5 @@
 import "server-only";
+import {fetchKlaviyoEventReport} from "@/lib/klaviyo-event-api";
 import {mkdir,readFile,writeFile,rename} from "node:fs/promises";
 import path from "node:path";
 import {createHash} from "node:crypto";
@@ -31,7 +32,7 @@ async function load(period:{start:string;end:string},ids:string[],key:string){
  await mkdir(directory,{recursive:true,mode:0o700});await writeFile(metricFile,JSON.stringify({id:metricId}),{mode:0o600});
  }
  const end=new Date(`${period.end}T12:00:00Z`);end.setUTCDate(end.getUTCDate()+1);
- const response=await fetch("https://a.klaviyo.com/api/metric-aggregates/",{method:"POST",headers,body:JSON.stringify({data:{type:"metric-aggregate",attributes:{metric_id:metricId,measurements:["unique"],interval:"month",by:[],filter:[`greater-or-equal(datetime,${period.start}T00:00:00Z)`,`less-than(datetime,${end.toISOString().slice(0,10)}T00:00:00Z)`,`any($message,${JSON.stringify(ids)})`],timezone:"UTC"}}}),signal:AbortSignal.timeout(30000),cache:"no-store"});
+ const response=await fetchKlaviyoEventReport("https://a.klaviyo.com/api/metric-aggregates/",{method:"POST",headers,body:JSON.stringify({data:{type:"metric-aggregate",attributes:{metric_id:metricId,measurements:["unique"],interval:"month",by:[],filter:[`greater-or-equal(datetime,${period.start}T00:00:00Z)`,`less-than(datetime,${end.toISOString().slice(0,10)}T00:00:00Z)`,`any($message,${JSON.stringify(ids)})`],timezone:"UTC"}}}),signal:AbortSignal.timeout(30000),cache:"no-store"});
  if(!response.ok)throw Error(`Klaviyo recipient reach failed (${response.status})`);
  const body=await response.json();const data=body.data?.attributes?.data;
  if(!Array.isArray(data))throw Error("Invalid Klaviyo recipient report");

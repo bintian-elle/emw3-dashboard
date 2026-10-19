@@ -1,4 +1,12 @@
-import { TestingPageHeader } from "../../testing-page-header";
-export default function PmaxContentTestingPage(){
- return <><TestingPageHeader section="Google PMAX" title="Google PMAX Testing Performance" description="Performance Max creative content tests."/><p className="rounded-3xl border border-border-button-default bg-background-primary-default p-6 text-body-regular text-text-secondary">No confirmed PMAX content tests have been added yet.</p></>;
+import {TestingPageHeader} from "../../testing-page-header";
+import {GoogleExpandedContentSection} from "../../google-expanded-content-section";
+import {getExpandedGoogleTesting} from "@/lib/google-expanded-content-testing";
+import {testingPeriodInput} from "@/lib/testing-google";
+type SearchParams={period?:string|string[];start?:string|string[];end?:string|string[]};
+export default async function ContentTestingPage({searchParams}:{searchParams:Promise<SearchParams>}){
+ const params=await searchParams;
+ const data=await getExpandedGoogleTesting("pmax",testingPeriodInput(params));
+ const query=new URLSearchParams();for(const [key,raw]of Object.entries(params)){const value=Array.isArray(raw)?raw[0]:raw;if(value&&["period","start","end"].includes(key))query.set(key,value);}
+ const returnTo=`/bluevua/testing/google/pmax${query.size?`?${query}`:""}`;
+ return <><TestingPageHeader section="Google PMAX" title="Google PMAX Testing Performance" description="Content testing creative performance."/><GoogleExpandedContentSection data={data} returnTo={returnTo}/></>;
 }

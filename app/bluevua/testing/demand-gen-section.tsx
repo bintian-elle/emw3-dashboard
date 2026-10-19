@@ -1,3 +1,4 @@
+import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import { cx } from "@/utils/cx";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,7 +8,7 @@ import type { DemandGenData, DemandGenMetricRow } from "@/lib/testing-demand-gen
 import { CampaignStatusChip } from "./campaign-status-chip";
 
 const currency=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});const decimal=new Intl.NumberFormat("en-US",{maximumFractionDigits:2});const percent=new Intl.NumberFormat("en-US",{style:"percent",minimumFractionDigits:2,maximumFractionDigits:2});
-const columns:Array<{label:string;value:(row:DemandGenMetricRow)=>string}>=[{label:"CPA",value:row=>row.cpa==null?"—":currency.format(row.cpa)},{label:"CVR",value:row=>row.cvr==null?"—":percent.format(row.cvr)},{label:"ROAS",value:row=>row.roas==null?"—":row.roas.toFixed(2)},{label:"Orders",value:row=>decimal.format(row.orders)},{label:"Revenue",value:row=>currency.format(row.revenue)},{label:"Spend",value:row=>currency.format(row.spend)},{label:"CTR",value:row=>row.ctr==null?"—":percent.format(row.ctr)},{label:"CPC",value:row=>row.cpc==null?"—":currency.format(row.cpc)}];
+const columns:Array<{label:string;value:(row:DemandGenMetricRow)=>string}>=orderTestingMetrics([{label:"CPA",value:row=>row.cpa==null?"—":currency.format(row.cpa)},{label:"CVR",value:row=>row.cvr==null?"—":percent.format(row.cvr)},{label:"ROAS",value:row=>row.roas==null?"—":row.roas.toFixed(2)},{label:"#Purchase",value:row=>decimal.format(row.orders)},{label:"Revenue",value:row=>currency.format(row.revenue)},{label:"Spend",value:row=>currency.format(row.spend)},{label:"CTR",value:row=>row.ctr==null?"—":percent.format(row.ctr)},{label:"CPC",value:row=>row.cpc==null?"—":currency.format(row.cpc)}]);
 const date=(value:string)=>new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"}).format(new Date(`${value}T00:00:00Z`));
 
 export function DemandGenSection({data,query="",standalone=false}:{data:DemandGenData;query?:string;standalone?:boolean}){

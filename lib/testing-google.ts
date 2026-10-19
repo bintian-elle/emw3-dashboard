@@ -1,15 +1,13 @@
+import {readGoogleTestingDatabase} from "@/lib/google-testing-db-fallback";
 import "server-only";
 import { connection } from "next/server";
 import {resolveTestingPeriod} from "@/lib/testing-period";
 export {resolveTestingPeriod} from "@/lib/testing-period";
 import {readGoogleTestingApiData,apiGoogleSearchReport} from "@/lib/google-testing-api";
+import {googleContentTestingInventory,GOOGLE_CONTENT_CAMPAIGNS} from "@/lib/google-content-testing-scope";
 import { db } from "@/lib/db";
 
-export const googleContentTestingCampaigns = [
-  "EM-Search-Nonbrand-Purchase-Apr26",
-  "EM-Search-Nonbrand-TIS-April26",
-  "EM-Search-Nonbrand-Competitor-IS-Jun25",
-] as const;
+export const googleContentTestingCampaigns = GOOGLE_CONTENT_CAMPAIGNS;
 
 const GOOGLE_SEARCH_CAMPAIGN = "EM-Search-Nonbrand-Purchase-Apr26";
 
@@ -42,7 +40,9 @@ export type GoogleTestGroup = {
 };
 
 export type GoogleSearchTest = {
+  creativeType?:"Message"|"Picture"|"Video"|"Mixed";
   campaignName: string;
+  adCount?:number;
   reach?:number|null;
   campaignStatus: string;
   /** Earliest recorded activity for the test groups, independent of reporting range. */
@@ -152,5 +152,28 @@ export async function getGoogleSearchTest(input:TestingPeriodInput={},campaignNa
 }
 
 export async function getGoogleContentTests(input:TestingPeriodInput={}) {
-  return Promise.all(googleContentTestingCampaigns.map(name=>getGoogleSearchTest(input,name,true)));
+ await connection();
+ const inventory=await googleContentTestingInventory();
+ const period=resolveTestingPeriod(new Date(Date.now()-86400000).toISOString().slice(0,10),input);
+ const periodLabel=testingPeriodLabels[input.preset??"lastWeek"];
+ const ids=inventory.ads.map(row=>row.adGroupAd.ad.id),allowed=new Set(ids);
+ type ScopedRow={ad_group_id:string;testing_start_date:string;latest_date:string;spend:string;revenue:string;orders:string;impressions:string;clicks:string};
+ const result=ids.length?await readGoogleTestingDatabase(()=>db.query<ScopedRow>(`SELECT ad_group_id,MIN(date)::text testing_start_date,MAX(date)::text latest_date,
+ COALESCE(SUM(spend) FILTER(WHERE date BETWEEN $2::date AND $3::date),0) spend,
+ COALESCE(SUM(conversions_value) FILTER(WHERE date BETWEEN $2::date AND $3::date),0) revenue,
+ COALESCE(SUM(conversions) FILTER(WHERE date BETWEEN $2::date AND $3::date),0) orders,
+ COALESCE(SUM(impressions) FILTER(WHERE date BETWEEN $2::date AND $3::date),0) impressions,
+ COALESCE(SUM(clicks) FILTER(WHERE date BETWEEN $2::date AND $3::date),0) clicks
+ FROM v_ad_performance_daily WHERE ad_id=ANY($1::text[]) AND date<CURRENT_DATE GROUP BY ad_group_id`,[ids,period.start,period.end])):{rows:[]};
+ const groupIds=[...new Set(inventory.ads.map(row=>row.adGroup.id))];
+ const needsApi=result===null||groupIds.some(id=>!result.rows.some(row=>row.ad_group_id===id&&row.latest_date>=period.end));
+ const api=needsApi?await readGoogleTestingApiData():null;
+ return googleContentTestingCampaigns.map(campaignName=>{
+  const ads=inventory.ads.filter(row=>row.campaign.name===campaignName);
+  const groups=[...new Map(ads.map(row=>[row.adGroup.id,{id:row.adGroup.id,name:row.adGroup.name}])).values()];
+  if(api){const report=apiGoogleSearchReport(api,campaignName,period,periodLabel,groups,undefined,allowed);report.campaignStatus=ads[0]?.campaign.status??"Unknown";report.adCount=ads.length;return report;}
+  const rows=(result?.rows??[]).filter(row=>groups.some(group=>group.id===row.ad_group_id));
+  return {campaignName,adCount:ads.length,campaignStatus:ads[0]?.campaign.status??"Unknown",period,periodLabel,testingStartDate:rows.map(row=>row.testing_start_date).sort()[0]??null,
+   groups:groups.map(group=>{const row=rows.find(row=>row.ad_group_id===group.id);const spend=Number(row?.spend??0),revenue=Number(row?.revenue??0),orders=Number(row?.orders??0),impressions=Number(row?.impressions??0),clicks=Number(row?.clicks??0);return {label:"" as const,name:group.name,adGroupId:group.id,spend,revenue,orders,impressions,clicks,cpa:ratio(spend,orders),cvr:ratio(orders,clicks),roas:ratio(revenue,spend),ctr:ratio(clicks,impressions),cpc:ratio(spend,clicks)};}).sort((a,b)=>a.name.localeCompare(b.name))};
+ });
 }

@@ -1,3 +1,4 @@
+import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,7 +11,7 @@ import { highResolutionCreativeUrl } from "@/lib/creative-image";
 import { AdTypeChip, resolveAdContentType } from "@/components/application/media/ad-type-chip";
 
 const currency=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});const decimal=new Intl.NumberFormat("en-US",{maximumFractionDigits:2});const percent=new Intl.NumberFormat("en-US",{style:"percent",minimumFractionDigits:2,maximumFractionDigits:2});
-const columns:Array<{label:string;key:keyof DemandGenAd;format:"currency"|"decimal"|"percent"|"roas"}>=[{label:"CPA",key:"cpa",format:"currency"},{label:"CVR",key:"cvr",format:"percent"},{label:"ROAS",key:"roas",format:"roas"},{label:"Orders",key:"orders",format:"decimal"},{label:"Revenue",key:"revenue",format:"currency"},{label:"Spend",key:"spend",format:"currency"},{label:"CTR",key:"ctr",format:"percent"},{label:"CPC",key:"cpc",format:"currency"}];
+const columns:Array<{label:string;key:keyof DemandGenAd;format:"currency"|"decimal"|"percent"|"roas"}>=orderTestingMetrics([{label:"CPA",key:"cpa",format:"currency"},{label:"CVR",key:"cvr",format:"percent"},{label:"ROAS",key:"roas",format:"roas"},{label:"#Purchase",key:"orders",format:"decimal"},{label:"Revenue",key:"revenue",format:"currency"},{label:"Spend",key:"spend",format:"currency"},{label:"CTR",key:"ctr",format:"percent"},{label:"CPC",key:"cpc",format:"currency"}]);
 function value(input:number|null,format:"currency"|"decimal"|"percent"|"roas"){if(input==null||!Number.isFinite(input))return "—";if(format==="currency")return currency.format(input);if(format==="percent")return percent.format(input);if(format==="roas")return input.toFixed(2);return decimal.format(input);}
 type SearchParams={period?:string|string[];start?:string|string[];end?:string|string[]};
 

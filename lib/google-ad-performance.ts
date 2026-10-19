@@ -1,9 +1,9 @@
 export type GoogleAdDaily={groupId:string;adId:string;date:string;spend:number;revenue:number;orders:number;impressions:number;clicks:number};
 export type GoogleAdMetrics=Pick<GoogleAdDaily,"spend"|"revenue"|"orders"|"impressions"|"clicks">&{cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null};
 export type GoogleAdPerformanceArchive={version:number;range:{start:string;end:string};days:GoogleAdDaily[]};
-export function aggregateGoogleAdPerformance(archive:GoogleAdPerformanceArchive,groupId:string,period:{start:string;end:string}):Record<string,GoogleAdMetrics>{
+export function aggregateGoogleAdPerformance(archive:GoogleAdPerformanceArchive,groupId:string,period:{start:string;end:string},allowedAdIds?:ReadonlySet<string>):Record<string,GoogleAdMetrics>{
  const totals:Record<string,GoogleAdMetrics>={};
- for(const row of archive.days){if(row.groupId!==groupId||row.date<period.start||row.date>period.end)continue;
+ for(const row of archive.days){if(row.groupId!==groupId||row.date<period.start||row.date>period.end||(allowedAdIds&&!allowedAdIds.has(row.adId)))continue;
  const sum=totals[row.adId]??{spend:0,revenue:0,orders:0,impressions:0,clicks:0,cpa:null,cvr:null,roas:null,ctr:null,cpc:null};
  sum.spend+=row.spend;sum.revenue+=row.revenue;sum.orders+=row.orders;sum.impressions+=row.impressions;sum.clicks+=row.clicks;totals[row.adId]=sum;
  }

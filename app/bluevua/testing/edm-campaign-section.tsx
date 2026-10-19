@@ -12,7 +12,7 @@ const date = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short
 export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
   return (
     <section className="mt-8 space-y-6">
-      {!data.campaigns.length&&<p className="rounded-3xl border border-border-button-default bg-background-primary-default p-6 text-body-regular text-text-secondary">No A/B campaigns were sent or scheduled in this reporting period.</p>}
+      {!data.campaigns.length&&<p className="rounded-3xl border border-border-button-default bg-background-primary-default p-6 text-body-regular text-text-secondary">No confirmed EDM content test matches this reporting period.</p>}
       {data.campaigns.map((campaign) => (
         <article key={campaign.campaignId} className="overflow-hidden rounded-3xl border border-border-button-default bg-background-primary-default shadow-card">
           <div className="flex flex-col gap-4 border-b border-border-table p-6 sm:flex-row sm:items-start sm:justify-between">
@@ -49,11 +49,11 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
                   </div>
                 </div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
+                  <Metric label="Total Revenue" value={test.hasData?currency.format(test.revenue):"—"} />
+                  <Metric label="#Purchase" value={test.hasData?number.format(test.orders):"—"} />
+                  <Metric label="Click Rate" value={test.clickRate == null ? "—" : percent.format(test.clickRate)} />
                   <Metric label="Module 2 CTR" value={test.secondModuleClickRate == null ? "—" : percent.format(test.secondModuleClickRate)} emphasized />
                   <Metric label="Open Rate" value={test.openRate == null ? "—" : percent.format(test.openRate)} />
-                  <Metric label="Click Rate" value={test.clickRate == null ? "—" : percent.format(test.clickRate)} />
-                  <Metric label="Orders" value={test.hasData?number.format(test.orders):"—"} />
-                  <Metric label="Total Revenue" value={test.hasData?currency.format(test.revenue):"—"} />
                   <Metric label="Delivered" value={test.hasData?number.format(test.delivered):"—"} />
                 </dl>
               </div>

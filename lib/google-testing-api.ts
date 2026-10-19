@@ -1,6 +1,7 @@
 import "server-only";
 import {mkdir,readFile,writeFile,rename} from "node:fs/promises";
 import path from "node:path";
+import {googleContentTestingInventory} from "@/lib/google-content-testing-scope";
 import type {GoogleSearchTest} from "@/lib/testing-google";
 import type {GoogleAdPerformanceArchive} from "@/lib/google-ad-performance";
 
@@ -17,20 +18,21 @@ export async function readGoogleTestingApiData():Promise<Snapshot>{
 }
 async function load():Promise<Snapshot>{
  const today=new Date().toISOString().slice(0,10),start="2025-01-01";
- if(state.snapshot&&state.snapshot.end>=today&&Date.now()-state.snapshot.capturedAt<6*3600000)return state.snapshot;
+ if(state.snapshot?.version===2&&state.snapshot.end>=today&&Date.now()-state.snapshot.capturedAt<6*3600000)return state.snapshot;
  const directory=process.env.GOOGLE_ADS_CREATIVE_DIR||path.join(process.cwd(),".state/google-creatives");
  const filename=path.join(directory,"testing-performance.json");
- try{const cached=JSON.parse(await readFile(filename,"utf8")) as Snapshot;if(cached.version===1&&cached.start<=start&&cached.end>=today&&Date.now()-cached.capturedAt<6*3600000){state.snapshot=cached;return cached;}}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
+ try{const cached=JSON.parse(await readFile(filename,"utf8")) as Snapshot;if(cached.version===2&&cached.start<=start&&cached.end>=today&&Date.now()-cached.capturedAt<6*3600000){state.snapshot=cached;return cached;}}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
  if(Date.now()<state.failedUntil)throw Error("Google Ads data refresh is temporarily unavailable. Please retry shortly.");
  try{
  const query=`SELECT campaign.id,campaign.name,campaign.status,ad_group.id,ad_group.name,ad_group_ad.ad.id,segments.date,metrics.cost_micros,metrics.conversions,metrics.conversions_value,metrics.impressions,metrics.clicks FROM ad_group_ad WHERE campaign.name IN (${campaigns}) AND segments.date BETWEEN '${start}' AND '${today}' AND ad_group_ad.status IN ('ENABLED','PAUSED','REMOVED')`;
- const rows=await queryGoogleTestingApi<Row>(query);
- const snapshot:Snapshot={version:1,capturedAt:Date.now(),start,end:today,rows};
+ const inventory=await googleContentTestingInventory();
+ const rows=inventory.ads.length?await queryGoogleTestingApi<Row>(query+` AND ad_group_ad.labels CONTAINS ANY ('${inventory.labelResource}')`):[];
+ const snapshot:Snapshot={version:2,capturedAt:Date.now(),start,end:today,rows};
  await mkdir(directory,{recursive:true,mode:0o700});const temporary=`${filename}.${process.pid}.tmp`;await writeFile(temporary,JSON.stringify(snapshot),{mode:0o600});await rename(temporary,filename);state.snapshot=snapshot;return snapshot;
  }catch(error){state.failedUntil=Date.now()+60000;throw error;}
 }
-export function apiGoogleSearchReport(data:Snapshot,campaignName:string,period:{start:string;end:string},periodLabel:string,knownGroups:Array<{id:string;name:string}>=[],testingStartDate?:string):GoogleSearchTest{
- const campaignRows=data.rows.filter(row=>row.campaign.name===campaignName);
+export function apiGoogleSearchReport(data:Snapshot,campaignName:string,period:{start:string;end:string},periodLabel:string,knownGroups:Array<{id:string;name:string}>=[],testingStartDate?:string,allowedAdIds?:ReadonlySet<string>):GoogleSearchTest{
+ const campaignRows=data.rows.filter(row=>row.campaign.name===campaignName&&(!allowedAdIds||allowedAdIds.has(row.adGroupAd.ad.id)));
  const inventory=new Map(knownGroups.map(group=>[group.id,group.name]));for(const row of campaignRows)inventory.set(row.adGroup.id,row.adGroup.name);
  const ratio=(a:number,b:number)=>b>0?a/b:null;
  const groups=[...inventory].map(([adGroupId,name])=>{
