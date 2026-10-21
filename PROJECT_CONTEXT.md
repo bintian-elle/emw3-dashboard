@@ -264,3 +264,30 @@ npm run build
 本文只记录上下文，不自动授权部署、数据库迁移、删缓存或任何生产修改。
 
 2026-10-07 最新调整：Dashboard（Ask AI / Insights）每轮推理强度明确设为 `medium`，模型仍沿用主机；不改全局配置或 Slack 的 `high`。新双语结果各四个推荐问题；现有五问题缓存展示前四个，兼容归一化保留分析正文与生成时间。
+
+## 2026-10-20 Content Testing AI readouts（网站本地改动）
+
+- 固定 Test goal / Hypothesis 已由远端读取完整文档和 Bluevua 项目资料后保存到共享 `testing_ai_readout_cache`（`KLAVIYO_DATABASE_URL`），key `framework:v1`；Campaign 变化时在上线前重新生成，日更复用固定内容。业务输出只存数据库和忽略的 `.state/`。
+- 本地新增 `/api/testing/readouts` 缓存读取和 `/api/testing/readouts/refresh` 内部刷新，三个时段沿用网站同一日期/范围逻辑：Last Week (Tue–Mon)、Week-to-date、Month-to-date。Social Media 单独使用每日 lifetime snapshot。页面只显示成功入库的 AI 分析，已删除手写分析兜底。
+- 每天一个持久队列任务（priority -10），生产旧 worker 仍可直接转发。Testing 的发布由后台刷新控制器和缓存 API 处理，queue `finalized=true` 避免走 EDM finalization；result 内记录 `testing_cache_published_at`。精确日期、测试身份、覆盖和 delta 运算校验后分别保存；旧生成结果不能覆盖新结果。
+- 用户要求专用模式和新对话：远端 Bridge 已新增 `testing_readout` 严格原生结构化输出，独立持久对话 `Bluevua · Content Testing Insights`。远端独立 worktree 定向 103 项回归通过；空闲窗口只切换 `anc-dashboard-bridge.service`，SQLite backup 保存在远端 `.state/backups/20261020-testing-readout`；Slack/shared Codex PID 未变。可复现代码差异在 `ops/bridge-testing-readout.patch`。首次普通 Insights 传输尝试的结果未通过验证、未进入缓存，v2 复用原数据快照。
+- 本地每日刷新入口：`node scripts/refresh-testing-readouts.mjs`。新增 systemd service/timer 配置为每天 09:15 UTC；这里只创建文件，线上 timer 尚未安装启用，网站改动尚未部署/推送。部署说明与实际状态见 `docs/testing-ai-readouts.md`。
+
+2026-10-20 本地完整文档版 v3：保存全部 8-tab 原文与 60 组覆盖清单，分析以广告为起点。已生成 LW/WTD/MTD 各 11 项及 Social lifetime 1 项，固定框架 12 组；所有指定 Meta 7 条、Reddit 10 条广告均被逐项引用。缺失的资产指标、完整视频观察、测试轮次及 EDM 模块分母明确列为缺口。完整结果经覆盖、身份日期、PMax 50–70 词和 delta 校验后写共享缓存；首次返回遗漏覆盖/框架标记，已复用结果让远程完成补齐，原始结果与修订来源留作审计。
+
+- 每轮请求的 `analysis_payload.generation_instructions` 也携带最新原文和运行提示词，避免依赖持久会话创建时的 instructions。币种由各广告账户 API 验证并缓存 24 小时，本次均 USD。
+- AI Overview 财务范围必须与 BusinessPerformance 相同：Google 已配置 testing rows + Meta campaign total + Reddit 已配置广告行；其他 Reddit testing Campaign 数额有效，但只用于明确标记的渠道背景，不能混入 Overview 卡片范围。`overview_display_totals` 提供确定性同源汇总；实际投放日期、Meta period 快照与 daily history 分开。发布后的事实范围校准保留全部 34 项广告/测试分析与框架不变。
+- Overview 默认只展示简洁 Executive Summary 和优化优先级，完整关键发现/缺口可展开；不显示目标假设或展开渠道创意细节。渠道和详情页展示固定框架、分析、delta、证据及缺口。分析不显示数据快照时间；Reddit 默认 Since Sep 24 或自定义区间仍不伪用其他区间的结果，提示选择已预生成的 LW/WTD/MTD。
+- 代码、文档和 timer 文件仍仅本地，未推送/部署；本轮共享 AI 缓存已更新。远程 Bridge/worker 配置未再修改；每日 timer 仍待未来部署时安装，不把文件已创建误写为已启用。
+
+### 本地待发布：账号语言与 Testing 中文缓存（2026-10-20）
+
+右上角用户名左侧新增 EN / 中文，默认英文；Google subject 对应的偏好存入与 EDM 相同数据库的 `site_user_preferences`。EDM 原有语言选择器也使用同一偏好。Testing 英文分析只生成一次，中文按 `prompts/insights/content-testing-translation.md` 纯翻译，存入 `testing_ai_readout_translations`，按英文源 hash 校验版本。切换语言只读缓存，不发起 AI；日常 refresh 发布英文后补齐中文，已有结果可用 `node scripts/refresh-testing-readouts.mjs --translations-only` 补齐。新迁移已在共享数据库创建表，网站代码仍仅本地，未推送部署。
+
+- 固定的 12 组 Test goal / Hypothesis 同样通过云端纯翻译存入 `testing_ai_readout_translations` 的 `framework:v1` 行，所有 reporting periods 共用；只在英文固定框架改变后更新中文，不按日/按时间选择重复翻译。
+- 渠道及素材详情页展示顺序调整为：固定目标/假设 → 原有表现数据/素材 → Summary、Delta 与优化建议。通过 `TestReadout` children 插槽保留服务端数据渲染，AI 缓存缺失不隐藏数据；Overview 的独立 Executive Summary 布局保留。
+- 本地新增 Campaign 默认折叠：标题、已保存 AI Summary 与原有 Performance data 保持可见；目标/假设和详细分析默认收起，展开后保留目标/假设→原有数据→详细分析顺序，底部可收起并回到标题。日期改变默认收起，语言切换保持展开状态。固定底部居中的 Campaign 导航按当前页面真实卡片列出，支持选择、上一项/下一项与返回标题；详情页与 Social 保留完整布局。未新增 AI 生成请求，未推送部署。
+
+- Campaign 卡片默认顺序为 AI Summary → 原始表现数据 → 展开详细分析按钮；删除“测试设定 / 表现数据 / 分析与下一步行动”分区标题及其编号，保留 Test goal、Hypothesis 等内容标签。
+
+- 展示偏好：不在界面显示分析快照时间、数据获取时间、结果生成时间或类似更新时间说明，后续不要主动添加这类文字。报表时间范围、实际投放/发送/发布时间等业务日期保留；后台缓存版本与审计时间字段继续正常保存。

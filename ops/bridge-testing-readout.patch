@@ -1,0 +1,100 @@
+--- a/src/anc_bridge/dashboard/contracts.py
++++ b/src/anc_bridge/dashboard/contracts.py
+@@ -80,7 +80,7 @@
+ 
+ class JobRequest(StrictModel):
+     request_id: Annotated[str, Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$')]
+-    mode: Literal['insights', 'question', 'suggested_questions', 'bilingual_insights']
++    mode: Literal['insights', 'question', 'suggested_questions', 'bilingual_insights', 'testing_readout']
+     language: Literal['en', 'zh', 'zh-CN']
+     period: Period
+     comparison: Period | None
+@@ -210,7 +210,63 @@
+         return self
+ 
+ 
+-RESULT_MODELS: dict[str, type[StrictModel]] = {'insights': Insights, 'question': Answer, 'suggested_questions': Questions, 'bilingual_insights': BilingualInsights}
++class TestingPeriod(Period):
++    label: Literal['Last Week (Tue–Mon)', 'Week-to-date', 'Month-to-date', 'Lifetime snapshot']
++
++
++class TestingDeltaMetric(StrictModel):
++    name: Short
++    unit: Literal['currency', 'count', 'percent', 'percentage_points', 'ratio', 'other']
++    test_value: float | None
++    comparison_value: float | None
++    absolute_delta: float | None
++    relative_delta_pct: float | None
++    percentage_point_delta: float | None
++    interpretation: Text | None
++    source: Text
++
++
++class TestingDelta(StrictModel):
++    comparison_label: Short | None
++    metrics: Annotated[list[TestingDeltaMetric], Field(max_length=8)]
++
++
++class TestingTest(StrictModel):
++    test_id: Short
++    channel: Literal['Google Search', 'Google PMAX', 'Demand Gen', 'Meta', 'Reddit', 'Social Media', 'EDM']
++    campaign_name: Short | None
++    summary: Text | None
++    delta: TestingDelta
++    confidence: Literal['directional', 'sufficient_evidence', 'insufficient_data', 'not_assessable']
++    recommended_action: Text | None
++    asset_insights: Annotated[list[Text], Field(max_length=12)]
++    evidence: Annotated[list[Text], Field(max_length=12)]
++    data_gaps: Annotated[list[Text], Field(max_length=16)]
++
++
++class TestingOverview(StrictModel):
++    executive_summary: Text | None
++    key_findings: Annotated[list[Text], Field(max_length=12)]
++    recommended_actions: Annotated[list[Text], Field(max_length=12)]
++    data_gaps: Annotated[list[Text], Field(max_length=16)]
++
++
++class TestingPeriodReadout(StrictModel):
++    schema_version: Literal['1.0']
++    run_mode: Literal['period_readout']
++    period: TestingPeriod
++    comparison: Period | None
++    overview: TestingOverview
++    tests: Annotated[list[TestingTest], Field(max_length=100)]
++
++
++class TestingReadoutBatch(StrictModel):
++    schema_version: Literal['1.0']
++    run_mode: Literal['period_readout_batch']
++    period_readouts: Annotated[list[TestingPeriodReadout], Field(min_length=1, max_length=4)]
++
++
++RESULT_MODELS: dict[str, type[StrictModel]] = {'insights': Insights, 'question': Answer, 'suggested_questions': Questions, 'bilingual_insights': BilingualInsights, 'testing_readout': TestingReadoutBatch}
+ 
+ 
+ def strict_json(raw):
+--- a/src/anc_bridge/dashboard/prompts.py
++++ b/src/anc_bridge/dashboard/prompts.py
+@@ -3,7 +3,7 @@
+ 
+ 
+ def instructions(mode, insight_prompt=None):
+-    return insight_prompt if mode in ('insights', 'bilingual_insights') and insight_prompt else ''
++    return insight_prompt if mode in ('insights', 'bilingual_insights', 'testing_readout') and insight_prompt else ''
+ 
+ 
+ def input_text(request, insight=None):
+--- a/src/anc_bridge/dashboard/conversations.py
++++ b/src/anc_bridge/dashboard/conversations.py
+@@ -42,8 +42,9 @@
+ 
+     def begin(self, job_id, request):
+         route = request.conversation
+-        key = route_key(route)
++        key = route_key(route) + (':content-testing' if request.mode == 'testing_readout' else '')
+         title = ('Bluevua · Dashboard Ask AI · ' + route.email if route.kind == 'ask'
++                 else 'Bluevua · Content Testing Insights' if request.mode == 'testing_readout'
+                  else 'Bluevua · Dashboard Insights')
+         with self.db:
+             self.db.execute("INSERT OR IGNORE INTO conversations(key,title) VALUES(?,?)", (key, title))

@@ -1,0 +1,76 @@
+# Content Testing AI readouts
+
+Static `framework:v1` and exact-period results live in the same shared Supabase database as Insights (`KLAVIYO_DATABASE_URL`). Local and production read the same records. Deploying code does not generate another answer.
+
+## Static framework
+
+Generate the framework before launching a new campaign or changing testing scope. Use the full-document prompt with exact campaign/test identities and `regenerate_framework=true` in a native testing batch. The first reporting period and Social lifetime record carry explicit `[FRAMEWORK]` evidence. The publisher validates and saves this generated content in `testing_ai_readout_cache`, key `framework:v1`, type `framework`. Channel frameworks are reusable; optional `test_frameworks` overrides a matching test_id/campaign_name. Generated business output is private, not a version-controlled prompt. No hand-written analytical fallback is rendered while loading.
+
+## Daily readouts
+
+`POST /api/testing/readouts/refresh` accepts the configured CRON_SECRET (or AI_WORKER_SECRET when CRON_SECRET is unset). It takes one frozen snapshot for Last Week (Tue–Mon), Week-to-date and Month-to-date using the same loaders/scopes/date resolver as the pages. Meta/Reddit requests and Google cached inventory are reused by their existing caches. Period failures are recorded as missing sources, never zero performance. Social is a separate daily lifetime record with its actual capturedAt and stale status.
+
+One persistent queue job per America/Chicago calendar day uses the dedicated Bridge `testing_readout` mode and a separate persistent `Bluevua · Content Testing Insights` conversation. It has priority -10, below interactive questions. The native structured-output schema returns a `period_readout_batch` containing one JSON object per period. Each result must pass date, identity, coverage, numeric type and delta arithmetic validation before publication. Valid periods are saved independently if another period is invalid. The Bridge was updated on 2026-10-20 with the dedicated request/result contract and a separate persistent conversation. Its 103 dashboard regressions passed; only the Dashboard Bridge process was switched, with consistent SQLite backups and unchanged Slack/shared Codex PIDs. The initial attempt through the ordinary Insights envelope was rejected by the local cache validator and preserved for audit; the dedicated v2 run reuses the same frozen data snapshot.
+
+Testing queue rows have `finalized=true` because their publication is managed by the testing refresh controller, not the deployed worker's EDM finalization. `testing_cache_published_at` on the completed queue result is the durable publication marker. Refresh polling and authenticated cache reads publish any completed unmarked testing results using database operations only. Publication uses the job completion time so an older result cannot overwrite a newer readout for the same period. Existing completed/running jobs are reused; a terminal error requires diagnosis rather than silent duplicate generation.
+
+`GET /api/testing/readouts?key=...` only reads the shared cache and publishes completed queue results. It never requests a new analysis or fetches ad data. The client deduplicates concurrent cache requests, polls missing results every 30 seconds for up to 90 minutes, and cancels on navigation. The initial server render contains the existing metric tables with no non-AI goals/summaries. The first successful cache fetch inserts only generated copy; missing period results are omitted while static AI framework remains visible. Cache state is keyed by exact dates and identity, so changing dates cannot show a previous period's answer.
+
+Run today's job against the local app:
+
+```sh
+node scripts/refresh-testing-readouts.mjs
+```
+
+For production, deploy the local code first, then install and enable `ops/emw3-testing-readouts.service` and `.timer`. The new timer is **09:15 UTC daily** (04:15 Chicago during daylight saving time, 03:15 during standard time). It does not change the existing EDM 07:45 UTC timer. The script polls until results are published and exits nonzero on failure. The timer is not installed by creating these files locally.
+
+```sh
+sudo install -m 644 ops/emw3-testing-readouts.service /etc/systemd/system/
+sudo install -m 644 ops/emw3-testing-readouts.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now emw3-testing-readouts.timer
+```
+
+Custom date ranges reuse static framework only unless an exact supported-period cache exists. A daily Last Week refresh can incorporate attribution backfill; past date-range records remain saved.
+
+## Full-document, ad-first generation (v3)
+
+The complete eight-tab source is versioned in `prompts/insights/content-testing-source.md`, alongside a 60-group coverage checklist. The prompt supplies both, not a shortened replacement. Every required group must have a substantive answer or an explicit evidence gap. PMax summaries are validated at 50–70 English words; every test requires an optimization recommendation. Missing inputs are not fabricated to claim coverage.
+
+Meta and Reddit analysis starts with individual selected-period ad performance and only then rolls up supported format/messaging findings. Meta daily history includes historical ads, not only the currently active subset; ratios are recomputed from sums. Delivery maturity comes from positive observed daily activity where available. Period reach is never constructed by adding ad/day reach. EDM input retains module creative source links and the module click numerator separately from whole-email metrics.
+
+The 2026-10-20 v3 run replaces old Testing cache content after a private backup. A full refresh includes generated fixed frameworks in the first-period evidence, validated and saved separately as `framework:v1`. The client displays all analytical sections and evidence on channel pages and only executive synthesis in Overview. Detail pages receive the same campaign identity and exact selected period as their parent. Website changes remain local until separately authorized for deployment. The AI cache itself is shared as previously requested.
+
+Per-turn prompt reliability: the complete source and runtime instructions are also carried inside `analysis_payload.generation_instructions`. A resumed native chat must receive the current prompt on each turn rather than relying only on thread creation instructions. Account currencies are verified via primary account APIs and cached for 24 hours across periods. When all are USD, the requested blended ROAS is the sum of reported paid conversion value divided by total paid spend; attribution overlap limits interpretation, not that calculation. Total Reach follows the approved additive channel definition, with EDM Delivered and no cross-platform deduplication.
+
+The Overview AI scope must match the existing cards: configured Google testing rows, Meta campaign totals and configured Reddit ad rows. The entire Reddit campaigns remain testing, but their extra ad outcomes are channel context, not the selected page's financial totals. `overview_display_totals` supplies the exact deterministic reference. The current v3 result retains all native-generated test objects; its Overview factual amounts were rebound to this card scope without changing the native judgments, actions, deltas or frameworks. Original output and reconciliation provenance are retained. Snapshot times remain stored for audit rather than displayed in the UI.
+
+Local final UI verification observed later source backfill: Last Week's live card was USD 1,392.38 conversion value / USD 2,153.25 spend (ROAS 0.65), versus the frozen analysis snapshot's USD 1,392.38 / USD 2,147.88 (ROAS 0.648). This is a capture-time difference after the scope correction; snapshot times remain stored for audit and the daily analysis is not silently recomputed on every visit.
+
+## Account language and Chinese translations
+
+The account header has an EN / 中文 control immediately before the signed-in name. New accounts default to English. The authenticated PATCH `/api/account/preferences` stores the Google subject's selection in `public.site_user_preferences` in the same database as `ai_insight_cache`. The server seeds the language provider on refresh; EDM's existing language selector uses the same preference.
+
+Testing results are analysed in English once. `prompts/insights/content-testing-translation.md` translates only the human-readable fields of those saved results. Names, reporting dates, identifiers, numeric deltas, and source URLs remain unchanged. Shared Chinese payloads are saved in `public.testing_ai_readout_translations`, keyed by the English cache key, language, and English source hash. A new English result invalidates the old translation. Language switches only read saved results and publish already-completed translation tasks; they never enqueue analysis or translation.
+
+The daily readout refresh also queues missing translations after publishing English analysis. To translate existing saved results without retrieving data or rerunning analysis:
+
+```sh
+node scripts/refresh-testing-readouts.mjs --translations-only
+```
+
+Translation tasks are persistent, idempotent and lower priority than questions. They are chunked to fit the existing Bridge answer contract, validate completeness and preservation of numbers/links, and only publish complete payloads. While a Chinese result is pending, the page keeps the saved English analysis visible with a short Chinese status message. Apply `supabase/migrations/20261020_site_language_and_testing_translations.sql` in the EDM database before deploying the code.
+
+Fixed Test goal / Hypothesis use the same translation path. The 12 generated test frameworks in `framework:v1` are translated and stored under that cache key, independently of period-specific summaries. Every reporting period reuses the fixed Chinese framework. It is translated again only when the English framework payload changes, never when a viewer changes dates or language.
+
+Channel pages and creative detail pages render fixed goal/hypothesis first, then their original performance tables/media, then the saved summary, delta and optimization recommendations. `TestReadout` accepts the existing server-rendered performance as children so one cached request supplies both analysis sections. Missing AI cache never hides performance children. Overview retains its separate executive-summary layout.
+
+Readability: channel readouts use paired goal/hypothesis panels, explicit data boundaries, a separate recommended-action surface, individual delta cells, and dividers before detailed findings and evidence. The Setup / Performance data / Analysis section headings and their numbers are omitted. Campaign cards show AI Summary, then original performance data, then the detailed-analysis toggle. These are presentation-only changes; cached analysis and numeric performance are unchanged.
+
+## Campaign disclosure and navigation
+
+Campaign list cards keep the campaign header, a three-line saved AI Summary, and the original Performance data visible. Only the fixed framework and detailed recommendations/deltas start collapsed for each reporting range. View detailed analysis reveals those sections; a footer control collapses the card and returns to its heading. Changing language preserves the expanded state; a new reporting range starts collapsed. All content reuses existing cached analysis. Creative detail pages and the Social post review retain their full layout.
+
+A fixed Campaign navigator centred at the bottom of the viewport offers a keyboard-accessible picker, previous/next actions, and return-to-heading. It discovers only the campaign cards actually rendered in the current range, tracks the campaign in view, respects reduced motion, and offsets jumps below the sticky page heading. It updates as streamed page content changes. Overview keeps its executive summary and does not expose per-campaign framework or deep creative analysis.
+
+Presentation preference: omit analysis snapshot timestamps, fetch/generation timestamps and similar freshness annotations from the UI. Keep reporting ranges and business dates. Backend timestamps remain available for cache versioning and audit.

@@ -55,12 +55,8 @@ export function SegmentedControl({ className, children, variant = "solid", ref, 
     const measure = () => {
       const selected = el.querySelector<HTMLElement>("[data-selected]");
       if (selected) {
-        setThumb({
-          left: selected.offsetLeft,
-          top: selected.offsetTop,
-          width: selected.offsetWidth,
-          height: selected.offsetHeight,
-        });
+        const next = { left: selected.offsetLeft, top: selected.offsetTop, width: selected.offsetWidth, height: selected.offsetHeight };
+        setThumb(previous => previous && previous.left === next.left && previous.top === next.top && previous.width === next.width && previous.height === next.height ? previous : next);
       }
     };
     measure();

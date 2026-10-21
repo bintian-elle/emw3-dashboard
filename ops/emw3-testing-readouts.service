@@ -1,0 +1,13 @@
+[Unit]
+Description=Generate and publish shared Content Testing AI readouts
+After=network-online.target emw3-ai-queue.service
+Wants=network-online.target emw3-ai-queue.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
+Environment=NODE_ENV=production
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/refresh-testing-readouts.mjs
+TimeoutStartSec=95min
+UMask=0077

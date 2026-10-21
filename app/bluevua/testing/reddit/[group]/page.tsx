@@ -4,6 +4,7 @@ import { TestingPageHeader } from "../../testing-page-header";
 import { TestingBackNavigation } from "../../testing-back-navigation";
 import { RedditContentPerformance } from "../../reddit-content-performance";
 import { getRedditContentTestingData } from "@/lib/testing-reddit";
+import {TestReadout} from "../../test-readout";
 
 export default async function RedditGroupPage({params,searchParams}:{params:Promise<{group:string}>;searchParams:Promise<RedditSearchParams>}) {
   const {group:groupId}=await params;
@@ -14,5 +15,5 @@ export default async function RedditGroupPage({params,searchParams}:{params:Prom
   const campaign=data.campaigns.find(campaign=>campaign.groups.some(group=>group.adGroupId===groupId));
   const group=campaign?.groups.find(group=>group.adGroupId===groupId);
   if(!campaign||!group)notFound();
-  return <><TestingPageHeader section="Reddit" title={group.name} description={campaign.name} redditDateFilter/><TestingBackNavigation platform="Reddit" platformHref="/bluevua/testing/reddit" query={backQuery.toString()}/><p className="mb-4 text-body-regular text-text-secondary">{data.periodLabel} · {data.period.start} – {data.period.end}</p><RedditContentPerformance campaign={{...campaign,groups:[group]}}/></>;
+  return <><TestingPageHeader section="Reddit" title={group.name} description={campaign.name} redditDateFilter/><TestingBackNavigation platform="Reddit" platformHref="/bluevua/testing/reddit" query={backQuery.toString()}/><p className="mb-4 text-body-regular text-text-secondary">{data.periodLabel} · {data.period.start} – {data.period.end}</p><TestReadout standalone channel={campaign.kind==="Awareness"?"reddit-awareness":"reddit-conversion"} testIdentity={campaign.name} period={{label:data.periodLabel,...data.period}}><RedditContentPerformance campaign={{...campaign,groups:[group]}}/></TestReadout></>;
 }

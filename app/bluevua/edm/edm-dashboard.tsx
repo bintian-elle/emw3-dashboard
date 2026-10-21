@@ -1,4 +1,5 @@
 "use client";
+import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 
 import {edmPresets as presets,edmComparisons as comparisons,edmRangeFor as rangeFor,edmCompareRange as compareRange,matchEdmPeriod,matchEdmComparison,swapEdmPeriods,isRelativeComparison} from "@/lib/edm-period-selection";
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
@@ -109,13 +110,14 @@ function InsightList({items,label}:{items:InsightItem[];label:string}){return <d
 function ExecutiveSummary({data}:{data:DashboardData}){
  const candidates=[{label:"Email",current:data.totals.emailRevenue,previous:data.previous.emailRevenue},{label:"SMS",current:data.totals.smsRevenue,previous:data.previous.smsRevenue},{label:"Flows",current:data.totals.flowRevenue,previous:data.previous.flowRevenue},{label:"Campaigns",current:data.totals.campaignRevenue,previous:data.previous.campaignRevenue}].map(item=>({...item,delta:change(item.current,item.previous)})).filter((item):item is typeof item&{delta:number}=>item.delta!==null);
  const largest=candidates.reduce<(typeof candidates)[number]|null>((winner,item)=>!winner||Math.abs(item.delta)>Math.abs(winner.delta)?item:winner,null);
- const [language,setLanguage]=useState<"en"|"zh">("zh"),[insights,setInsights]=useState<InsightResponse|null>(null),[loadingInsights,setLoadingInsights]=useState(true),[insightError,setInsightError]=useState(""),[insightsExpanded,setInsightsExpanded]=useState(false);
+ const {language,setLanguage}=useSiteLanguage();
+ const [insights,setInsights]=useState<InsightResponse|null>(null),[loadingInsights,setLoadingInsights]=useState(true),[insightError,setInsightError]=useState(""),[insightsExpanded,setInsightsExpanded]=useState(false);
  const aiSectionRef=useRef<HTMLDivElement>(null),reduceMotion=useReducedMotion();
  const insightRequest=useRef<AbortController|null>(null);
  const [insightStatus,setInsightStatus]=useState("loading");
  const insightCache=useRef<Record<string,InsightResponse>>({}),clientKey=`${data.range.start}:${data.range.end}:${data.comparison.start}:${data.comparison.end}:${language}`;
  const loadInsights=useCallback(async()=>{insightRequest.current?.abort();const controller=new AbortController();insightRequest.current=controller;setInsightStatus("loading");const cached=insightCache.current[clientKey];if(cached){setInsights(cached);setInsightError("");setLoadingInsights(false);return}setLoadingInsights(true);setInsightError("");setInsights(null);try{const payload=await queuedInsightResponse({mode:"summary",language,range:data.range,comparison:data.comparison,presetLabel:data.presetLabel,comparisonLabel:data.comparisonLabel},controller.signal,setInsightStatus);const normalized=normalizeInsightResponse(payload.insights);insightCache.current[clientKey]=normalized;setInsights(normalized)}catch(error){if(!controller.signal.aborted)setInsightError(error instanceof Error?error.message:"AI insights failed.")}finally{if(!controller.signal.aborted)setLoadingInsights(false)}},[clientKey,data.range,data.comparison,data.presetLabel,data.comparisonLabel,language]);
- useEffect(()=>{void loadInsights();return()=>insightRequest.current?.abort()},[loadInsights]);
+ useEffect(()=>{let cancelled=false;queueMicrotask(()=>{if(!cancelled)void loadInsights()});return()=>{cancelled=true;insightRequest.current?.abort()}},[loadInsights]);
  const focusAiView=()=>window.requestAnimationFrame(()=>aiSectionRef.current?.scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"start"}));
  const collapseInsights=()=>{const section=aiSectionRef.current;if(!section){setInsightsExpanded(false);return}if(reduceMotion){section.scrollIntoView({behavior:"auto",block:"start"});setInsightsExpanded(false);return}let completed=false;let fallback=0;const finish=()=>{if(completed)return;completed=true;window.clearTimeout(fallback);window.removeEventListener("scrollend",finish);setInsightsExpanded(false)};window.addEventListener("scrollend",finish,{once:true});section.scrollIntoView({behavior:"smooth",block:"start"});fallback=window.setTimeout(finish,1200)};
  return <>

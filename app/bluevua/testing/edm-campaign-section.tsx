@@ -3,6 +3,7 @@ import { EmailLightbox } from "@/components/application/media/email-lightbox";
 import { Chip } from "@/components/base/badges/chip";
 import type { EdmTestingData } from "@/lib/testing-edm";
 import { CampaignStatusChip } from "./campaign-status-chip";
+import { TestReadout } from "./test-readout";
 
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -13,7 +14,8 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
   return (
     <section className="mt-8 space-y-6">
       {!data.campaigns.length&&<p className="rounded-3xl border border-border-button-default bg-background-primary-default p-6 text-body-regular text-text-secondary">No confirmed EDM content test matches this reporting period.</p>}
-      {data.campaigns.map((campaign) => (
+      {data.campaigns.map((campaign) => {
+          return (
         <article key={campaign.campaignId} className="overflow-hidden rounded-3xl border border-border-button-default bg-background-primary-default shadow-card">
           <div className="flex flex-col gap-4 border-b border-border-table p-6 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">
@@ -36,6 +38,7 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
               {data.periodLabel} · {date(data.period.start)} – {date(data.period.end)}
             </p>
           </div>
+          <TestReadout channel="edm" testIdentity={campaign.campaignName} period={{label:data.periodLabel,...data.period}}>
           <div>
             {campaign.tests.map((test) => (
               <div key={test.variationId} className="grid gap-5 border-b border-border-table p-5 last:border-0 hover:bg-background-primary-hover lg:grid-cols-[minmax(240px,1.7fr)_minmax(0,4fr)] lg:items-center">
@@ -59,8 +62,10 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
               </div>
             ))}
           </div>
+          </TestReadout>
         </article>
-      ))}
+          );
+      })}
     </section>
   );
 }

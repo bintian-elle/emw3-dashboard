@@ -1,4 +1,7 @@
 import { Suspense } from "react";
+import { currentSiteUser } from "@/lib/current-site-user";
+import { readUserLanguage } from "@/lib/site-user-preferences";
+import { SiteLanguageProvider } from "@/components/application/dashboard/site-language-provider";
 import { AccountHeader } from "@/components/application/dashboard/account-header";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
@@ -19,6 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
-  return <html lang="en" className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><body suppressHydrationWarning><Suspense><AccountHeader/></Suspense>{children}</body></html>;
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const user = await currentSiteUser();
+  const language = user ? await readUserLanguage(user.sub).catch(() => "en" as const) : "en";
+  return <html lang={language === "zh" ? "zh-CN" : "en"} className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><Suspense><AccountHeader/></Suspense>{children}</SiteLanguageProvider></body></html>;
 }

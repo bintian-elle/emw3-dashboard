@@ -21,7 +21,7 @@ type MessageRow={
 type LinkRow={campaign_message_id:string;link_url:string;unique_clicks:string|number};
 type CreativeRow={campaign_message_id:string;image_url:string|null;destination_url:string|null;alt_text:string|null};
 
-export type EdmTest={label:string;hasData:boolean;variationId:string;fromLabel:string;subject:string;previewText:string;html:string;secondModuleClickRate:number|null;openRate:number|null;clickRate:number|null;orders:number;revenue:number;delivered:number;clicks:number|null};
+export type EdmTest={label:string;hasData:boolean;variationId:string;fromLabel:string;subject:string;previewText:string;html:string;moduleContent?:Array<{image_url:string|null;destination_url:string|null;alt_text:string|null}>;moduleClicks?:number|null;moduleLinks?:Array<{url:string;uniqueClicks:number}>;secondModuleClickRate:number|null;openRate:number|null;clickRate:number|null;orders:number;revenue:number;delivered:number;clicks:number|null};
 export type EdmTestCampaign={campaignId:string;campaignName:string;campaignStatus:string;sendDate:string|null;hasData:boolean;tests:EdmTest[]};
 export type EdmTestingData={period:{start:string;end:string};periodLabel:string;campaigns:EdmTestCampaign[];tests:EdmTest[];uniqueRecipients:number|null};
 
@@ -66,7 +66,7 @@ async function campaignTest(campaignId:string,modulePattern:RegExp|undefined,per
       const event=eventMetrics[row.campaign_message_id];
       const {delivered,clicks,opens}=event;
       const moduleClicks=links.rows.filter(link=>link.campaign_message_id===row.campaign_message_id&&modulePattern?.test(link.link_url)).reduce((sum,link)=>sum+n(link.unique_clicks),0);
-      return{label:`Test ${String.fromCharCode(65+index)}`,hasData:true,variationId:row.campaign_message_id,fromLabel:row.from_label||`Variation ${index+1}`,subject:row.subject||"—",previewText:row.preview_text||"",html:previewHtml(creative.rows.filter(item=>item.campaign_message_id===row.campaign_message_id)),secondModuleClickRate:modulePattern?ratio(moduleClicks,delivered):null,openRate:opens==null?null:ratio(opens,delivered),clickRate:clicks==null?null:ratio(clicks,delivered),orders:event.orders,revenue:event.revenue,delivered,clicks};
+      return{label:`Test ${String.fromCharCode(65+index)}`,hasData:true,variationId:row.campaign_message_id,fromLabel:row.from_label||`Variation ${index+1}`,subject:row.subject||"—",previewText:row.preview_text||"",html:previewHtml(creative.rows.filter(item=>item.campaign_message_id===row.campaign_message_id)),moduleContent:creative.rows.filter(item=>item.campaign_message_id===row.campaign_message_id),moduleClicks:modulePattern?moduleClicks:null,moduleLinks:links.rows.filter(link=>link.campaign_message_id===row.campaign_message_id&&modulePattern?.test(link.link_url)).map(link=>({url:link.link_url,uniqueClicks:n(link.unique_clicks)})),secondModuleClickRate:modulePattern?ratio(moduleClicks,delivered):null,openRate:opens==null?null:ratio(opens,delivered),clickRate:clicks==null?null:ratio(clicks,delivered),orders:event.orders,revenue:event.revenue,delivered,clicks};
     });
     const first=messages.rows[0];
     return{campaignId:first.campaign_id,campaignName:first.campaign_name,campaignStatus:first.campaign_status,sendDate:first.send_date,hasData:tests.some(test=>test.hasData),tests};

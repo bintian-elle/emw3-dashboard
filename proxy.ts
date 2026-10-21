@@ -23,8 +23,8 @@ export async function proxy(request: NextRequest) {
   if (crawlerPattern.test(request.headers.get("user-agent") || "")) return blockedResponse();
   if (publicPaths.has(pathname)) return NextResponse.next();
 
-  if (pathname === "/api/klaviyo/insights/refresh") {
-    const cronSecret = process.env.CRON_SECRET?.trim();
+  if (pathname === "/api/klaviyo/insights/refresh" || (pathname === "/api/testing/readouts/refresh" && request.method === "POST")) {
+    const cronSecret = process.env.CRON_SECRET?.trim() || (pathname === "/api/testing/readouts/refresh" ? process.env.AI_WORKER_SECRET?.trim() : undefined);
     if (cronSecret && request.headers.get("authorization") === `Bearer ${cronSecret}`) return NextResponse.next();
   }
 

@@ -36,3 +36,10 @@ export async function getRedditTestingData(input:RedditPeriodInput={},contentTes
 export function getRedditContentTestingData(input:RedditPeriodInput={}) {
  return getRedditTestingData(input,true);
 }
+
+/** Stable account metadata, used only by the background analysis refresh. */
+export async function getRedditTestingCurrency(){
+ const c=await credentials();
+ const result=await reddit<{data:{currency?:string;currency_code?:string}}>(`/ad_accounts/${c.Ad_Account_ID}`);
+ return result.data.currency??result.data.currency_code??null;
+}
