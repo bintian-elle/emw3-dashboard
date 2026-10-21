@@ -74,3 +74,5 @@ Campaign list cards keep the campaign header, a three-line saved AI Summary, and
 A fixed Campaign navigator centred at the bottom of the viewport offers a keyboard-accessible picker, previous/next actions, and return-to-heading. It discovers only the campaign cards actually rendered in the current range, tracks the campaign in view, respects reduced motion, and offsets jumps below the sticky page heading. It updates as streamed page content changes. Overview keeps its executive summary and does not expose per-campaign framework or deep creative analysis.
 
 Presentation preference: omit analysis snapshot timestamps, fetch/generation timestamps and similar freshness annotations from the UI. Keep reporting ranges and business dates. Backend timestamps remain available for cache versioning and audit.
+
+Deployment status (2026-10-20): the website changes are deployed and `emw3-testing-readouts.timer` is enabled in production for 09:15 UTC daily. The earlier local-only/timer-pending statements above describe implementation history. Production uses the existing shared cache and translations; deployment does not request replacement analysis.

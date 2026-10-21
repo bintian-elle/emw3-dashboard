@@ -291,3 +291,10 @@ npm run build
 - Campaign 卡片默认顺序为 AI Summary → 原始表现数据 → 展开详细分析按钮；删除“测试设定 / 表现数据 / 分析与下一步行动”分区标题及其编号，保留 Test goal、Hypothesis 等内容标签。
 
 - 展示偏好：不在界面显示分析快照时间、数据获取时间、结果生成时间或类似更新时间说明，后续不要主动添加这类文字。报表时间范围、实际投放/发送/发布时间等业务日期保留；后台缓存版本与审计时间字段继续正常保存。
+
+### 2026-10-20 发布记录
+
+- 本轮 Testing AI readouts、账号语言偏好、中文翻译缓存及 Campaign 展示/导航已推送并部署（功能提交 `7522c2b`），共享数据库沿用已生成结果，不因部署重新生成。
+- 生产已安装启用 `emw3-testing-readouts.timer`，每天 09:15 UTC 执行；EDM 原有调度保留。
+- 本次生产构建、TypeScript、39 项静态页面生成通过。SSH 非交互 PATH 未包含 PM2，使用 `/home/ubuntu/.local/lib/node_modules/pm2/bin/pm2` 完成重启和 save；以后运行 deploy.sh 时显式添加 `/home/ubuntu/.local/bin` 到 PATH。
+- 生产现有 `ops/emw3-ai-queue.service` 修改与额外 EDM timer 文件已保留。主机当前约 3.8 GiB RAM、12 GiB swap、77 GiB 磁盘；不再套用旧 1.9 GiB/无 swap 的资源记录。
