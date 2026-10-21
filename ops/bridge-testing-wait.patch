@@ -1,0 +1,27 @@
+--- a/src/anc_bridge/dashboard/service.py
++++ b/src/anc_bridge/dashboard/service.py
+@@ -108,10 +108,11 @@
+             insight = None
+             if request.insight_job_id:
+                 insight = json.loads(self.store.get(request.insight_job_id)['result'])
+-            async with asyncio.timeout(self.c.timeout):
++            testing = request.mode == "testing_readout" or request.dashboard_id == "bluevua-testing-translation"
++            async with asyncio.timeout(None if testing else self.c.timeout):
+                 raw = await self.provider.generate(request, insight,
+                     lambda thread, turn: self.record_identity(job_id, thread, turn, bound))
+-            if len(raw.encode()) > 128 * 1024:
++            if len(raw.encode()) > (512 if request.mode == "testing_readout" else 128) * 1024:
+                 raise ValueError('output_too_large')
+             if action and action[0] == 'propose':
+                 proposal = MemoryProposal.model_validate(strict_json(raw))
+--- a/src/anc_bridge/dashboard/provider.py
++++ b/src/anc_bridge/dashboard/provider.py
+@@ -61,7 +61,7 @@
+                         if proposing else input_text(request, insight))
+                 turn = await sdk.dashboard_turn(thread, text,
+                                                 (MemoryProposal if proposing else RESULT_MODELS[request.mode]).model_json_schema(),
+-                                                images=images, effort="medium" if request.mode == "testing_readout" else "xhigh")
++                                                images=images, effort="medium" if (request.mode == "testing_readout" or request.dashboard_id == "bluevua-testing-translation") else "xhigh")
+                 record_identity(thread.id, turn.id)
+                 finals = []
+                 async for event in turn.stream():

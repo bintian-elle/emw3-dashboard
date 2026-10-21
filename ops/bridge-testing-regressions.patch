@@ -1,0 +1,44 @@
+--- a/tests/test_dashboard_testing_readout.py
++++ b/tests/test_dashboard_testing_readout.py
+@@ -58,7 +58,7 @@
+     req=JobRequest.model_validate(payload(mode='testing_readout',conversation={'kind':'insights'}))
+     c.begin('testing-1',req)
+     assert req._native_thread is None
+-    assert req._conversation_title == 'Bluevua · Content Testing Insights'
++    assert req._conversation_title == 'AI Bluevua · Content Testing'
+     c.identity('testing-1','testing-thread','testing-turn');c.finish('testing-1',{},'completed')
+     again=JobRequest.model_validate(payload(mode='testing_readout',conversation={'kind':'insights'}))
+     c.begin('testing-2',again);assert again._native_thread == 'testing-thread'
+@@ -66,3 +66,32 @@
+     edm_again=JobRequest.model_validate(payload(conversation={'kind':'insights'}))
+     c.begin('edm-2',edm_again);assert edm_again._native_thread == 'edm-thread'
+     c.close()
++
++
++def test_daily_batch_accepts_three_periods_and_two_lifetimes():
++    batch=result()
++    template=batch['period_readouts'][0]
++    labels=['Last Week (Tue–Mon)','Week-to-date','Month-to-date','Lifetime (Sep 24, 2026 – Now)','Lifetime snapshot']
++    batch['period_readouts']=[]
++    for label in labels:
++        row=deepcopy(template)
++        row['period']['label']=label
++        batch['period_readouts'].append(row)
++    assert len(TestingReadoutBatch.model_validate(batch).period_readouts)==5
++    batch['period_readouts'].append(deepcopy(template))
++    with pytest.raises(ValidationError): TestingReadoutBatch.model_validate(batch)
++
++
++async def test_testing_waits_for_native_completion_past_ordinary_timeout(client_factory):
++    import asyncio
++    from test_dashboard import payload
++    provider=FakeProvider(result=json.dumps(result()),gate=asyncio.Event())
++    client=await client_factory(provider,timeout=1)
++    response=await client.post('/v1/codex/jobs',json=payload(mode='testing_readout'),headers=AUTH)
++    job=await response.json()
++    await provider.started.wait()
++    await asyncio.sleep(1.1)
++    current=await (await client.get('/v1/codex/jobs/'+job['job_id'],headers=AUTH)).json()
++    assert current['status']=='running'
++    provider.gate.set()
++    assert (await terminal(client,job['job_id']))['status']=='completed'

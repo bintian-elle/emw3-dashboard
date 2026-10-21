@@ -320,3 +320,9 @@ npm run build
 - 后续本地执行 `bash scripts/creative-library/update-from-local.sh`：官方元数据 → 本地网络补齐 YouTube（EC2 会 RequestBlocked）→ 校验增量同步 → 远程抽取/识别。本地辅助环境位于忽略的 `.state/creative-source-sync/venv`；远程单独执行 `bash tools/update_testing_creatives.sh` 也可用，但新 YouTube 素材被云端拦截时需本地补齐。
 - HTTP 条件请求和内容指纹避免重复传输/识别；同一 YouTube ID 也检查来源版本及字幕变化。离线 Whisper 自动转写标为未核对，视频视觉基于抽帧，不冒充连续审片。无变化复跑已验证 `changed: 0`，未产生新视觉调用、抽帧或转写。5 项针对性测试及实际 MarkItDown 转换通过。
 - 当前任务只安装素材工具并保存资料；Dashboard/Prompt 本地修改未推送部署。Testing 分析 Prompt 已补充该私有素材入口，未重跑网站现有分析缓存。
+
+### 2026-10-21 Content Testing v4 release
+
+- Website source `74bd1d4` is pushed to GitHub main and deployed. Shared Testing caches/translation results and old Testing queue jobs were privately backed up on the server before removal; EDM `ai_insight_cache`, account preferences, raw metrics and Ask AI histories were preserved.
+- A new persistent remote Bluevua project chat, `AI Bluevua · Content Testing`, is mapped to the existing isolated Content Testing Bridge route. Native thread ID `01a15fa3-3394-7f91-854a-f821a6def1e1`; current regeneration reuses that chat and the private 160-record creative library.
+- v4 daily input has three standard periods, Reddit Lifetime and Social Lifetime. Bridge supports five records. Testing analysis and its translations use scoped medium reasoning and await native completion; ordinary Dashboard and Slack configuration remains unchanged. Operational patches and exact-turn reconciliation are documented in `docs/testing-ai-readouts.md`.
