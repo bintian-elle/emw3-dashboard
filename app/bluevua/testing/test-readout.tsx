@@ -63,6 +63,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const [expandedOverviewKey,setExpandedOverviewKey] = useState<string|null>(null);
   const showCreativeDetails = channel !== "overview";
   const staticKey = "framework:v1";
+  const socialKey = "period:social-lifetime";
   const periodKey = period ? testingReadoutKey(period) : null;
   const requestKey = [language, staticKey, channel ?? "", periodKey ?? "", testIdentity ?? ""].join("|");
   const [cached, setCached] = useState<{ key: string; records: ReadoutRecords } | null>(null);
@@ -73,10 +74,10 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     const deadline = Date.now() + 90 * 60 * 1000;
     const load = async () => {
       try {
-        const records = await loadCachedReadouts([...(channel === "overview" ? [] : [staticKey]), ...(periodKey ? [periodKey] : [])], language);
+        const records = await loadCachedReadouts([...(channel === "overview" ? [socialKey] : [staticKey]), ...(periodKey ? [periodKey] : [])], language);
         if (cancelled) return;
         setCached({ key: requestKey, records });
-        if (((!periodKey || records[periodKey]) && !Object.values(records).some(record => record._translation_pending)) || Date.now() >= deadline) return;
+        if (((!periodKey || records[periodKey]) && (channel !== "overview" || records[socialKey]) && !Object.values(records).some(record => record._translation_pending)) || Date.now() >= deadline) return;
       } catch { if (cancelled) return; }
       if (Date.now() < deadline) timer = setTimeout(() => { void load(); }, 30000);
     };
@@ -91,6 +92,9 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const test = periodResult?.tests?.find(item => item.test_id === testIdentity || item.campaign_name === testIdentity);
   const summary = test?.summary || (testIdentity === "overview" ? periodResult?.overview?.executive_summary : null);
   const overview = testIdentity === "overview" ? periodResult?.overview : undefined;
+  const socialSummary = channel === "overview" ? records?.[socialKey]?.tests?.find(item => item.test_id === "social-selected-posts")?.summary : null;
+  const edmBrief = overview ? periodResult?.tests?.filter(item => item.channel === "EDM" && item.summary).map(item => `EDM: ${item.summary}`) ?? [] : [];
+  const socialEdmBrief = socialSummary ? [...edmBrief, `${t("Social Media · Lifetime", "社交媒体 · 全周期")}: ${socialSummary}`] : edmBrief;
   const deltas = test ? formatDeltas(test) : [];
   // All analytical copy comes from a successful saved AI result. Missing cache
   // must never briefly expose a hand-written goal, summary or old-period answer.
@@ -119,6 +123,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
         </div>}
         {test?.recommended_action && <div className="mt-4 rounded-2xl border border-border-table bg-background-primary-default p-5"><p className="mb-2 text-body-medium text-text-primary">{t("Recommended next step", "下一步建议")}</p><ReadoutText text={test.recommended_action}/></div>}
         {overview && <div className="mt-4"><ReadoutList title="Optimization priorities" items={overview.recommended_actions} columns/>
+          {socialEdmBrief.length > 0 && <div className="mt-4 border-t border-border-table pt-4"><ReadoutList title="Social Media & EDM" items={socialEdmBrief} columns/></div>}
           <div className="mt-4"><Button variant="secondary" size="small" aria-expanded={expandedOverviewKey===requestKey} aria-controls={overviewDetailsId} trailingIcon={expandedOverviewKey===requestKey?RiArrowUpSLine:RiArrowDownSLine} onClick={()=>setExpandedOverviewKey(previous=>previous===requestKey?null:requestKey)}>{expandedOverviewKey===requestKey?t("Hide supporting insights", "收起详细洞察"):t("View all insights and data coverage", "查看全部洞察与数据覆盖")}</Button></div>
           {expandedOverviewKey===requestKey && <div id={overviewDetailsId} className="mt-4 grid gap-5 rounded-2xl border border-border-table bg-background-secondary-default p-4"><ReadoutList title="Key insights" items={overview.key_findings}/><ReadoutList title="Data coverage" items={overview.data_gaps}/></div>}
         </div>}
@@ -159,7 +164,7 @@ function ReadoutText({text}:{text:string}) {
 }
 function ReadoutList({title,items,columns=false}:{title:string;items?:string[];columns?:boolean}) {
   const { language } = useSiteLanguage();
-  const titles: Record<string,string> = {"Optimization priorities":"优化优先事项","Key insights":"关键洞察","Data coverage":"数据覆盖","Performance analysis":"表现分析","Evidence and sources":"依据与来源"};
+  const titles: Record<string,string> = {"Optimization priorities":"优化优先事项","Social Media & EDM":"社交媒体与 EDM","Key insights":"关键洞察","Data coverage":"数据覆盖","Performance analysis":"表现分析","Evidence and sources":"依据与来源"};
   if(!items?.length)return null;
   return <div><h3 className="text-body-medium text-text-primary">{language === "zh" ? titles[title] ?? title : title}</h3><ul className={cx("mt-3 grid list-disc gap-4 pl-5",columns && "lg:grid-cols-2 lg:gap-x-8")}>{items.map((item,index)=><li key={index} className="text-text-secondary"><ReadoutText text={item}/></li>)}</ul></div>;
 }

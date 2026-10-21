@@ -45,3 +45,17 @@ test("fixed goals and hypotheses translate once without changing campaign identi
   assert.equal(translated.test_frameworks[0].hypothesis.basis, "documented");
   assert.equal(translated.test_frameworks[0].test_id, "EM-Search-Test");
 });
+
+test("English number words may become equivalent Chinese numerals", () => {
+  const source = ["One click; zero deliveries.", "Seven shares on the first observed day."];
+  const result = { answer_markdown: 'Translation completed.\n<translation-json>{"s0":"1 次点击；0 次送达。","s1":"第 1 个观测日有 7 次分享。"}</translation-json>' };
+  assert.equal(decodeReadoutTranslation(result, source).size, 2);
+});
+
+test("number-word support still rejects changed values, invented repetitions and URL-derived numbers", () => {
+  const check = (source: string, translated: string) => decodeReadoutTranslation({ answer_markdown: `Translation completed.\n<translation-json>${JSON.stringify({ s0: translated })}</translation-json>` }, [source]);
+  assert.throws(() => check("One click; spend $10.", "2 次点击；花费 $10。"));
+  assert.throws(() => check("One click; spend $10.", "1 次点击；花费 $11。"));
+  assert.throws(() => check("One click.", "1 次点击，另有 1 次点击。"));
+  assert.throws(() => check("Link https://example.com/one", "1 次 https://example.com/one"));
+});
