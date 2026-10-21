@@ -1,10 +1,14 @@
 export class TestingReadoutValidationError extends Error {}
 
-export type ReadoutPeriod = { label: string; start: string; end: string };
+export type ReadoutPeriod = { label: string; start: string; end: string; concludedTestId?: string };
 export const readoutPeriodSlugs: Record<string, string> = {
   "Last Week (Tue–Mon)": "last-week-tue-mon", "Week-to-date": "week-to-date", "Month-to-date": "month-to-date", "Lifetime snapshot": "social-lifetime",
 };
 export function testingReadoutKey(period: ReadoutPeriod) {
+  if (period.concludedTestId) {
+    if (!/^[a-z0-9-]+$/.test(period.concludedTestId)) throw new Error("Invalid concluded test ID");
+    return `period:concluded:${period.concludedTestId}`;
+  }
   if (period.label === "Lifetime (Sep 24, 2026 – Now)") return "period:reddit-lifetime";
   if (period.label === "Lifetime snapshot") return "period:social-lifetime";
   const slug = readoutPeriodSlugs[period.label];
@@ -69,7 +73,7 @@ export function decodeTestingReadouts(result: unknown, expected: ReadoutPeriod[]
         }
       }
       if (seen.size !== identities[key]?.length) throw new Error(`Incomplete test coverage for ${period.label}.`);
-      records.set(key, payload as CachedPeriodReadout);
+      records.set(key, { ...payload, period } as CachedPeriodReadout);
     } catch (error) { errors.push(error instanceof Error ? error.message : "Invalid testing result."); }
   }
   for (const period of expected) if (!records.has(testingReadoutKey(period)!)) errors.push(`Missing ${period.label} (${period.start}–${period.end}).`);

@@ -1,4 +1,5 @@
 import "server-only";
+import { refreshConcludedTestingReadouts } from "@/lib/testing-readout-concluded";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -72,6 +73,7 @@ async function snapshot(preset: "lastWeek" | "wtd" | "mtd") {
 
 export async function refreshTestingReadouts() {
   await publishCompletedTestingReadouts();
+  const concluded = await refreshConcludedTestingReadouts().catch(error => ({ pending: false, status: "concluded_failed", error: error instanceof Error ? error.message : "Concluded analysis unavailable" }));
   const today = day(), id = `testing-readouts:${today}:${promptVersion}`;
   // Serialize snapshot creation across local/production refresh callers without holding a transaction.
   const client = await pool.connect();
@@ -135,5 +137,5 @@ export async function refreshTestingReadouts() {
   if (job.status !== "completed") return { pending: true, status: job.status, jobId: id };
   await publishTestingReadoutJob(job);
   const supplied = (job.body.analysis_payload as { periods: Array<{ period: Parameters<typeof testingReadoutKey>[0] }> }).periods;
-  return { pending: false, jobId: id, saved: supplied.map(item => testingReadoutKey(item.period)) };
+  return { pending: concluded.pending, status: concluded.status, concluded, jobId: id, saved: supplied.map(item => testingReadoutKey(item.period)) };
 }

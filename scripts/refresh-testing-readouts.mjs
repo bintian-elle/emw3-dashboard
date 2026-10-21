@@ -10,7 +10,7 @@ let lastStatus, transportFailures = 0;
 while (Date.now() < deadline) {
   let response, payload;
   try {
-    response = await fetch(endpoint, { method: 'POST', headers: { authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ translationsOnly: process.argv.includes('--translations-only') }), signal: AbortSignal.timeout(240000) });
+    response = await fetch(endpoint, { method: 'POST', headers: { authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ translationsOnly: process.argv.includes('--translations-only'), concludedOnly: process.argv.includes('--concluded-only') }), signal: AbortSignal.timeout(240000) });
     const text = await response.text();
     try { payload = JSON.parse(text); } catch { throw new Error(`Testing refresh returned a non-JSON response (HTTP ${response.status}).`); }
   } catch (error) {

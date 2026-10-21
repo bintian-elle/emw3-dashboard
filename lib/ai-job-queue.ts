@@ -21,7 +21,7 @@ export async function readTestingReadoutCache(keys:string[]){
  return result.rows;
 }
 export async function writeTestingReadoutCache(input:Omit<TestingReadoutCacheRecord,"generated_at"|"updated_at">,sourceGeneratedAt?:string|Date){
- await pool.query(`insert into testing_ai_readout_cache(cache_key,readout_type,period_label,period_start,period_end,comparison_label,comparison_start,comparison_end,prompt_version,payload,generated_at) values($1,$2,$3,$4::date,$5::date,$6,$7::date,$8::date,$9,$10::jsonb,coalesce($11::timestamptz,now())) on conflict(cache_key) do update set readout_type=excluded.readout_type,period_label=excluded.period_label,period_start=excluded.period_start,period_end=excluded.period_end,comparison_label=excluded.comparison_label,comparison_start=excluded.comparison_start,comparison_end=excluded.comparison_end,prompt_version=excluded.prompt_version,payload=excluded.payload,generated_at=excluded.generated_at,updated_at=now() where testing_ai_readout_cache.generated_at<=excluded.generated_at`,[input.cache_key,input.readout_type,input.period_label,input.period_start,input.period_end,input.comparison_label,input.comparison_start,input.comparison_end,input.prompt_version,JSON.stringify(input.payload),sourceGeneratedAt??null]);
+ await pool.query(`insert into testing_ai_readout_cache(cache_key,readout_type,period_label,period_start,period_end,comparison_label,comparison_start,comparison_end,prompt_version,payload,generated_at) values($1,$2,$3,$4::date,$5::date,$6,$7::date,$8::date,$9,$10::jsonb,coalesce($11::timestamptz,now())) on conflict(cache_key) do update set readout_type=excluded.readout_type,period_label=excluded.period_label,period_start=excluded.period_start,period_end=excluded.period_end,comparison_label=excluded.comparison_label,comparison_start=excluded.comparison_start,comparison_end=excluded.comparison_end,prompt_version=excluded.prompt_version,payload=excluded.payload,generated_at=excluded.generated_at,updated_at=now() where testing_ai_readout_cache.cache_key not like 'period:concluded:%' and testing_ai_readout_cache.generated_at<=excluded.generated_at`,[input.cache_key,input.readout_type,input.period_label,input.period_start,input.period_end,input.comparison_label,input.comparison_start,input.comparison_end,input.prompt_version,JSON.stringify(input.payload),sourceGeneratedAt??null]);
 }
 export async function existingInsightContext(input:{language?:string;range:{start:string;end:string};comparison:{start:string;end:string}}){
  const legacy=`summary:${input.language||'en'}:${input.range.start}:${input.range.end}:${input.comparison.start}:${input.comparison.end}`;
@@ -30,7 +30,7 @@ export async function existingInsightContext(input:{language?:string;range:{star
 }
 
 export async function completedTestingReadoutJobs(){
- const result=await pool.query<QueuedJob>(`select * from ai_job_queue where status='completed' and body->>'dashboard_id'='bluevua-content-testing' and result->>'testing_cache_published_at' is null and result->>'testing_cache_validation_error' is null order by created_at limit 5`);
+ const result=await pool.query<QueuedJob>(`select * from ai_job_queue where status='completed' and body->>'dashboard_id' in ('bluevua-content-testing','bluevua-content-testing-concluded') and result->>'testing_cache_published_at' is null and result->>'testing_cache_validation_error' is null order by created_at limit 5`);
  return result.rows;
 }
 export async function markTestingReadoutPublished(id:string){

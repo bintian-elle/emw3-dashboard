@@ -1,10 +1,12 @@
 "use client";
 
+import AskAIButton from "@/components/application/ai/ask-ai-button";
+import { useTestingAiScope } from "./testing-ai";
 import { scrollToCampaign } from "./campaign-navigator";
 import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 import type { SiteLanguage } from "@/lib/site-language";
 import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
-import { RiArrowDownSLine, RiArrowUpSLine } from "@remixicon/react";
+import { RiSparkling2Line, RiArrowDownSLine, RiArrowUpSLine } from "@remixicon/react";
 import { Button } from "@/components/base/buttons/button";
 import { usePathname } from "next/navigation";
 import { Chip } from "@/components/base/badges/chip";
@@ -21,11 +23,12 @@ const clientHydration = () => true;
 const serverHydration = () => false;
 const channelNames: Record<TestingFrameworkKey, string> = { overview: "Overview", "google-search": "Google Search", "google-pmax": "Google PMAX", "google-demand-gen": "Demand Gen", meta: "Meta", "reddit-awareness": "Reddit", "reddit-conversion": "Reddit", social: "Social Media", edm: "EDM" };
 function loadCachedReadouts(keys: string[], language: SiteLanguage) {
-  const cacheKey = `${language}:${[...keys].sort().join("|")}`;
+  const uniqueKeys = [...new Set(keys)];
+  const cacheKey = `${language}:${[...uniqueKeys].sort().join("|")}`;
   const existing = pendingLoads.get(cacheKey);
   if (existing && existing.expires > Date.now()) return existing.request;
   const query = new URLSearchParams({ language });
-  keys.forEach(key => query.append("key", key));
+  uniqueKeys.forEach(key => query.append("key", key));
   const request = fetch(`/api/testing/readouts?${query}`, { cache: "no-store" }).then(async response => {
     if (!response.ok) throw new Error("Cached readouts unavailable");
     const result = await response.json() as { records?: Array<{ cache_key: string; payload: CachedPayload }> };
@@ -47,6 +50,7 @@ function formatDeltas(test: CachedTestReadout): ReadoutMetric[] {
 export function TestReadout({ channel, testIdentity, period, standalone = false, children }: {
   channel?: TestingFrameworkKey; testIdentity?: string; period?: ReadoutPeriod | null; standalone?: boolean; children?: ReactNode;
 }) {
+  const chat=useTestingAiScope(channel,testIdentity,period);
   const hydrated = useSyncExternalStore(subscribeHydration, clientHydration, serverHydration);
   const { language } = useSiteLanguage();
   const t = (en: string, zh: string) => language === "zh" ? zh : en;
@@ -55,14 +59,14 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const campaignId = useId();
   const detailsId = useId();
   const frameworkId = useId();
-  const controlledIds = `${frameworkId} ${detailsId}`;
+  const controlledIds = frameworkId;
   const collapsible = Boolean(children && !standalone && testIdentity);
   const campaignKey = [channel ?? "", testIdentity ?? "", period?.start ?? "", period?.end ?? ""].join("|");
   const [expandedCampaignKey, setExpandedCampaignKey] = useState<string | null>(null);
   const expanded = expandedCampaignKey === campaignKey;
   const [expandedOverviewKey,setExpandedOverviewKey] = useState<string|null>(null);
   const showCreativeDetails = channel !== "overview";
-  const staticKey = "framework:v1";
+  const staticKey = period?.concludedTestId ? testingReadoutKey(period)! : "framework:v1";
   const socialKey = "period:social-lifetime";
   const periodKey = period ? testingReadoutKey(period) : null;
   const requestKey = [language, staticKey, channel ?? "", periodKey ?? "", testIdentity ?? ""].join("|");
@@ -83,7 +87,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     };
     void load();
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [requestKey, periodKey, channel, pathname, language]);
+  }, [requestKey, periodKey, staticKey, channel, pathname, language]);
   const records = cached?.key === requestKey ? cached.records : undefined;
   const staticPayload = records?.[staticKey];
   const framework = channel === "overview" ? undefined : staticPayload?.test_frameworks?.find(item => item.test_id === testIdentity || item.campaign_name === testIdentity)
@@ -138,11 +142,11 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
       </div>}
     </section>
   );
-  if (!collapsible) return <>{frameworkSection}{dataSection}{analysisSection}</>;
+  if (!collapsible) return <>{frameworkSection}{dataSection}{channel!=="overview"&&children?<section className="mt-4 rounded-3xl border border-border-table bg-background-primary-default p-5"><div className="flex items-center justify-between gap-3"><p className="text-caption-1-semibold text-status-blue-text">{t("AI Summary","AI 摘要")}</p><AskAIButton disabled={!hydrated} open={chat.isOpen} onClick={chat.open} label={t("Ask AI","询问 AI")}/></div>{summary&&<ReadoutText text={summary}/>}<Button className="mt-3" variant="secondary" size="small" onClick={chat.openSaved}>{t("View detailed analysis","查看详细分析")}</Button></section>:analysisSection}</>;
   const collapse = () => { setExpandedCampaignKey(null); scrollToCampaign(campaignId); };
   return <div id={campaignId} data-campaign-anchor data-campaign-name={testIdentity} data-campaign-channel={channel ? channelNames[channel] : "Google Search"} tabIndex={-1} className="outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring">
     <div className={cx("px-5 py-4", expanded && "border-b border-border-table")}>
-      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-caption-1-semibold text-status-blue-text">{t("AI Summary", "AI 摘要")}</p></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-caption-1-semibold text-status-blue-text">{t("AI Summary", "AI 摘要")}</p><AskAIButton disabled={!hydrated} open={chat.isOpen} onClick={chat.open} label={t("Ask about this campaign", "追问此 Campaign")}/></div>
       {summary ? <div className={cx("mt-2", !expanded && "line-clamp-3")}><ReadoutText text={summary}/></div> : <p className="mt-2 text-body-regular text-text-secondary">{cached?.key !== requestKey && channel ? t("Loading saved summary…", "正在读取已保存的摘要…") : t("No saved AI summary for this reporting period.", "此时间区间暂无已保存的 AI 摘要。")}</p>}
       {language === "zh" && periodResult?._translation_pending && <p role="status" className="mt-2 text-caption-1-regular text-text-secondary">中文翻译正在准备，暂显示英文摘要。</p>}
       {language === "zh" && periodResult?._translation_error && <p role="status" className="mt-2 text-caption-1-regular text-text-secondary">中文摘要暂不可用，暂显示英文。</p>}
@@ -150,9 +154,9 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     <div id={frameworkId} hidden={!expanded}>{frameworkSection}</div>
     {dataSection}
     <div className="px-5 py-4">
-      <Button type="button" variant="secondary" size="small" className="min-h-10" disabled={!hydrated} aria-expanded={expanded} aria-controls={controlledIds} trailingIcon={expanded ? RiArrowUpSLine : RiArrowDownSLine} onClick={() => expanded ? collapse() : setExpandedCampaignKey(campaignKey)}>{expanded ? t("Hide details", "收起详情") : t("View detailed analysis", "展开详细分析")}</Button>
+      <Button type="button" variant="secondary" size="small" className="min-h-10" disabled={!hydrated} aria-expanded={expanded} aria-controls={controlledIds} trailingIcon={expanded ? RiArrowUpSLine : RiArrowDownSLine} onClick={() => expanded ? collapse() : setExpandedCampaignKey(campaignKey)}>{expanded ? t("Hide test setup", "收起测试设定") : t("Test goal & hypothesis", "测试目标与假设")}</Button>
     </div>
-    <div id={detailsId} hidden={!expanded}>{analysisSection}{expanded && <div className="border-t border-border-table p-5"><Button type="button" variant="secondary" size="small" aria-controls={controlledIds} aria-expanded={expanded} trailingIcon={RiArrowUpSLine} onClick={collapse}>{t("Hide details", "收起详情")}</Button></div>}</div>
+    <div id={detailsId} className="border-t border-border-table px-5 py-4"><Button type="button" variant="ghost" size="small" leadingIcon={RiSparkling2Line} onClick={chat.openSaved}>{t("View detailed analysis", "查看详细分析")}</Button></div>
   </div>;
 }
 

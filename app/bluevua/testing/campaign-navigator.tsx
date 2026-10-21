@@ -59,7 +59,7 @@ export function CampaignNavigator() {
   const index = Math.max(0, campaigns.findIndex(item => item.id === activeId));
   const current = campaigns[index];
   const jump = (id: string) => { setActiveId(id); scrollToCampaign(id); };
-  return <div className="pointer-events-none fixed inset-x-4 bottom-4 z-40 flex justify-center"><nav aria-label={t("Campaign navigation", "Campaign 导航")} className="pointer-events-auto w-full max-w-96 rounded-2xl border border-border-button-default bg-background-primary-default p-3 shadow-card">
+  return <div style={{right:"calc(var(--testing-chat-offset, 0px) + 1rem)"}} className="pointer-events-none fixed inset-x-4 bottom-4 z-40 flex justify-center"><nav aria-label={t("Campaign navigation", "Campaign 导航")} className="pointer-events-auto w-full max-w-96 rounded-2xl border border-border-button-default bg-background-primary-default p-3 shadow-card">
     <div className="mb-2 flex items-center justify-between gap-3"><p className="text-caption-1-semibold text-text-secondary">{t("Campaigns", "Campaign 导航")} <span className="ms-2 tabular-nums text-text-primary">{index + 1} / {campaigns.length}</span></p><div className="flex gap-1">
       <Button type="button" size="small" variant="ghost" iconOnly leadingIcon={RiArrowLeftSLine} aria-label={t("Previous campaign", "上一个 Campaign")} title={t("Previous campaign", "上一个 Campaign")} disabled={index === 0} onClick={() => jump(campaigns[index - 1].id)}/>
       <Button type="button" size="small" variant="ghost" iconOnly leadingIcon={RiArrowUpLine} aria-label={t("Back to campaign heading", "回到当前 Campaign 标题")} title={t("Back to campaign heading", "回到当前 Campaign 标题")} onClick={() => jump(current.id)}/>

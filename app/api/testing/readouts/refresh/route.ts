@@ -1,3 +1,4 @@
+import { refreshConcludedTestingReadouts } from "@/lib/testing-readout-concluded";
 import { refreshTestingTranslations } from "@/lib/testing-readout-translation";
 import { refreshTestingReadouts } from "@/lib/testing-readout-refresh";
 
@@ -7,7 +8,7 @@ export async function POST(request: Request) {
   if (request.headers.get("authorization") !== `Bearer ${secret}`) return Response.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const input = await request.json().catch(() => ({}));
-    const analysis = input.translationsOnly === true ? null : await refreshTestingReadouts();
+    const analysis = input.translationsOnly === true ? null : input.concludedOnly === true ? await refreshConcludedTestingReadouts() : await refreshTestingReadouts();
     const result = analysis?.pending ? analysis : { ...analysis, ...await refreshTestingTranslations() };
     return Response.json(result, { status: result.pending ? 202 : 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {

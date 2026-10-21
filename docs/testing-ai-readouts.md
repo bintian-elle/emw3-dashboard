@@ -113,3 +113,21 @@ Overview also fetches the shared Social lifetime key in the same cache request a
 Translation validation accepts equivalent notation such as English `one click` becoming Chinese `1 次点击`. All original numerals and URLs remain mandatory; additional digits need a corresponding source number word and may not exceed its occurrence count. URLs do not provide number-word allowances. Regression tests reject changed values, invented repeated digits and URL-derived numbers.
 
 Chinese punctuation can immediately follow a source URL without becoming part of that URL. Translation validation and rendered evidence links handle that boundary; regression checks still reject changed URLs and changed adjacent metrics. All 11 v4 translation chunks passed validation, and all six shared Chinese cache payloads were saved with matching English source hashes (36 test summaries/actions and 12 fixed frameworks).
+
+## Concluded Google Search: one permanent lifetime analysis
+
+`refreshConcludedTestingReadouts()` discovers explicitly configured Google Search concluded tests. Only a `finalized: true` snapshot is eligible: its actual report start/end, treatment/control groups and daily history supply the historical metrics. The existing archived ad text/assets and supporting Drive link provide creative/background evidence. A placement experiment remains a placement experiment.
+
+The full source document, existing Search prompt/checklist and `prompts/insights/content-testing-concluded.md` generate one English lifetime result including its fixed framework. Native `Lifetime snapshot` is a transport label; controller-owned `concludedTestId` maps it to `period:concluded:<registry-id>`, never to Social. Goal/hypothesis and analysis live together in this isolated record; global `framework:v1` is untouched. Chinese translation uses the existing source-hashed translation table and includes fixed framework fields.
+
+The queue ID `testing-concluded:<registry-id>:lifetime:v1` is independent of dates/prompt updates and inserted with `ON CONFLICT DO NOTHING`. Completed permanent cache rows are insert-only, including when a publisher replays. Failed jobs require inspection, never automatic resubmission. The dedicated queue dashboard ID `bluevua-content-testing-concluded` prevents an older production publisher from treating this result as Social before the website code is released; mode `testing_readout` still reuses AI Bluevua · Content Testing.
+
+Daily refresh discovers newly finalized tests but skips already saved ones. A failed concluded job does not stop active-channel daily generation. For an explicit one-time run without starting the daily batch:
+
+```sh
+node scripts/refresh-testing-readouts.mjs --concluded-only
+```
+
+This writes the shared EDM Supabase cache for both local and production readers. Reading a page never generates analysis or calls an advertising API. Newly configured tests use unique registry IDs; do not recycle an existing concluded ID for a different experiment. Existing permanent results are only replaced by an explicit, separately authorized maintenance operation.
+
+Permanent concluded rows and their translations/queue provenance must be excluded from any future active Testing cache reset or prompt-version regeneration. A cleanup of daily `period:*` keys must explicitly preserve `period:concluded:*`; no retention policy should expire these records.

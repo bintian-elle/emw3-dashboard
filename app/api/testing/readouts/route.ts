@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   const rawKeys = new URL(request.url).searchParams.getAll("key");
   const keys = [...new Set(rawKeys)].filter((key) =>
-    /^(framework:v\d+|period:social-lifetime|period:reddit-lifetime|period:[a-z-]+:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}(?::\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2})?)$/.test(key),
+    /^(framework:v\d+|period:concluded:[a-z0-9-]+|period:social-lifetime|period:reddit-lifetime|period:[a-z-]+:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}(?::\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2})?)$/.test(key),
   );
   if (!keys.length || keys.length > 8 || keys.length !== rawKeys.length) {
     return NextResponse.json({ error: "Invalid readout cache key." }, { status: 400 });

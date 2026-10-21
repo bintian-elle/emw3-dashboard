@@ -38,3 +38,17 @@ test("Reddit lifetime has a single cache identity and keeps ordinary reporting p
  const decoded=decodeTestingReadouts(envelope(result),[first],{"period:reddit-lifetime":["reddit-test"]},{Reddit:["RD-TEST"]});
  assert.equal(decoded.records.size,1);assert.deepEqual(decoded.errors,[]);
 });
+
+test("concluded lifetime keys isolate individual tests and restore trusted identity metadata", () => {
+ const period={label:"Lifetime snapshot",start:"2026-07-31",end:"2026-09-23",concludedTestId:"brand-experiment"};
+ const key=testingReadoutKey(period)!;
+ assert.equal(key,"period:concluded:brand-experiment");
+ assert.notEqual(key,testingReadoutKey({...period,concludedTestId:"other-experiment"}));
+ assert.notEqual(key,testingReadoutKey({label:period.label,start:period.start,end:period.end}));
+ const nativePeriod={label:period.label,start:period.start,end:period.end};
+ const decoded=decodeTestingReadouts(envelope({...readout,period:nativePeriod}),[period],{[key]:["live-test"]});
+ assert.deepEqual(decoded.errors,[]);
+ assert.equal(decoded.records.get(key)?.period.concludedTestId,"brand-experiment");
+ assert.equal(decodeTestingReadouts(envelope({...readout,period:{...nativePeriod,end:"2026-09-24"}}),[period],{[key]:["live-test"]}).records.size,0);
+ assert.throws(()=>testingReadoutKey({...period,concludedTestId:"../unsafe"}));
+});

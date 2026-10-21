@@ -5,7 +5,7 @@ import { overviewExecutiveSummary } from "@/lib/testing-readout-overview";
 
 export async function publishTestingReadoutJob(job: QueuedJob) {
   if ((job.result as { testing_cache_published_at?: string })?.testing_cache_published_at) return;
-  const input = job.body.analysis_payload as { captured_at?:string; prompt_version?: string; regenerate_framework?: boolean; requirement_ids?: Record<string,string[]>; periods: Array<{ period: ReadoutPeriod; tests: Array<{ test_id: string }> }> };
+  const input = job.body.analysis_payload as { captured_at?:string; prompt_version?: string; concluded_test_id?: string; regenerate_framework?: boolean; requirement_ids?: Record<string,string[]>; periods: Array<{ period: ReadoutPeriod; tests: Array<{ test_id: string }> }> };
   const supplied = input.periods;
   const promptVersion = input.prompt_version ?? "content-testing-v2";
   const identities = Object.fromEntries(supplied.map(item => [testingReadoutKey(item.period)!, item.tests.map(test => test.test_id)]));
@@ -15,10 +15,10 @@ export async function publishTestingReadoutJob(job: QueuedJob) {
   // overwrite a more recently generated result for the same reporting dates.
   for (const [cacheKey, payload] of decoded.records) await writeTestingReadoutCache({
     cache_key: cacheKey, readout_type: "period", period_label: payload.period.label, period_start: payload.period.start, period_end: payload.period.end,
-    comparison_label: null, comparison_start: null, comparison_end: null, prompt_version: promptVersion, payload: { ...payload, ...(payload.overview ? { overview: { ...payload.overview, executive_summary: overviewExecutiveSummary(payload.overview.executive_summary, payload.overview.key_findings) } } : {}), captured_at:input.captured_at??null, generation_job_id: job.id },
+    comparison_label: null, comparison_start: null, comparison_end: null, prompt_version: promptVersion, payload: { ...payload, ...(input.concluded_test_id ? { test_frameworks: generatedFramework(payload.tests) } : {}), ...(payload.overview ? { overview: { ...payload.overview, executive_summary: overviewExecutiveSummary(payload.overview.executive_summary, payload.overview.key_findings) } } : {}), captured_at:input.captured_at??null, generation_job_id: job.id },
   }, job.updated_at);
   if (decoded.errors.length) throw new TestingReadoutValidationError(`Saved ${decoded.records.size} periods; validation: ${decoded.errors.join(" ")}`);
-  if (frameworkTests) await writeTestingReadoutCache({
+  if (frameworkTests && !input.concluded_test_id) await writeTestingReadoutCache({
     cache_key: "framework:v1", readout_type: "framework", period_label: null, period_start: null, period_end: null,
     comparison_label: null, comparison_start: null, comparison_end: null, prompt_version: promptVersion,
     payload: { schema_version: "1.0", test_frameworks: frameworkTests, channel_frameworks: frameworkTests.filter((test,index,all)=>all.findIndex(other=>other.channel===test.channel)===index), source_document: "https://docs.google.com/document/d/1XnlldsNeBzEy4J6c9qzVVnAiaLsEQrHBYpub1NgQuCU/edit", generation_job_id: job.id },
