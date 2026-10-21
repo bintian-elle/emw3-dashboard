@@ -59,3 +59,10 @@ test("number-word support still rejects changed values, invented repetitions and
   assert.throws(() => check("One click.", "1 次点击，另有 1 次点击。"));
   assert.throws(() => check("Link https://example.com/one", "1 次 https://example.com/one"));
 });
+
+test("Chinese punctuation can immediately separate a preserved URL and its metrics", () => {
+  const check = (translated: string) => decodeReadoutTranslation({ answer_markdown: `Translation completed.\n<translation-json>${JSON.stringify({ s0: translated })}</translation-json>` }, ["Source https://example.com/post/: 657 views, 473 reach."]);
+  assert.doesNotThrow(() => check("来源 https://example.com/post/：657 次浏览，触达 473 人。"));
+  assert.throws(() => check("来源 https://example.com/other/：657 次浏览，触达 473 人。"));
+  assert.throws(() => check("来源 https://example.com/post/：658 次浏览，触达 473 人。"));
+});

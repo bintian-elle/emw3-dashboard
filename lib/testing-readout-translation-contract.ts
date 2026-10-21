@@ -43,7 +43,7 @@ export function decodeReadoutTranslation(result: unknown, source: string[]): Map
     // allowing Chinese sentence order to differ from English.
     const months: Record<string, string> = { January:"1",February:"2",March:"3",April:"4",May:"5",June:"6",July:"7",August:"8",September:"9",October:"10",November:"11",December:"12" };
     const chineseMonths: Record<string,string> = {一月:"1",二月:"2",三月:"3",四月:"4",五月:"5",六月:"6",七月:"7",八月:"8",九月:"9",十月:"10",十一月:"11",十二月:"12"};
-    const tokens = (value: string) => (value.replace(/(?<![前后每一二三四五六七八九十])[一二三四五六七八九十]+月/g, month => chineseMonths[month] ?? month).replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/g, month => months[month]).match(/https?:\/\/[^\s)\]>]+|\d+(?:,\d{3})*(?:\.\d+)?/g) ?? []).map(token => token.startsWith("http") ? token.replace(/[.,;:，。；：]+$/, "") : token).sort();
+    const tokens = (value: string) => (value.replace(/(?<![前后每一二三四五六七八九十])[一二三四五六七八九十]+月/g, month => chineseMonths[month] ?? month).replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/g, month => months[month]).match(/https?:\/\/[^\s)\]>，。；：！？、（）「」《》]+|\d+(?:,\d{3})*(?:\.\d+)?/g) ?? []).map(token => token.startsWith("http") ? token.replace(/[.,;:，。；：]+$/, "") : token).sort();
     const remaining = tokens(translated);
     for (const token of tokens(text)) {
       const index = remaining.indexOf(token);
@@ -54,7 +54,7 @@ export function decodeReadoutTranslation(result: unknown, source: string[]): Map
     // Existing numerals/URLs are still mandatory; extra digits require a matching
     // source number word, with the same maximum occurrence count.
     const words: Record<string, string> = { zero:"0",one:"1",two:"2",three:"3",four:"4",five:"5",six:"6",seven:"7",eight:"8",nine:"9",ten:"10",eleven:"11",twelve:"12",thirteen:"13",fourteen:"14",fifteen:"15",sixteen:"16",seventeen:"17",eighteen:"18",nineteen:"19",twenty:"20",first:"1",second:"2",third:"3",fourth:"4",fifth:"5",sixth:"6",seventh:"7",eighth:"8",ninth:"9",tenth:"10",single:"1",both:"2" };
-    const prose = text.replace(/https?:\/\/[^\s)\]>]+/g, "");
+    const prose = text.replace(/https?:\/\/[^\s)\]>，。；：！？、（）「」《》]+/g, "");
     const allowed = (prose.match(new RegExp(`\\b(${Object.keys(words).join("|")})\\b`, "gi")) ?? []).map(word => words[word.toLowerCase()]);
     for (const token of remaining) {
       const index = allowed.indexOf(token);
