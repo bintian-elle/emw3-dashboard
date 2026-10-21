@@ -1,3 +1,4 @@
+import { CampaignName } from "./campaign-name";
 import { RiMailLine } from "@remixicon/react";
 import { EmailLightbox } from "@/components/application/media/email-lightbox";
 import { Chip } from "@/components/base/badges/chip";
@@ -29,7 +30,7 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
                   <span>CAMPAIGN</span>
                   <CampaignStatusChip status={campaign.campaignStatus} /><Chip variant="caption" color={campaign.hasData?"blue":"yellow"}>{campaign.hasData?"Performance available":"Awaiting report"}</Chip>
                 </div>
-                <h2 className="mt-1 break-words text-title-2-semibold text-text-primary">{campaign.campaignName}</h2>
+                <h2 className="mt-1 break-words text-title-2-semibold text-text-primary"><CampaignName name={campaign.campaignName} channel="edm"/></h2>
                 <p className="mt-1 text-body-regular text-text-secondary">A/B message performance</p>
                 {campaign.sendDate&&<p className="mt-2 text-caption-1-regular text-text-tertiary">{campaign.hasData?"Sent":"Scheduled"} · {date(campaign.sendDate)}</p>}
               </div>

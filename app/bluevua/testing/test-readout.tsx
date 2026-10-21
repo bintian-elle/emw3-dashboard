@@ -57,12 +57,11 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const frameworkId = useId();
   const controlledIds = `${frameworkId} ${detailsId}`;
   const collapsible = Boolean(children && !standalone && testIdentity);
-  const embeddedInOverview = pathname === "/bluevua/testing" && channel !== "overview";
   const campaignKey = [channel ?? "", testIdentity ?? "", period?.start ?? "", period?.end ?? ""].join("|");
   const [expandedCampaignKey, setExpandedCampaignKey] = useState<string | null>(null);
   const expanded = expandedCampaignKey === campaignKey;
   const [expandedOverviewKey,setExpandedOverviewKey] = useState<string|null>(null);
-  const showCreativeDetails = pathname !== "/bluevua/testing" && channel !== "overview";
+  const showCreativeDetails = channel !== "overview";
   const staticKey = "framework:v1";
   const periodKey = period ? testingReadoutKey(period) : null;
   const requestKey = [language, staticKey, channel ?? "", periodKey ?? "", testIdentity ?? ""].join("|");
@@ -74,7 +73,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     const deadline = Date.now() + 90 * 60 * 1000;
     const load = async () => {
       try {
-        const records = await loadCachedReadouts([...(channel === "overview" || embeddedInOverview ? [] : [staticKey]), ...(periodKey ? [periodKey] : [])], language);
+        const records = await loadCachedReadouts([...(channel === "overview" ? [] : [staticKey]), ...(periodKey ? [periodKey] : [])], language);
         if (cancelled) return;
         setCached({ key: requestKey, records });
         if (((!periodKey || records[periodKey]) && !Object.values(records).some(record => record._translation_pending)) || Date.now() >= deadline) return;
@@ -83,10 +82,10 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     };
     void load();
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [requestKey, periodKey, channel, pathname, language, embeddedInOverview]);
+  }, [requestKey, periodKey, channel, pathname, language]);
   const records = cached?.key === requestKey ? cached.records : undefined;
   const staticPayload = records?.[staticKey];
-  const framework = channel === "overview" || pathname === "/bluevua/testing" ? undefined : staticPayload?.test_frameworks?.find(item => item.test_id === testIdentity || item.campaign_name === testIdentity)
+  const framework = channel === "overview" ? undefined : staticPayload?.test_frameworks?.find(item => item.test_id === testIdentity || item.campaign_name === testIdentity)
     ?? staticPayload?.channel_frameworks?.find(item => item.channel === (channel ? channelNames[channel] : undefined));
   const periodResult = periodKey ? records?.[periodKey] : undefined;
   const test = periodResult?.tests?.find(item => item.test_id === testIdentity || item.campaign_name === testIdentity);
@@ -109,7 +108,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     </section>
   );
   const analysisSection = (
-    !embeddedInOverview && (summary || (framework && period && !periodKey)) && <section aria-label="Test readout" className={cx("border-t-2 border-border-button-default bg-background-secondary-default/40", standalone && "my-6 overflow-hidden rounded-3xl border bg-background-primary-default")}>
+    (summary || (framework && period && !periodKey)) && <section aria-label="Test readout" className={cx("border-t-2 border-border-button-default bg-background-secondary-default/40", standalone && "my-6 overflow-hidden rounded-3xl border bg-background-primary-default")}>
       {language === "zh" && periodResult?._translation_pending && <p role="status" className="px-5 pt-4 text-caption-1-regular text-text-secondary">中文翻译正在准备，暂显示已保存的英文分析。</p>}
       {language === "zh" && periodResult?._translation_error && <p role="status" className="px-5 pt-4 text-caption-1-regular text-text-secondary">中文翻译暂不可用，暂显示已保存的英文分析。</p>}
       {period && !periodKey && <p className="p-5 text-body-2-regular text-text-secondary">{t("Select Last Week, Week-to-date or Month-to-date to view saved analysis.", "选择上周、本周至今或本月至今，查看已保存的分析。")}</p>}

@@ -298,3 +298,5 @@ npm run build
 - 生产已安装启用 `emw3-testing-readouts.timer`，每天 09:15 UTC 执行；EDM 原有调度保留。
 - 本次生产构建、TypeScript、39 项静态页面生成通过。SSH 非交互 PATH 未包含 PM2，使用 `/home/ubuntu/.local/lib/node_modules/pm2/bin/pm2` 完成重启和 save；以后运行 deploy.sh 时显式添加 `/home/ubuntu/.local/bin` 到 PATH。
 - 生产现有 `ops/emw3-ai-queue.service` 修改与额外 EDM timer 文件已保留。主机当前约 3.8 GiB RAM、12 GiB swap、77 GiB 磁盘；不再套用旧 1.9 GiB/无 swap 的资源记录。
+
+2026-10-21 本地修复：Overview Campaign 卡片展开完整已保存详情（目标/假设、建议、Delta、创意表现、来源及缺口），上下收起按钮保留；独立 Overview Executive Summary 不加目标/假设。Campaign 名称链接保留当前 reporting period，跳转对应渠道并定位该 Campaign。未推送部署。

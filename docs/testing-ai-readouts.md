@@ -76,3 +76,5 @@ A fixed Campaign navigator centred at the bottom of the viewport offers a keyboa
 Presentation preference: omit analysis snapshot timestamps, fetch/generation timestamps and similar freshness annotations from the UI. Keep reporting ranges and business dates. Backend timestamps remain available for cache versioning and audit.
 
 Deployment status (2026-10-20): the website changes are deployed and `emw3-testing-readouts.timer` is enabled in production for 09:15 UTC daily. The earlier local-only/timer-pending statements above describe implementation history. Production uses the existing shared cache and translations; deployment does not request replacement analysis.
+
+2026-10-21 local update: Overview campaign cards now expand the full saved framework and analysis, matching channel cards, while the separate Overview executive synthesis remains unchanged. Both collapse controls remain. Campaign heading links preserve reporting parameters and navigate to the channel page with the requested campaign selected for scrolling.

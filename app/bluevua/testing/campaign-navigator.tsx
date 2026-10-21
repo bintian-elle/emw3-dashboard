@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { RiArrowLeftSLine, RiArrowRightSLine, RiArrowUpLine } from "@remixicon/react";
 import { Button } from "@/components/base/buttons/button";
 import { Select, SelectItem } from "@/components/base/select/select";
@@ -24,6 +24,7 @@ export function scrollToCampaign(id: string) {
 
 export function CampaignNavigator() {
   const pathname = usePathname();
+  const requestedCampaign = useSearchParams().get("campaign");
   const { language } = useSiteLanguage();
   const t = (en: string, zh: string) => language === "zh" ? zh : en;
   const [campaigns, setCampaigns] = useState<CampaignEntry[]>([]);
@@ -32,6 +33,7 @@ export function CampaignNavigator() {
     const main = document.querySelector("[data-testing-content]");
     if (!main) return;
     let entries: CampaignEntry[] = [], scanFrame = 0, scrollFrame = 0;
+    let locatedRequestedCampaign = false;
     const trackPosition = () => {
       const offset = headerOffset();
       const current = entries.find(item => (campaignElement(item.id)?.getBoundingClientRect().bottom ?? -1) > offset) ?? entries.at(-1);
@@ -41,6 +43,8 @@ export function CampaignNavigator() {
       entries = Array.from(main.querySelectorAll<HTMLElement>("[data-campaign-anchor]")).map(element => ({ id: element.id, name: element.dataset.campaignName ?? "", channel: element.dataset.campaignChannel ?? "" }));
       setCampaigns(previous => JSON.stringify(previous) === JSON.stringify(entries) ? previous : entries);
       trackPosition();
+      const requested = entries.find(item => item.name === requestedCampaign);
+      if (requested && !locatedRequestedCampaign) { locatedRequestedCampaign = true; scrollToCampaign(requested.id); }
     };
     const scheduleScan = () => { cancelAnimationFrame(scanFrame); scanFrame = requestAnimationFrame(scan); };
     const onScroll = () => { if (scrollFrame) return; scrollFrame = requestAnimationFrame(() => { scrollFrame = 0; trackPosition(); }); };
@@ -50,7 +54,7 @@ export function CampaignNavigator() {
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     return () => { observer.disconnect(); cancelAnimationFrame(scanFrame); cancelAnimationFrame(scrollFrame); window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); };
-  }, [pathname]);
+  }, [pathname, requestedCampaign]);
   if (!campaigns.length) return null;
   const index = Math.max(0, campaigns.findIndex(item => item.id === activeId));
   const current = campaigns[index];

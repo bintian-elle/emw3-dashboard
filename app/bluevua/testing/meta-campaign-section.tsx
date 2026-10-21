@@ -1,3 +1,4 @@
+import { CampaignName } from "./campaign-name";
 import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import Link from "next/link";
 import { RiGroupLine } from "@remixicon/react";
@@ -23,7 +24,7 @@ export function MetaCampaignSection({data,query=""}:{data:MetaCampaignTest;query
   return <section className="grid gap-6">{data.campaigns.map(campaign=>{
     return <article key={campaign.campaignId} className="overflow-hidden rounded-3xl border border-border-button-default bg-background-primary-default shadow-card">
     <div className="flex flex-col gap-4 border-b border-border-table p-6 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex min-w-0 items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-status-purple-background text-status-purple-text"><RiGroupLine className="size-5" aria-hidden/></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-1.5 text-caption-1-semibold text-text-tertiary"><span>META ·</span><Chip variant="caption" color="purple">STRATEGY</Chip><span>CAMPAIGN</span><CampaignStatusChip status={campaign.effectiveStatus}/></div><h2 className="mt-1 break-words text-title-2-semibold text-text-primary">{campaign.campaignName}</h2><p className="mt-1 text-body-regular text-text-secondary">Campaign strategy by ad group audience</p></div></div>
+      <div className="flex min-w-0 items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-status-purple-background text-status-purple-text"><RiGroupLine className="size-5" aria-hidden/></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-1.5 text-caption-1-semibold text-text-tertiary"><span>META ·</span><Chip variant="caption" color="purple">STRATEGY</Chip><span>CAMPAIGN</span><CampaignStatusChip status={campaign.effectiveStatus}/></div><h2 className="mt-1 break-words text-title-2-semibold text-text-primary"><CampaignName name={campaign.campaignName} channel="meta"/></h2><p className="mt-1 text-body-regular text-text-secondary">Campaign strategy by ad group audience</p></div></div>
       <div className="shrink-0 rounded-xl bg-background-secondary-default px-3 py-2 text-body-medium text-text-secondary">{data.periodLabel} · {displayDate(data.period.start)} – {displayDate(data.period.end)}</div>
     </div>
     <TestReadout channel="meta" testIdentity={campaign.campaignName} period={{label:data.periodLabel,...data.period}}>
