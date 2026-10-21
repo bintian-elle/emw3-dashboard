@@ -5,6 +5,8 @@ export const readoutPeriodSlugs: Record<string, string> = {
   "Last Week (Tue–Mon)": "last-week-tue-mon", "Week-to-date": "week-to-date", "Month-to-date": "month-to-date", "Lifetime snapshot": "social-lifetime",
 };
 export function testingReadoutKey(period: ReadoutPeriod) {
+  if (period.label === "Lifetime (Sep 24, 2026 – Now)") return "period:reddit-lifetime";
+  if (period.label === "Lifetime snapshot") return "period:social-lifetime";
   const slug = readoutPeriodSlugs[period.label];
   return slug ? `period:${slug}:${period.start}:${period.end}` : null;
 }
@@ -32,7 +34,7 @@ export function decodeTestingReadouts(result: unknown, expected: ReadoutPeriod[]
       if (!period) throw new Error("Unexpected reporting dates or label.");
       const key = testingReadoutKey(period)!;
       if (records.has(key)) throw new Error("Duplicate period result.");
-      if(requirements && period.label!=="Lifetime snapshot"){
+      if(requirements && period.label!=="Lifetime snapshot" && period.label!=="Lifetime (Sep 24, 2026 – Now)"){
         if(!object(payload.overview)||typeof payload.overview.executive_summary!=='string'||!Array.isArray(payload.overview.key_findings)||!payload.overview.key_findings.length||!Array.isArray(payload.overview.recommended_actions)||!payload.overview.recommended_actions.length)throw new Error('Overview requires a summary, key insights and optimization recommendations.');
         const text=JSON.stringify(payload.overview);
         for(const id of requirements.Overview??[])if(!text.includes(id))throw new Error(`Missing Overview requirement ${id}`);

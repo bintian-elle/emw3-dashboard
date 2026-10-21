@@ -300,3 +300,23 @@ npm run build
 - 生产现有 `ops/emw3-ai-queue.service` 修改与额外 EDM timer 文件已保留。主机当前约 3.8 GiB RAM、12 GiB swap、77 GiB 磁盘；不再套用旧 1.9 GiB/无 swap 的资源记录。
 
 2026-10-21 本地修复：Overview Campaign 卡片展开完整已保存详情（目标/假设、建议、Delta、创意表现、来源及缺口），上下收起按钮保留；独立 Overview Executive Summary 不加目标/假设。Campaign 名称链接保留当前 reporting period，跳转对应渠道并定位该 Campaign。未推送部署。
+
+2026-10-21 本地 Social 修复：当天 Testing job execution_timeout 导致页面按今天 exact key 查不到已保存分析；Social lifetime 改用最近成功入库的实际日期，普通 period 仍严格匹配，不伪造新日期。已验证完整 Social 分析显示，Published/Format 仅每帖首行保留一次。未推送部署。
+
+2026-10-21 用户确认 Social 不按日期区分：改用唯一 `period:social-lifetime`，日更批次存在该记录就跳过 Social 重新生成。共享数据库已从原成功记录初始化单份英文及已有中文，不重新请求 AI；旧日期记录仅留审计。页面和代码仍仅本地，未推送部署。
+
+2026-10-21 用户纠正：Social 每天仍基于最新累计数据重新生成，更新同一份 `period:social-lifetime` 英文/中文缓存；单份不是停止日更。页面读取不触发生成。Post 合并为单行，左右共享资料垂直居中，Organic/Paid 指标上下排列且无内部横线。
+
+2026-10-21 本地 Reddit 更新：默认选项更名 Lifetime (Sep 24, 2026 – Now)，日更批次增加 Reddit 累计广告分析，覆盖两个 Campaign，以唯一 `period:reddit-lifetime` 更新英文及中文；Last Week/WTD/MTD 原有生成和精确区间缓存保留。13 项相关回归通过，未推送部署。
+- Reddit Lifetime 上线依赖 Bridge 支持新 label 和每批最多 5 份结果；增量修改在 `ops/bridge-reddit-lifetime.patch`，完整初始补丁也同步更新。当前仅准备文件，尚未修改生产 Bridge。
+
+
+### 2026-10-21 远程 Bluevua Testing 素材库
+
+- 用户授权安装在 `/home/ubuntu/work/emw3-anc/bluevua`。独立环境 `.local/markitdown-venv` 已安装 `markitdown[all]` 0.1.8、yt-dlp、FFmpeg、Pillow、faster-whisper 1.2.1；不修改 Dashboard npm 依赖或全局 Codex/Slack 服务。
+- 当前归档 160 份记录（84 文案、48 图片、27 视频、1 仅元数据记录），75 项视觉描述、27 条视频原文件/抽帧、18 份字幕或自动转写，12 个 Campaign 索引。YouTube 13 个原视频，11 条发布字幕，另 2 条 TranscriptsDisabled；未识别出语音的项目明确记录，不编造台词。Meta 的 4 条视频在 Graph 缺 source 时从本期授权广告预览解析取得。
+- 总入口 `.local/creative-library/INDEX.md`；按 Campaign 和平台素材 ID 保存源文案、描述、字幕时间点、抽帧链接、观察及缺口。资料只存私有目录，不进 GitHub。Bluevua README/知识/工作流索引已登记；原始数据与 MD 不等于绩效结论或产品主张批准。
+- 可复现源代码在本仓库 `scripts/creative-library/`。远程工具全部安装在 Bluevua `tools/`；`export_testing_creatives.mjs` 在 Dashboard 工作目录运行，仅在该进程内加载其配置，读取当前官方素材范围并导出私有输入，不输出凭据。当前 Search label、PMAX Asset group、Demand Gen group、Meta Campaign IDs、Reddit Campaign/分组均沿用 Dashboard 配置。
+- 后续本地执行 `bash scripts/creative-library/update-from-local.sh`：官方元数据 → 本地网络补齐 YouTube（EC2 会 RequestBlocked）→ 校验增量同步 → 远程抽取/识别。本地辅助环境位于忽略的 `.state/creative-source-sync/venv`；远程单独执行 `bash tools/update_testing_creatives.sh` 也可用，但新 YouTube 素材被云端拦截时需本地补齐。
+- HTTP 条件请求和内容指纹避免重复传输/识别；同一 YouTube ID 也检查来源版本及字幕变化。离线 Whisper 自动转写标为未核对，视频视觉基于抽帧，不冒充连续审片。无变化复跑已验证 `changed: 0`，未产生新视觉调用、抽帧或转写。5 项针对性测试及实际 MarkItDown 转换通过。
+- 当前任务只安装素材工具并保存资料；Dashboard/Prompt 本地修改未推送部署。Testing 分析 Prompt 已补充该私有素材入口，未重跑网站现有分析缓存。

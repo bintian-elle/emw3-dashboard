@@ -10,6 +10,7 @@ import { getExpandedGoogleTesting, getExpandedGoogleTestingReadoutHistory } from
 import { getMetaCampaignTest, getMetaTestingReadoutHistory } from "@/lib/testing-meta";
 import { getRedditContentTestingData } from "@/lib/testing-reddit";
 import { getEdmTestingData } from "@/lib/testing-edm";
+import { redditSinceStartLabel, redditSinceStartPreset } from "@/lib/reddit-testing-period";
 import { getSocialPerformance } from "@/lib/testing-social";
 import { testingReadoutKey } from "@/lib/testing-readout-contract";
 
@@ -21,7 +22,7 @@ import { publishTestingReadoutJob, publishCompletedTestingReadouts } from "@/lib
 
 const pool = new Pool({ connectionString: process.env.KLAVIYO_DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 12000 });
 const dashboardId = "bluevua-content-testing";
-const promptVersion = "content-testing-v3";
+const promptVersion = "content-testing-v4";
 function day() { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
 // Keep creative text and performance while excluding HTML/media blobs from model input.
 function compact(value: unknown): unknown {
@@ -84,10 +85,13 @@ export async function refreshTestingReadouts() {
       const requirements=JSON.parse(await readFile(path.join(process.cwd(),"prompts/insights/content-testing-requirements.json"),"utf8")) as {channels:Array<{channel:string;requirements:Array<{id:string;requirement:string}>}>};
       const requirementIds=Object.fromEntries(requirements.channels.map(c=>[c.channel,c.requirements.map(r=>r.id)]));
       const [source,prompt]=await Promise.all([readFile(path.join(process.cwd(),"prompts/insights/content-testing-source.md"),"utf8"),readFile(path.join(process.cwd(),"prompts/insights/content-testing.md"),"utf8")]);
-      const fixed=(await readTestingReadoutCache(["framework:v1"]))[0];
+      const cached=await readTestingReadoutCache(["framework:v1","period:social-lifetime"]);
+      const fixed=cached.find(row=>row.cache_key==="framework:v1");
       const regenerateFramework=!fixed || fixed.prompt_version!==promptVersion;
       const periods=[];
       for(const preset of ["lastWeek","wtd","mtd"] as const)periods.push(await snapshot(preset));
+      const redditLifetime=await getRedditContentTestingData({preset:redditSinceStartPreset});
+      periods.push({period:{label:redditSinceStartLabel,...redditLifetime.period},comparison:null,tests:redditLifetime.campaigns.map(campaign=>({test_id:campaign.name,channel:"Reddit",campaign_name:campaign.name,status:campaign.campaignStatus??"unknown",data:compact(campaign)})),data_gaps:[]});
       const social=await getSocialPerformance();
       periods.push({period:{label:"Lifetime snapshot",start:today,end:today},comparison:null,tests:[{test_id:"social-selected-posts",channel:"Social Media",campaign_name:"Selected Instagram posts",status:"active",data:compact(social)}],data_gaps:["Social is a separate lifetime snapshot, not selected-period results.",...(social.stale?["Social snapshot is stale; retain its capturedAt timestamp."]:[])]});
       const [inventory,search,pmaxHistory,demandHistory,metaHistory,currencies]=await Promise.allSettled([googleContentTestingInventory(),readGoogleTestingApiData(),getExpandedGoogleTestingReadoutHistory("pmax"),getExpandedGoogleTestingReadoutHistory("demand-gen"),getMetaTestingReadoutHistory(),testingCurrencyVerification()]);

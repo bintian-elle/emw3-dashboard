@@ -54,7 +54,7 @@ export async function translatedTestingReadouts(records: TestingReadoutCacheReco
   return output;
 }
 export async function refreshTestingTranslations() {
-  const keys = await pool.query<{ cache_key: string }>("select cache_key from testing_ai_readout_cache where cache_key='framework:v1' or generated_at >= now()-interval '2 days' order by cache_key");
+  const keys = await pool.query<{ cache_key: string }>("select cache_key from testing_ai_readout_cache where cache_key in ('framework:v1','period:social-lifetime','period:reddit-lifetime') or generated_at >= now()-interval '2 days' order by cache_key");
   const records = (await readTestingReadoutCache(keys.rows.map(row => row.cache_key))).sort((a,b) => a.cache_key.localeCompare(b.cache_key));
   let pending = false;
   const errors: string[] = [];

@@ -1,0 +1,18 @@
+--- a/src/anc_bridge/sdk.py
++++ b/src/anc_bridge/sdk.py
+@@ -188 +188 @@
+-    async def dashboard_turn(self, thread, text, schema, images=()):
++    async def dashboard_turn(self, thread, text, schema, images=(), effort="xhigh"):
+@@ -195 +195 @@
+-                  'effort': 'xhigh', 'serviceTier': 'default', 'outputSchema': schema}
++                  'effort': effort, 'serviceTier': 'default', 'outputSchema': schema}
+--- a/src/anc_bridge/dashboard/provider.py
++++ b/src/anc_bridge/dashboard/provider.py
+@@ -65 +65 @@
+-                                                images=images)
++                                                images=images, effort="medium" if request.mode == "testing_readout" else "xhigh")
+--- a/src/anc_bridge/dashboard/conversations.py
++++ b/src/anc_bridge/dashboard/conversations.py
+@@ -47 +47 @@
+-                 else 'Bluevua · Content Testing Insights' if request.mode == 'testing_readout'
++                 else 'AI Bluevua · Content Testing' if request.mode == 'testing_readout'

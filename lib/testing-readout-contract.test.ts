@@ -23,3 +23,18 @@ test("rejects impossible percentage change from a zero comparison and incomplete
   assert.equal(decodeTestingReadouts(envelope(bad), [period], identities).records.size, 0);
   assert.equal(decodeTestingReadouts(envelope({ ...readout, tests: [] }), [period], identities).records.size, 0);
 });
+
+// Social analysis is one reusable lifetime record, independent of the day.
+test("Social lifetime cache identity does not change with calendar dates",()=>{
+ assert.equal(testingReadoutKey({label:"Lifetime snapshot",start:"2026-10-20",end:"2026-10-20"}),testingReadoutKey({label:"Lifetime snapshot",start:"2026-10-21",end:"2026-10-21"}));
+});
+
+test("Reddit lifetime has a single cache identity and keeps ordinary reporting periods separate",()=>{
+ const first={label:"Lifetime (Sep 24, 2026 – Now)",start:"2026-09-24",end:"2026-10-20"};
+ assert.equal(testingReadoutKey(first),"period:reddit-lifetime");
+ assert.equal(testingReadoutKey({...first,end:"2026-10-21"}),testingReadoutKey(first));
+ assert.notEqual(testingReadoutKey(period),testingReadoutKey(first));
+ const result={...readout,period:first,tests:[{test_id:"reddit-test",channel:"Reddit",summary:"Lifetime findings",recommended_action:"Continue the matched test",asset_insights:["[RD-TEST] Ad evidence"]}]};
+ const decoded=decodeTestingReadouts(envelope(result),[first],{"period:reddit-lifetime":["reddit-test"]},{Reddit:["RD-TEST"]});
+ assert.equal(decoded.records.size,1);assert.deepEqual(decoded.errors,[]);
+});

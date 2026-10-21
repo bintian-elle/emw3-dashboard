@@ -15,7 +15,7 @@
  
 -RESULT_MODELS: dict[str, type[StrictModel]] = {'insights': Insights, 'question': Answer, 'suggested_questions': Questions, 'bilingual_insights': BilingualInsights}
 +class TestingPeriod(Period):
-+    label: Literal['Last Week (Tue–Mon)', 'Week-to-date', 'Month-to-date', 'Lifetime snapshot']
++    label: Literal['Last Week (Tue–Mon)', 'Week-to-date', 'Month-to-date', 'Lifetime snapshot', 'Lifetime (Sep 24, 2026 – Now)']
 +
 +
 +class TestingDeltaMetric(StrictModel):
@@ -67,7 +67,7 @@
 +class TestingReadoutBatch(StrictModel):
 +    schema_version: Literal['1.0']
 +    run_mode: Literal['period_readout_batch']
-+    period_readouts: Annotated[list[TestingPeriodReadout], Field(min_length=1, max_length=4)]
++    period_readouts: Annotated[list[TestingPeriodReadout], Field(min_length=1, max_length=5)]
 +
 +
 +RESULT_MODELS: dict[str, type[StrictModel]] = {'insights': Insights, 'question': Answer, 'suggested_questions': Questions, 'bilingual_insights': BilingualInsights, 'testing_readout': TestingReadoutBatch}

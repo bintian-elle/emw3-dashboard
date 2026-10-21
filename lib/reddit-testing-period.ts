@@ -1,7 +1,7 @@
 import type { TestingPeriodInput, TestingPeriodPreset } from "@/lib/testing-google";
 
 export const redditSinceStartPreset = "sinceSep24";
-export const redditSinceStartLabel = "Sep 24, 2026 – Now";
+export const redditSinceStartLabel = "Lifetime (Sep 24, 2026 – Now)";
 export type RedditPeriodInput = Omit<TestingPeriodInput, "preset"> & { preset?: TestingPeriodPreset | typeof redditSinceStartPreset };
 export type RedditSearchParams = { period?: string | string[]; start?: string | string[]; end?: string | string[] };
 
