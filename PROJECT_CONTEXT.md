@@ -383,3 +383,5 @@ npm run build
 2026-10-22 范围澄清：用户再次确认此前 Reddit 只展示 testing 广告/广告组的约定。撤销本轮尚未发布的整 Campaign 财务扩展；误用整 Campaign 的 v5:d1c01dd57ea8 任务停止发布并保留审计记录。正式重跑须使用原指定广告范围，同时修复同 ID Campaign 更名导致的漏计。
 
 固定产品约束（用户 2026-10-22 再次确认）：Testing Dashboard 只关注当前配置中的 testing 广告、广告组、asset group 与素材。页面、Overview 与 AI 汇总须同口径，不因它们属于某个 Campaign 而额外纳入 Campaign 内未选择的广告。Concluded Tests 是单独归档的既有例外，保持已冻结 lifetime 结果；Social 仍不计入 Overview。
+
+2026-10-22 用户新增 AI 数据来源约束：远程 AI Bluevua 的绩效数字只能读取 Dashboard 本轮传入的冻结数据（当前周期、广告数据、汇总、已有历史），不得自行调用广告/报表 API 或其他数据库补数，也不得用旧对话数字替代。背景、品牌、测试计划、素材内容等仍可按远程 Bluevua 项目说明从本地资料/外部 API 查阅。缺失绩效需明确缺口，不能混入新快照。
