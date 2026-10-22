@@ -6,7 +6,7 @@ import { scrollToCampaign } from "./campaign-navigator";
 import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 import type { SiteLanguage } from "@/lib/site-language";
 import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
-import { RiSparkling2Line, RiArrowDownSLine, RiArrowUpSLine } from "@remixicon/react";
+import { RiArrowDownSLine, RiArrowUpSLine } from "@remixicon/react";
 import { Button } from "@/components/base/buttons/button";
 import { usePathname } from "next/navigation";
 import { Chip } from "@/components/base/badges/chip";
@@ -59,7 +59,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const campaignId = useId();
   const detailsId = useId();
   const frameworkId = useId();
-  const controlledIds = frameworkId;
+  const controlledIds = `${frameworkId} ${detailsId}`;
   const collapsible = Boolean(children && !standalone && testIdentity);
   const campaignKey = [channel ?? "", testIdentity ?? "", period?.start ?? "", period?.end ?? ""].join("|");
   const [expandedCampaignKey, setExpandedCampaignKey] = useState<string | null>(null);
@@ -142,8 +142,11 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
       </div>}
     </section>
   );
-  if (!collapsible) return <>{frameworkSection}{dataSection}{channel!=="overview"&&children?<section className="mt-4 rounded-3xl border border-border-table bg-background-primary-default p-5"><div className="flex items-center justify-between gap-3"><p className="text-caption-1-semibold text-status-blue-text">{t("AI Summary","AI 摘要")}</p><AskAIButton disabled={!hydrated} open={chat.isOpen} onClick={chat.open} label={t("Ask AI","询问 AI")}/></div>{summary&&<ReadoutText text={summary}/>}<Button className="mt-3" variant="secondary" size="small" onClick={chat.openSaved}>{t("View detailed analysis","查看详细分析")}</Button></section>:analysisSection}</>;
-  const collapse = () => { setExpandedCampaignKey(null); scrollToCampaign(campaignId); };
+  const collapse = () => { setExpandedCampaignKey(null); if (collapsible) scrollToCampaign(campaignId); };
+  const detailsToggle = <Button type="button" variant="secondary" size="small" className="min-h-10" disabled={!hydrated} aria-expanded={expanded} aria-controls={collapsible ? controlledIds : detailsId} trailingIcon={expanded ? RiArrowUpSLine : RiArrowDownSLine} onClick={() => expanded ? collapse() : setExpandedCampaignKey(campaignKey)}>{expanded ? t("Hide details", "收起详情") : t("View detailed analysis", "查看详细分析")}</Button>;
+  const savedAnalysis = analysisSection || <p className="p-5 text-body-regular text-text-secondary">{cached?.key !== requestKey ? t("Loading saved analysis…", "正在读取已保存的分析…") : t("No saved AI analysis for this reporting period.", "此时间区间暂无已保存的 AI 分析。")}</p>;
+  const detailsSection = <div id={detailsId} hidden={!expanded}>{savedAnalysis}{expanded && <div className="border-t border-border-table p-5"><Button type="button" variant="secondary" size="small" aria-controls={collapsible ? controlledIds : detailsId} aria-expanded={expanded} trailingIcon={RiArrowUpSLine} onClick={collapse}>{t("Hide details", "收起详情")}</Button></div>}</div>;
+  if (!collapsible) return <>{frameworkSection}{dataSection}{channel!=="overview"&&children?<section className="mt-4 overflow-hidden rounded-3xl border border-border-table bg-background-primary-default"><div className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><p className="text-caption-1-semibold text-status-blue-text">{t("AI Summary","AI 摘要")}</p><AskAIButton disabled={!hydrated} open={chat.isOpen} onClick={chat.open} label={t("Ask AI","询问 AI")}/></div>{summary&&!expanded&&<ReadoutText text={summary}/>}<div className="mt-3">{detailsToggle}</div></div>{detailsSection}</section>:analysisSection}</>;
   return <div id={campaignId} data-campaign-anchor data-campaign-name={testIdentity} data-campaign-channel={channel ? channelNames[channel] : "Google Search"} tabIndex={-1} className="outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring">
     <div className={cx("px-5 py-4", expanded && "border-b border-border-table")}>
       <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-caption-1-semibold text-status-blue-text">{t("AI Summary", "AI 摘要")}</p><AskAIButton disabled={!hydrated} open={chat.isOpen} onClick={chat.open} label={t("Ask about this campaign", "追问此 Campaign")}/></div>
@@ -153,10 +156,8 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     </div>
     <div id={frameworkId} hidden={!expanded}>{frameworkSection}</div>
     {dataSection}
-    <div className="px-5 py-4">
-      <Button type="button" variant="secondary" size="small" className="min-h-10" disabled={!hydrated} aria-expanded={expanded} aria-controls={controlledIds} trailingIcon={expanded ? RiArrowUpSLine : RiArrowDownSLine} onClick={() => expanded ? collapse() : setExpandedCampaignKey(campaignKey)}>{expanded ? t("Hide test setup", "收起测试设定") : t("Test goal & hypothesis", "测试目标与假设")}</Button>
-    </div>
-    <div id={detailsId} className="border-t border-border-table px-5 py-4"><Button type="button" variant="ghost" size="small" leadingIcon={RiSparkling2Line} onClick={chat.openSaved}>{t("View detailed analysis", "查看详细分析")}</Button></div>
+    <div className="px-5 py-4">{detailsToggle}</div>
+    {detailsSection}
   </div>;
 }
 

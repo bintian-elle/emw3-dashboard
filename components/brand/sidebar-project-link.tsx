@@ -1,7 +1,7 @@
-import { RiArrowRightSLine } from "@remixicon/react";
 import Link from "next/link";
+import Image from "next/image";
 import { ButtonLink } from "@/components/base/buttons/button";
-import { BluevuaMark, Emw3Logo } from "@/components/brand/emw3-logo";
+import { Emw3Logo } from "@/components/brand/emw3-logo";
 
 export function SidebarProjectLink({ reportName }: { reportName?: "Google Dashboard" | "EDM Dashboard" | "Testing" }) {
   return (
@@ -12,15 +12,14 @@ export function SidebarProjectLink({ reportName }: { reportName?: "Google Dashbo
       <ButtonLink
         href="/bluevua"
         variant="secondary"
-        trailingIcon={RiArrowRightSLine}
-        className="h-auto w-full justify-start p-2.5 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:justify-start [&>span]:px-0"
+        className="h-auto w-full justify-center p-3 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:px-0"
         aria-label="Open the Bluevua project homepage"
       >
-        <span className="flex min-w-0 items-center gap-2.5">
-          <BluevuaMark className="size-10 shrink-0 rounded-xl" />
-          <span className="min-w-0 text-left">
-            <span className="block text-body-medium text-text-primary">Bluevua</span>
-            <span className="block truncate text-caption-2-regular text-text-secondary">Project home</span>
+        <span className="flex w-full items-center gap-3">
+          <Image src="/brand/bluevua-logo.svg" alt="Bluevua logo" width={40} height={40} className="size-10 shrink-0 rounded-xl" />
+          <span className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center">
+            <span className="text-headline-medium text-text-primary">Bluevua</span>
+            <span className="text-body-2-medium text-text-secondary">Project Home</span>
           </span>
         </span>
       </ButtonLink>

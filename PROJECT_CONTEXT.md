@@ -354,3 +354,26 @@ npm run build
 - 页头入口与日期筛选居中对齐；Campaign 追问同步使用同款星芒胶囊和 4px 动态描边。
 
 2026-10-21 发布批次包含此前本地的 Concluded Lifetime 展示、独立 Testing Ask AI、Testing/EDM 通用浏览器缓存及入口动效。Reporting period 标签横排在选择框左侧，选择框缩窄至 192px，与 44px Ask AI 按钮对齐。部署沿用服务器私有 env 和 worker 配置，不重新生成或清理已有分析缓存。
+
+### 2026-10-22 — 恢复面板内详细分析（仅本地）
+- Campaign 的 View detailed analysis 恢复原位展开完整缓存分析（目标/假设、下一步建议、Delta、素材表现、依据与数据缺口），上方和底部均可 Hide details，底部收起返回 Campaign。
+- Ask AI / Ask about this campaign 继续只负责打开右侧聊天栏，保留对应 Campaign 上下文。独立渠道页面的分析也在原面板展开。
+- 缓存缺失或读取中在原面板明确显示状态，展开不提交模型请求。类型检查、目标文件 ESLint 和真实本地 Concluded 页面展开/上下收起/独立聊天验证通过；未推送部署。
+
+2026-10-22 本地侧栏清理：移除重复的 Switched to Campaign 提示和 View saved analysis 及对应读取；顶部名称直接反映讨论对象。Compare other campaigns 移到顶部范围栏，比较选择器紧接按钮显示，仅列出其他 Campaign。范围、比较与历史下拉显式提供中英文 placeholder，避免英文环境使用浏览器/RAC 的中文默认文案。类型检查、目标文件 ESLint 及本地浏览器范围切换/比较/英文提示验证通过，未发起模型请求，未推送部署。
+
+2026-10-22 本地 Testing 输入区：发送/停止按钮置于输入框右侧，左侧附件入口支持上传及聚焦输入框时粘贴截图，预览可删除；支持仅发附件，失败恢复问题/附件。EDM 图片压缩与文件读取、服务端格式/大小校验、PDF 文本提取抽为共用模块，两端复用；Testing 仍独立调用 AI Bluevua，附件随原队列转发，历史仅回传名称/类型，浏览器缓存不含附件正文或图片数据。5 项合同测试、实际 PDF 提取与损坏 PDF 拒绝、本地上传/粘贴/移除/模拟发送/失败恢复及真实 API 格式校验通过；未发起模型请求，未推送部署。
+
+2026-10-22 本地 Ask AI 侧栏：标题改为 Ask AI，左侧使用与主导航对应的侧栏收起图标并保留草稿；移除 Scope 按钮，范围下拉常显，英文提示 Or select a discussion scope，中文为“或选择讨论范围”。选项 ID 改为稳定的 channel/Campaign 标识，避免目录异步载入后 React Aria 报 Cannot change the id of an item。输入区域的彩色动态边框包住附件预览、附件按钮、输入框与发送/停止控件，回答期间持续流动；减少动态效果偏好沿用现有支持。类型检查、ESLint、实际浏览器标题/收起/范围/比较和回答中外框动画验证通过，无模型请求，未推送部署。
+
+2026-10-22 本地视觉调整：Ask AI 左上角收起控件改用与 Testing 左导航相同的 BoardUI IconButton，中性色、右向箭头；Project Home 共用卡片移除箭头/图标，Bluevua 与更醒目的 Project Home 文字整体居中。类型检查、目标 ESLint、浏览器左右按钮配色一致/文字居中/聊天交互验证通过，未推送部署。
+
+2026-10-22 本地品牌素材：Project Home 卡片左侧改用 Bluevua 官网 favicon SVG，原样保存 public/brand/bluevua-logo.svg，来源记录于同目录 README；保留居中文本与无箭头样式。浏览器验证本地素材正常加载、位于文字左侧，类型检查与目标 ESLint 通过，未推送部署。
+
+2026-10-22 本地 Ask AI 范围交互：恢复标题星芒；Discuss/讨论对象显示当前 Campaign 和日期，Change discussion 下拉只替换对象。Compare/对比分析由细分界线独立，Add campaign to compare 直接为下拉入口，一次点击显示可选 Campaign；同频道排前，排除当前对象和已添加对象，选中后显示可单独移除标签，不改变当前频道或主 Campaign。切换讨论对象清除原比较列表。修复侧栏延迟聚焦抢占已打开下拉的焦点。类型检查、目标 ESLint 和浏览器一次点击/同频道排序/标签添加移除/对象切换验证通过，无模型请求，未推送部署。
+
+2026-10-22 本地 Ask AI 入口：页面 Ask AI 与 Campaign 追问统一只执行打开/切换讨论对象，侧栏已打开时不再 toggle 收起；重复点击保持打开并保留草稿。收起由顶部箭头/键盘关闭操作处理。类型检查、目标 ESLint 和真实浏览器入口切换/重复点击/草稿保留/箭头收起验证通过，未推送部署。
+
+2026-10-22 本地 Testing 指标排序：共用 metric-sorting.tsx 与纯数值 comparator，Google Search/PMAX/Demand Gen、Meta、Reddit、EDM、Social 的表格及指标卡片可按现有指标排序；Overview/Concluded 复用同组件。点击循环降序→升序→原始顺序，原始数值比较，缺失/非有限值始终最后，重复值稳定，默认顺序与原指标列不变。Social Organic/Paid 各自排序并保持帖子/双组值成组；Reddit 分组及 Google 广告展开预览跟随所属行。初始化前禁用按钮，键盘可操作并标注表头 aria-sort。数值单测、类型检查、目标 ESLint 与跨渠道实际浏览器验证通过；临时固定数据测试页及生成类型已清除，无广告 API/AI 请求，未推送部署。
+
+2026-10-22 本地 EDM Testing 表格：同一 Campaign 的 Test A/B 合并为一张表，六个指标及排序入口仅在共享表头显示一次；邮件缩略图、内容与原数据保留，数值列统一对齐，Module 2 CTR 保持强调，小屏横向滚动。目标 ESLint 与 TypeScript 检查通过，未推送部署。

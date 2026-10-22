@@ -1,3 +1,4 @@
+import {MetricSortScope,MetricSortHeader,MetricSortedRows} from "./metric-sorting";
 import { CampaignName } from "./campaign-name";
 import { RiMailLine } from "@remixicon/react";
 import { EmailLightbox } from "@/components/application/media/email-lightbox";
@@ -40,9 +41,19 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
             </p>
           </div>
           <TestReadout channel="edm" testIdentity={campaign.campaignName} period={{label:data.periodLabel,...data.period}}>
-          <div>
-            {campaign.tests.map((test) => (
-              <div key={test.variationId} className="grid gap-5 border-b border-border-table p-5 last:border-0 hover:bg-background-primary-hover lg:grid-cols-[minmax(240px,1.7fr)_minmax(0,4fr)] lg:items-center">
+          <MetricSortScope>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-5xl table-fixed text-body-2-regular">
+                <colgroup><col className="w-[32%]" />{Array.from({length:6},(_,index)=><col key={index} />)}</colgroup>
+                <thead className="border-b border-border-table bg-background-secondary-default">
+                  <tr>
+                    <th scope="col" className="px-5 py-3 text-left text-caption-1-semibold text-text-tertiary">Email</th>
+                    {["Total Revenue", "#Purchase", "Click Rate", "Module 2 CTR", "Open Rate", "Delivered"].map(metric=><MetricSortHeader key={metric} metric={metric} label={metric} className="px-4 py-3 text-right" buttonClassName={metric==="Module 2 CTR"?"text-status-yellow-text":undefined} />)}
+                  </tr>
+                </thead>
+                <MetricSortedRows as="tbody" rows={campaign.tests.map((test) => ({id:test.variationId,values:test.hasData?{"Total Revenue":test.revenue,"#Purchase":test.orders,"Click Rate":test.clickRate,"Module 2 CTR":test.secondModuleClickRate,"Open Rate":test.openRate,Delivered:test.delivered}:{},content:(
+              <tr key={test.variationId} className="border-b border-border-table last:border-0 hover:bg-background-primary-hover">
+                <td className="p-5 align-middle">
                 <div className="flex min-w-0 items-center gap-4">
                   <EmailLightbox html={test.html} title={`${test.label} · ${test.subject}`} />
                   <div className="min-w-0">
@@ -52,25 +63,22 @@ export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
                     {test.previewText && <p className="mt-1 break-words text-caption-2-regular text-text-tertiary">{test.previewText}</p>}
                   </div>
                 </div>
-                <dl className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
-                  <Metric label="Total Revenue" value={test.hasData?currency.format(test.revenue):"—"} />
-                  <Metric label="#Purchase" value={test.hasData?number.format(test.orders):"—"} />
-                  <Metric label="Click Rate" value={test.clickRate == null ? "—" : percent.format(test.clickRate)} />
-                  <Metric label="Module 2 CTR" value={test.secondModuleClickRate == null ? "—" : percent.format(test.secondModuleClickRate)} emphasized />
-                  <Metric label="Open Rate" value={test.openRate == null ? "—" : percent.format(test.openRate)} />
-                  <Metric label="Delivered" value={test.hasData?number.format(test.delivered):"—"} />
-                </dl>
-              </div>
-            ))}
-          </div>
+                </td>
+                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.hasData?currency.format(test.revenue):"—"}</td>
+                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.hasData?number.format(test.orders):"—"}</td>
+                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.clickRate==null?"—":percent.format(test.clickRate)}</td>
+                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.secondModuleClickRate==null?"—":percent.format(test.secondModuleClickRate)}</td>
+                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.openRate==null?"—":percent.format(test.openRate)}</td>
+                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.hasData?number.format(test.delivered):"—"}</td>
+              </tr>
+            )}))}/>
+              </table>
+            </div>
+          </MetricSortScope>
           </TestReadout>
         </article>
           );
       })}
     </section>
   );
-}
-
-function Metric({ label, value, emphasized = false }: { label: string; value: string; emphasized?: boolean }) {
-  return <div><dt className={emphasized ? "text-caption-1-semibold text-status-yellow-text" : "text-caption-1-semibold text-text-tertiary"}>{label}</dt><dd className="mt-1 text-body-medium tabular-nums text-text-primary">{value}</dd></div>;
 }

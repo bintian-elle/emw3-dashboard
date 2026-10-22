@@ -1,0 +1,3 @@
+import { PDFParse } from "pdf-parse";
+import type { BridgeChatAttachment as BridgeAttachment, RequestAttachment } from "./ai-chat-attachment-contract";
+export async function prepareBridgeAttachments(attachments:RequestAttachment[]):Promise<BridgeAttachment[]>{return Promise.all(attachments.map(async attachment=>{if(attachment.kind!=="pdf")return attachment;const parser=new PDFParse({data:Buffer.from(attachment.data,"base64")});try{const result=await parser.getText();const text=result.text.trim();if(!text)throw new Error(`${attachment.name} does not contain extractable text.`);return{kind:"text" as const,name:attachment.name,mime_type:"text/plain",text:`Extracted from PDF: ${attachment.name}\n\n${text.slice(0,80_000)}`}}finally{await parser.destroy()}}))}

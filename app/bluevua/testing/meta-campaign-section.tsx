@@ -1,3 +1,4 @@
+import {MetricSortScope,MetricSortButton,MetricSortedRows} from "./metric-sorting";
 import { CampaignName } from "./campaign-name";
 import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import Link from "next/link";
@@ -28,9 +29,9 @@ export function MetaCampaignSection({data,query=""}:{data:MetaCampaignTest;query
       <div className="shrink-0 rounded-xl bg-background-secondary-default px-3 py-2 text-body-medium text-text-secondary">{data.periodLabel} · {displayDate(data.period.start)} – {displayDate(data.period.end)}</div>
     </div>
     <TestReadout channel="meta" testIdentity={campaign.campaignName} period={{label:data.periodLabel,...data.period}}>
-    {campaign.adGroups.length?<div>{campaign.adGroups.map(group=>{const cover=group.activeAds[0];const href=`/bluevua/testing/meta/${group.adGroupId}${query?`?${query}`:""}`;return <div key={group.adGroupId} className="grid gap-5 border-b border-border-table p-5 last:border-0 hover:bg-background-primary-hover lg:grid-cols-[minmax(260px,2fr)_minmax(520px,3fr)] lg:items-center">
+    {campaign.adGroups.length?<MetricSortScope><MetricSortedRows rows={campaign.adGroups.map(group=>{const cover=group.activeAds[0];const href=`/bluevua/testing/meta/${group.adGroupId}${query?`?${query}`:""}`;return {id:group.adGroupId,values:Object.fromEntries(metrics.map(item=>[item.key,group[item.key] as number|null])),content:<div key={group.adGroupId} className="grid gap-5 border-b border-border-table p-5 last:border-0 hover:bg-background-primary-hover lg:grid-cols-[minmax(260px,2fr)_minmax(520px,3fr)] lg:items-center">
       <div className="flex min-w-0 items-center gap-4">{cover?.videoUrl?<VideoLightbox src={cover.videoUrl} thumbnailUrl={highResolutionCreativeUrl(cover.thumbnailUrl)} title={cover.name}/>:<ImageLightbox src={highResolutionCreativeUrl(cover?.thumbnailUrl??null)} alt={group.name}/>}<div className="min-w-0"><Link href={href} className="block break-words text-body-medium text-text-primary hover:text-button-ghost-foreground">{group.name}</Link><p className="mt-1 text-caption-2-regular text-text-tertiary">{group.activeAds.length} ads</p></div></div>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-5 lg:grid-cols-6">{metrics.map(item=><div key={item.label} className="min-w-0"><dt className="text-caption-1-semibold text-text-tertiary">{item.label}</dt><dd className="mt-1 text-body-medium tabular-nums text-text-primary">{metric(group[item.key] as number|null,item.format)}</dd></div>)}</dl>
-    </div>})}</div>:<p className="p-6 text-body-regular text-text-secondary">No ad group performance is available for this campaign and period.</p>}
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-5 lg:grid-cols-6">{metrics.map(item=><div key={item.label} className="min-w-0"><dt><MetricSortButton metric={item.key} label={item.label} align="left"/></dt><dd className="mt-1 text-body-medium tabular-nums text-text-primary">{metric(group[item.key] as number|null,item.format)}</dd></div>)}</dl>
+    </div>};})}/></MetricSortScope>:<p className="p-6 text-body-regular text-text-secondary">No ad group performance is available for this campaign and period.</p>}
   </TestReadout></article>})}</section>;
 }
