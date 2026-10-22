@@ -385,3 +385,5 @@ npm run build
 固定产品约束（用户 2026-10-22 再次确认）：Testing Dashboard 只关注当前配置中的 testing 广告、广告组、asset group 与素材。页面、Overview 与 AI 汇总须同口径，不因它们属于某个 Campaign 而额外纳入 Campaign 内未选择的广告。Concluded Tests 是单独归档的既有例外，保持已冻结 lifetime 结果；Social 仍不计入 Overview。
 
 2026-10-22 用户新增 AI 数据来源约束：远程 AI Bluevua 的绩效数字只能读取 Dashboard 本轮传入的冻结数据（当前周期、广告数据、汇总、已有历史），不得自行调用广告/报表 API 或其他数据库补数，也不得用旧对话数字替代。背景、品牌、测试计划、素材内容等仍可按远程 Bluevua 项目说明从本地资料/外部 API 查阅。缺失绩效需明确缺口，不能混入新快照。
+
+2026-10-22 分析名称校验：v5 已生成英文并进入中文纯翻译；headline 与冻结输入相符、编号已移除，但部分摘要仍用裸广告 ID。每日 runner 增加基于本次输入真实广告名的确定性格式整理，翻译全部完成后原子同步英文/中文及 source hash，不改数字/结论/URL/身份/Concluded，不再调用模型。此 Node 脚本无需 Next 构建。

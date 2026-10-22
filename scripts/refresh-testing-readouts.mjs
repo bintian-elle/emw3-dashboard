@@ -1,4 +1,5 @@
 import nextEnv from '@next/env';
+import {normalizeTestingReadoutNames} from './testing-readout-names.mjs';
 nextEnv.loadEnvConfig(process.cwd());
 const secret = process.env.CRON_SECRET?.trim() || process.env.AI_WORKER_SECRET?.trim();
 if (!secret) throw new Error('An internal refresh secret is not configured.');
@@ -21,7 +22,7 @@ while (Date.now() < deadline) {
   }
   transportFailures = 0;
   if (!response.ok) throw new Error(payload.error || `Testing refresh HTTP ${response.status}`);
-  if (!payload.pending) { console.log(JSON.stringify(payload)); if (payload.errors?.length) throw new Error('Some translated readouts failed validation; English analysis remains available.'); process.exit(0); }
+  if (!payload.pending) { if (payload.errors?.length) throw new Error('Some translated readouts failed validation; English analysis remains available.'); await normalizeTestingReadoutNames(payload.jobId); console.log(JSON.stringify(payload)); process.exit(0); }
   if (payload.status !== lastStatus) console.log(JSON.stringify({ status: payload.status, jobId: payload.jobId }));
   lastStatus = payload.status;
   await pause(30000);
