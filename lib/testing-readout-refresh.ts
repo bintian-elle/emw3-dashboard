@@ -2,7 +2,7 @@ import "server-only";
 import { refreshConcludedTestingReadouts } from "@/lib/testing-readout-concluded";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { readAiJob, readTestingReadoutCache } from "@/lib/ai-job-queue";
 import { getGoogleContentTests, testingPeriodLabels } from "@/lib/testing-google";
@@ -23,7 +23,7 @@ import { publishTestingReadoutJob, publishCompletedTestingReadouts } from "@/lib
 
 const pool = new Pool({ connectionString: process.env.KLAVIYO_DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 12000 });
 const dashboardId = "bluevua-content-testing";
-const promptVersion = "content-testing-v4";
+const promptVersion = "content-testing-v5";
 function day() { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
 // Keep creative text and performance while excluding HTML/media blobs from model input.
 function compact(value: unknown): unknown {
@@ -58,6 +58,7 @@ async function snapshot(preset: "lastWeek" | "wtd" | "mtd") {
   if (!tests.length) throw new Error(`No channel performance is available for ${period.label}.`);
   type MetricRow={spend:number;revenue:number;orders:number;impressions:number;clicks:number};
   const channels:Record<string,MetricRow[]>={"Google Search":[],"Google PMAX":[],"Demand Gen":[],Meta:[],Reddit:[]};
+  const edm={revenue:0,orders:0,uniqueClicks:0 as number|null,delivered:0};
   const reachComponents:Record<string,number|null>={Google:null,Meta:null,Reddit:null,EDM:0};
   for(const test of tests){
     const row=test.data as Record<string,unknown>;
@@ -65,16 +66,18 @@ async function snapshot(preset: "lastWeek" | "wtd" | "mtd") {
     if(test.channel==="Google PMAX"||test.channel==="Demand Gen")channels[test.channel].push(...(row.groups as Array<{rows:Array<{metrics:MetricRow}>}>).flatMap(group=>group.rows.map(item=>item.metrics)));
     if(test.channel==="Meta"){channels.Meta.push(row.totals as MetricRow);reachComponents.Meta=(row.totals as {reach:number|null}).reach;}
     if(test.channel==="Reddit"){channels.Reddit.push(...(row.groups as Array<{activeAds:MetricRow[]}>).flatMap(group=>group.activeAds));reachComponents.Reddit=(reachComponents.Reddit??0)+Number(row.reach??0);}
-    if(test.channel==="EDM")reachComponents.EDM=(reachComponents.EDM??0)+(row.tests as Array<{delivered:number}>).reduce((sum,item)=>sum+item.delivered,0);
+    if(test.channel==="EDM")for(const item of row.tests as Array<{revenue:number;orders:number;clicks:number|null;delivered:number}>){edm.revenue+=item.revenue;edm.orders+=item.orders;edm.delivered+=item.delivered;edm.uniqueClicks=edm.uniqueClicks===null||item.clicks===null?null:edm.uniqueClicks+item.clicks;reachComponents.EDM=(reachComponents.EDM??0)+item.delivered;}
     if(test.channel==="Google Search"&&typeof row.reach==="number")reachComponents.Google=(reachComponents.Google??0)+row.reach;
   }
-  return { period, comparison: null, tests, data_gaps: gaps, overview_display_totals:overviewReadoutReference({channels,reachComponents}) };
+  return { period, comparison: null, tests, data_gaps: gaps, overview_display_totals:overviewReadoutReference({channels,reachComponents,edm}) };
 }
 
 export async function refreshTestingReadouts() {
   await publishCompletedTestingReadouts();
   const concluded = await refreshConcludedTestingReadouts().catch(error => ({ pending: false, status: "concluded_failed", error: error instanceof Error ? error.message : "Concluded analysis unavailable" }));
-  const today = day(), id = `testing-readouts:${today}:${promptVersion}`;
+  const [source,prompt]=await Promise.all([readFile(path.join(process.cwd(),"prompts/insights/content-testing-source.md"),"utf8"),readFile(path.join(process.cwd(),"prompts/insights/content-testing.md"),"utf8")]);
+  const revision=createHash("sha256").update(source).update(prompt).digest("hex").slice(0,12);
+  const today = day(), id = `testing-readouts:${today}:${promptVersion}:${revision}`;
   // Serialize snapshot creation across local/production refresh callers without holding a transaction.
   const client = await pool.connect();
   let locked = false;
@@ -86,7 +89,6 @@ export async function refreshTestingReadouts() {
     if (!exists.rowCount) {
       const requirements=JSON.parse(await readFile(path.join(process.cwd(),"prompts/insights/content-testing-requirements.json"),"utf8")) as {channels:Array<{channel:string;requirements:Array<{id:string;requirement:string}>}>};
       const requirementIds=Object.fromEntries(requirements.channels.map(c=>[c.channel,c.requirements.map(r=>r.id)]));
-      const [source,prompt]=await Promise.all([readFile(path.join(process.cwd(),"prompts/insights/content-testing-source.md"),"utf8"),readFile(path.join(process.cwd(),"prompts/insights/content-testing.md"),"utf8")]);
       const cached=await readTestingReadoutCache(["framework:v1","period:social-lifetime"]);
       const fixed=cached.find(row=>row.cache_key==="framework:v1");
       const regenerateFramework=!fixed || fixed.prompt_version!==promptVersion;
@@ -106,7 +108,7 @@ export async function refreshTestingReadouts() {
         let history=histories[String(test.test_id)];
         if(test.channel==="Meta"&&metaHistory.status==="fulfilled"){const ids=new Set((data.adGroups as Array<{activeAds:Array<{adId:string}>}>).flatMap(g=>g.activeAds.map(a=>a.adId)));history=metaHistory.value.filter(r=>ids.has(r.adId!));}
         test.delivery_window=history?deliveryWindow(history,period.period):{first_observed_delivery:null,active_days_in_period:null,launch_basis:test.channel==="EDM"?`Actual send date: ${data.sendDate}`:"Verified first-delivery date unavailable; do not infer from campaign name or compare raw volumes as equal-duration tests."};
-        test.scope_policy=(test.channel==="Meta"||test.channel==="Reddit")?"Entire selected campaign is testing. Campaign totals are valid; detail may cover only selected creatives. Do not attribute unrepresented conversions to supplied ads/angles.":"Selected configured testing entities only.";
+        test.scope_policy=test.channel==="Reddit"?"Configured testing ads in configured ad groups only. Campaign totals are background; they do not expand Overview or creative financial scope.":test.channel==="Meta"?"The selected Meta campaign is testing; use its displayed snapshot, with creative attribution supported by ad rows.":"Selected configured testing entities only.";
         if(test.channel==="Meta"&&metaHistory.status==="fulfilled"){
           const all=metaHistory.value;
           const details=(data.adGroups as Array<{activeAds:Array<{adId:string}>}>).flatMap(g=>g.activeAds);
@@ -122,7 +124,7 @@ export async function refreshTestingReadouts() {
         preset_label: "Daily content testing batch", comparison_label: "Documented variants only",
         conversation: { project: "bluevua", kind: "insights" },
         insight_prompt: `${source}\n\n---\n${prompt}\n\nRUN_MODE=period_readout_batch. REGENERATE_FRAMEWORK=${regenerateFramework}. The exact coverage checklist and data are in analysis_payload. Return all supplied periods in the native schema.`,
-        analysis_payload: { generation_instructions:`${source}\n\n${prompt}`, currency_verification:currencies.status==="fulfilled"?currencies.value:{unavailable:true}, run_mode:"period_readout_batch", prompt_version:promptVersion, source_document:requirements, requirement_ids:requirementIds, regenerate_framework:regenerateFramework, static_framework:regenerateFramework?null:fixed?.payload, generated_for:today, captured_at:new Date().toISOString(), periods, creative_catalog:creativeCatalog, approved_scope:{meta_and_reddit_campaigns_are_entirely_testing:true,social_in_overview_numeric_totals:false}, metric_contract:{overview_reach:"Sum available Google campaign reach, Meta campaign reach, Reddit campaign reach and EDM Delivered, without cross-platform deduplication. Report missing components but do not withhold the available-component total because of overlap. Never sum daily/ad reach into unique people.",rate_inputs:"decimal fractions",rate_output:"percent units",currency:"Use verified account currencies. When all are USD, compute descriptive paid ROAS=sum reported paid conversion value/sum spend; attribution overlap limits interpretation, not this arithmetic",google:"testing entities only",meta_reddit:"testing campaign totals valid; angle attribution requires detail coverage",edm:"event-time metrics for the confirmed September 18 test; module numerator/denominator distinct from whole email"} },
+        analysis_payload: { generation_instructions:`${source}\n\n${prompt}`, currency_verification:currencies.status==="fulfilled"?currencies.value:{unavailable:true}, run_mode:"period_readout_batch", prompt_version:promptVersion, source_document:requirements, requirement_ids:requirementIds, regenerate_framework:regenerateFramework, static_framework:regenerateFramework?null:fixed?.payload, generated_for:today, captured_at:new Date().toISOString(), periods, creative_catalog:creativeCatalog, approved_scope:{testing_entities_only:true,reddit_overview_uses_configured_ads:true,social_in_overview_numeric_totals:false}, metric_contract:{overview_reach:"Sum available Google campaign reach, Meta campaign reach, Reddit campaign reach and EDM Delivered, without cross-platform deduplication. Report missing components but do not withhold the available-component total because of overlap. Never sum daily/ad reach into unique people.",rate_inputs:"decimal fractions",rate_output:"percent units",currency:"Use verified account currencies. When all are USD, compute descriptive paid ROAS=sum reported paid conversion value/sum spend; attribution overlap limits interpretation, not this arithmetic",google:"testing entities only",meta_reddit:"Use displayed testing scope; Reddit financials only configured testing ads/groups, whole-campaign totals background. Angle attribution requires ad detail.",edm:"event-time metrics for the confirmed September 18 test; module numerator/denominator distinct from whole email"} },
       };
       // The deployed worker forwards the dedicated Bridge body. This controller
       // publishes testing results, so bypass the older worker's EDM finalization.

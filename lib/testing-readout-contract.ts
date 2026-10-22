@@ -56,7 +56,7 @@ export function decodeTestingReadouts(result: unknown, expected: ReadoutPeriod[]
           if(typeof test.recommended_action!=='string'||!test.recommended_action.trim())throw new Error(`Missing optimization recommendation for ${test.test_id}`);
           if(test.channel==='Google PMAX'&&typeof test.summary==='string'){
             const words=test.summary.trim().split(/\s+/).length;
-            if(words<50||words>70)throw new Error(`PMax summary must contain 50–70 words: ${test.test_id} has ${words}`);
+            if(words<1||words>200)throw new Error(`PMax summary must contain 1–200 words: ${test.test_id} has ${words}`);
           }
         }
         if (test.delta != null) {

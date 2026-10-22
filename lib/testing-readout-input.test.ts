@@ -16,8 +16,14 @@ test('framework is extracted only from explicit generated evidence',()=>{
  const result=generatedFramework([{test_id:'x',summary:'Summary',evidence:['[FRAMEWORK] {"goal":"Evaluate message","hypothesis":"Message improves CTR","hypothesisBasis":"inferred"}']}]);
  assert.equal(result[0].test_goal,'Evaluate message');
 });
-test('overview reference preserves configured-ad financial scope and campaign reach components',()=>{
+test('overview reference preserves configured testing financial scope and campaign reach components',()=>{
  const row={spend:10,revenue:20,orders:1,impressions:100,clicks:5};
  const result=overviewReadoutReference({channels:{Meta:[row],Reddit:[{...row,spend:30,revenue:0}]},reachComponents:{Google:null,Meta:80,Reddit:200,EDM:10}});
  assert.equal(result.paid.spend,40);assert.equal(result.paid.roas,.5);assert.equal(result.totalReach,290);assert.deepEqual(result.missingReachComponents,['Google']);
+});
+
+test('overview headline includes EDM while paid ROAS excludes it',()=>{
+ const row={spend:100,revenue:200,orders:2,impressions:1000,clicks:10};
+ const result=overviewReadoutReference({channels:{Meta:[row],Reddit:[{...row,spend:50,revenue:100}]},reachComponents:{Meta:500,Reddit:300,EDM:100},edm:{revenue:60,orders:1,uniqueClicks:5,delivered:100}});
+ assert.equal(result.display.spend,150);assert.equal(result.display.revenue,360);assert.equal(result.display.orders,5);assert.equal(result.display.roas,2);assert.equal(result.display.ctr,25/2100);assert.equal(result.totalReach,900);
 });

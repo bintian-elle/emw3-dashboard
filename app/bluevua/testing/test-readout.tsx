@@ -1,4 +1,5 @@
 "use client";
+import { cleanTestingReadoutCopy } from "@/lib/testing-readout-copy";
 
 import AskAIButton from "@/components/application/ai/ask-ai-button";
 import { useTestingAiScope } from "./testing-ai";
@@ -163,7 +164,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
 
 
 function ReadoutText({text}:{text:string}) {
-  const cleaned=text.replace(/\[(?:(?:OV|GS|PM|DG|MT|RD|SM|ED)-[A-Z-]+(?:[, ]+)*)+\]\s*/g, "");
+  const cleaned=cleanTestingReadoutCopy(text);
   const parts=cleaned.split(/(https?:\/\/[^\s<>，。；：！？、（）「」《》]+[^\s<>.,;:)\]，。；：！？、（）「」《》])/g);
   return <p className="break-words text-body-regular text-text-secondary">{parts.map((part,index)=>/^https?:\/\//.test(part)?<a key={index} href={part} target="_blank" rel="noreferrer" className="break-words text-accent-600 underline outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring">{part}</a>:part)}</p>;
 }

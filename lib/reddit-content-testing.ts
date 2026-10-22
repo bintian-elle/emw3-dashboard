@@ -1,17 +1,21 @@
 export const redditContentTests = [
-  { name: "EM-Reddit-Conversion-July26", kind: "Conversion", groups: ["Prospecting_WaterFilter + HydroHomies"], ads: {
+  { campaignId: "2532658725866221443", aliases: ["EM-Reddit-Retargeting -July26"], name: "EM-Reddit-Conversion-July26", kind: "Conversion", groups: ["Prospecting_WaterFilter + HydroHomies"], ads: {
     Video: ["Prospecting-Video-PitcherVersusRO", "Conv-WF-Video-RO-OrangeJuice"],
     Image: ["SingleImage-MicroplasticPitcherVsRO", "SingleImage-ReplaceFilterPitcherVsRO", "SingleImage-TastePitchervsRO", "SingleImage-PitcherSafeEnough-ROPOTUV-4:5"],
     Message: [],
   } },
-  { name: "EM-Reddit-Awareness-July26", kind: "Awareness", groups: ["HydroHomies"], ads: {
+  { campaignId: "2532652033978842545", aliases: [], name: "EM-Reddit-Awareness-July26", kind: "Awareness", groups: ["HydroHomies"], ads: {
     Video: ["Video-RO-OrangeJuice", "Video-PitcherVersusRO"], Image: [],
     Message: ["Freefrom-FamiliarRoutineFilterReplace", "Freeform-NoRefill-No.1CounterRO"],
   } },
 ] as const;
 
+export function redditContentTest(campaignName: string, campaignId?: string) {
+ return redditContentTests.find(test => test.campaignId === campaignId || test.name === campaignName || (test.aliases as readonly string[]).includes(campaignName));
+}
+
 export function redditTestFormat(campaignName: string, adName: string) {
-  const test = redditContentTests.find(test => test.name === campaignName);
+  const test = redditContentTest(campaignName);
   return (["Video", "Image", "Message"] as const).find(format =>
     test?.ads[format].some(name => name === adName.trim()),
   );
@@ -33,5 +37,5 @@ export function redditContentMetrics(kind: "Awareness" | "Conversion", format: "
 }
 
 export function redditTestGroup(campaignName: string, groupName: string) {
-  return redditContentTests.find(test => test.name === campaignName)?.groups.some(name => name === groupName.trim()) ?? false;
+  return redditContentTest(campaignName)?.groups.some(name => name === groupName.trim()) ?? false;
 }

@@ -28,3 +28,10 @@ test("Reddit defaults to the moving test period and preserves explicit periods",
   assert.deepEqual(redditPeriodInput({period:["custom"],start:"2026-09-25",end:"2026-09-28"}), {preset:"custom",start:"2026-09-25",end:"2026-09-28"});
   assert.equal(redditPeriodInput({period:"unknown"}).preset, "sinceSep24");
 });
+
+test('stable campaign ID preserves testing membership after official rename', async () => {
+ const {redditContentTest}=await import('./reddit-content-testing.ts');
+ assert.equal(redditContentTest('EM-Reddit-Retargeting -July26','2532658725866221443')?.kind,'Conversion');
+ assert.equal(redditTestFormat('EM-Reddit-Retargeting -July26','Conv-WF-Video-RO-OrangeJuice'),'Video');
+ assert.equal(redditContentTest('Unrelated campaign'),undefined);
+});

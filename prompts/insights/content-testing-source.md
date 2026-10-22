@@ -99,7 +99,7 @@ Google PMax
 * 挖掘新 Insights： 发现值得关注的现象，例如一组 CTR 更高，但另一组 CVR 和 ROAS 更好。
 * Creative Analysis： 分析 Images、Videos 和 Text Assets 的可用表现数据，识别值得保留、替换或进一步测试的素材。
 * 提出优化建议： 根据数据推荐下一步值得测试的 Creative Direction、素材组合，以及可能的预算调整机会。
-* 自动生成 Summary： 输出一段 50–70 words 的英文分析，包含关键发现、数据支持和具体优化建议。
+* 自动生成 Summary： 输出一段 200 words 以内的英文分析，包含关键发现、数据支持和具体优化建议。
 
 ## Google Demand Gen
 

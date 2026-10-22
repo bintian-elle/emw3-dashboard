@@ -377,3 +377,9 @@ npm run build
 2026-10-22 本地 Testing 指标排序：共用 metric-sorting.tsx 与纯数值 comparator，Google Search/PMAX/Demand Gen、Meta、Reddit、EDM、Social 的表格及指标卡片可按现有指标排序；Overview/Concluded 复用同组件。点击循环降序→升序→原始顺序，原始数值比较，缺失/非有限值始终最后，重复值稳定，默认顺序与原指标列不变。Social Organic/Paid 各自排序并保持帖子/双组值成组；Reddit 分组及 Google 广告展开预览跟随所属行。初始化前禁用按钮，键盘可操作并标注表头 aria-sort。数值单测、类型检查、目标 ESLint 与跨渠道实际浏览器验证通过；临时固定数据测试页及生成类型已清除，无广告 API/AI 请求，未推送部署。
 
 2026-10-22 本地 EDM Testing 表格：同一 Campaign 的 Test A/B 合并为一张表，六个指标及排序入口仅在共享表头显示一次；邮件缩略图、内容与原数据保留，数值列统一对齐，Module 2 CTR 保持强调，小屏横向滚动。目标 ESLint 与 TypeScript 检查通过，未推送部署。
+
+2026-10-22 Testing 分析 v5：用户要求 Overview 按总 Spend/Reach/Revenue/ROAS/Purchase/CTR→渠道→Messaging→行动表达，去掉内部编号，Video4 等标签附真实名称。查出原 Reddit Conversion 官方 ID 2532658725866221443 已更名 EM-Reddit-Retargeting -July26；改按稳定 ID 匹配，保留原指定素材范围，指定广告与广告组完整计入页面和 AI，整 Campaign 汇总只作背景，不扩展 Overview 统计范围。更新 Prompt 与源文档已有的 PMax≤200词修改，原始输出覆盖校验后剥离编号再入库；每日任务加入 Prompt 内容哈希，避免同日修改被旧任务吞掉。Concluded 永久缓存不重跑，旧分析保留到新结果成功覆盖。
+
+2026-10-22 范围澄清：用户再次确认此前 Reddit 只展示 testing 广告/广告组的约定。撤销本轮尚未发布的整 Campaign 财务扩展；误用整 Campaign 的 v5:d1c01dd57ea8 任务停止发布并保留审计记录。正式重跑须使用原指定广告范围，同时修复同 ID Campaign 更名导致的漏计。
+
+固定产品约束（用户 2026-10-22 再次确认）：Testing Dashboard 只关注当前配置中的 testing 广告、广告组、asset group 与素材。页面、Overview 与 AI 汇总须同口径，不因它们属于某个 Campaign 而额外纳入 Campaign 内未选择的广告。Concluded Tests 是单独归档的既有例外，保持已冻结 lifetime 结果；Social 仍不计入 Overview。

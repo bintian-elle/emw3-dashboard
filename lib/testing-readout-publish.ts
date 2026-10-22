@@ -1,3 +1,4 @@
+import { cleanTestingReadoutCopy } from "@/lib/testing-readout-copy";
 import "server-only";
 import { completedTestingReadoutJobs, markTestingReadoutPublished, markTestingReadoutValidationError, writeTestingReadoutCache, type QueuedJob } from "@/lib/ai-job-queue";
 import { decodeTestingReadouts, generatedFramework, testingReadoutKey, TestingReadoutValidationError, type ReadoutPeriod } from "@/lib/testing-readout-contract";
@@ -13,10 +14,13 @@ export async function publishTestingReadoutJob(job: QueuedJob) {
   const frameworkTests = input.regenerate_framework && !decoded.errors.length ? generatedFramework([...decoded.records.values()].filter(record=>testingReadoutKey(record.period)===testingReadoutKey(supplied[0].period) || record.period.label==="Lifetime snapshot").flatMap(record=>record.tests)) : null;
   // Save valid periods even if another period fails validation. Older jobs cannot
   // overwrite a more recently generated result for the same reporting dates.
-  for (const [cacheKey, payload] of decoded.records) await writeTestingReadoutCache({
+  for (const [cacheKey, rawPayload] of decoded.records) {
+    const payload=cleanTestingReadoutCopy(rawPayload);
+    await writeTestingReadoutCache({
     cache_key: cacheKey, readout_type: "period", period_label: payload.period.label, period_start: payload.period.start, period_end: payload.period.end,
     comparison_label: null, comparison_start: null, comparison_end: null, prompt_version: promptVersion, payload: { ...payload, ...(input.concluded_test_id ? { test_frameworks: generatedFramework(payload.tests) } : {}), ...(payload.overview ? { overview: { ...payload.overview, executive_summary: overviewExecutiveSummary(payload.overview.executive_summary, payload.overview.key_findings) } } : {}), captured_at:input.captured_at??null, generation_job_id: job.id },
   }, job.updated_at);
+  }
   if (decoded.errors.length) throw new TestingReadoutValidationError(`Saved ${decoded.records.size} periods; validation: ${decoded.errors.join(" ")}`);
   if (frameworkTests && !input.concluded_test_id) await writeTestingReadoutCache({
     cache_key: "framework:v1", readout_type: "framework", period_label: null, period_start: null, period_end: null,
