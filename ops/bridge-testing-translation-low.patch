@@ -1,0 +1,71 @@
+--- a/src/anc_bridge/dashboard/provider.py
++++ b/src/anc_bridge/dashboard/provider.py
+@@ -3,6 +3,8 @@
+ import base64
+ import logging
+ import json
++from datetime import datetime, timezone
++from .translation_runtime import translation_input, usage_snapshot, save_usage
+ from pathlib import Path
+ from tempfile import TemporaryDirectory
+ 
+@@ -33,17 +35,29 @@
+             raise ProviderFailure() from None
+ 
+     async def _generate(self, request, insight, record_identity):
+-        cwd = PROJECT if request.conversation else self.cwd
++        translation = request.dashboard_id == "bluevua-testing-translation"
++        workspace = TemporaryDirectory(prefix="testing-translation-") if translation else None
++        try:
++            return await self._run(request, insight, record_identity, translation, workspace)
++        finally:
++            if workspace:
++                workspace.cleanup()
++
++    async def _run(self, request, insight, record_identity, translation, workspace):
++        cwd = Path(workspace.name) if translation else (PROJECT if request.conversation else self.cwd)
+         sdk = SafeCodex(native_config(cwd, host_requests=True))
+         async with runtime_slot(self.capacity_dir, dashboard=True), sdk:
+             action = intent(request)
+             proposing = bool(action and action[0] == 'propose')
+-            prompt = PROPOSAL_INSTRUCTIONS if proposing else instructions(request.mode, request.insight_prompt)
++            prompt = request.question if translation else (PROPOSAL_INSTRUCTIONS if proposing else instructions(request.mode, request.insight_prompt))
+             thread = (await sdk.dashboard_thread(cwd, prompt, request._native_thread, request._conversation_title)
+-                      if request.conversation else await sdk.dashboard_thread(cwd, prompt))
++                      if request.conversation and not translation else await sdk.dashboard_thread(cwd, prompt))
+             record_identity(thread.id, None)
+             turn = None
+             complete = False
++            tokens = None
++            started_at = datetime.now(timezone.utc).isoformat()
++            before = await usage_snapshot(sdk) if translation else None
+             attachment_directory = TemporaryDirectory(prefix='dashboard-attachments-', dir=self.cwd)
+             try:
+                 images = []
+@@ -58,13 +72,17 @@
+                 text = (json.dumps({'latest_user_message': request.latest_user_message,
+                                     'language': request.language,
+                                     'period': request.period.model_dump()}, ensure_ascii=False)
+-                        if proposing else input_text(request, insight))
++                        if proposing else translation_input(request) if translation else input_text(request, insight))
+                 turn = await sdk.dashboard_turn(thread, text,
+                                                 (MemoryProposal if proposing else RESULT_MODELS[request.mode]).model_json_schema(),
+-                                                images=images, effort="medium" if (request.mode == "testing_readout" or request.dashboard_id == "bluevua-testing-translation") else "xhigh")
++                                                images=images, effort="low" if translation else "medium" if request.mode == "testing_readout" else "xhigh")
+                 record_identity(thread.id, turn.id)
+                 finals = []
+                 async for event in turn.stream():
++                    if translation and event.method == 'thread/tokenUsage/updated':
++                        payload = event.payload.model_dump(mode='json', by_alias=True)
++                        if payload.get('threadId') == thread.id and payload.get('turnId') == turn.id:
++                            tokens = payload.get('tokenUsage')
+                     if event.method in ('item/started', 'item/completed'):
+                         item = event.payload.item.root
+                         phase = getattr(item, 'phase', None)
+@@ -87,3 +105,6 @@
+                         logging.getLogger("anc_bridge.dashboard").warning(
+                             '{"event":"interrupt_unconfirmed"}')
+                 attachment_directory.cleanup()
++                if translation:
++                    save_usage(request, thread.id, turn.id if turn else None, started_at, before,
++                               await usage_snapshot(sdk), tokens, complete)

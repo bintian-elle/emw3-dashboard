@@ -387,3 +387,7 @@ npm run build
 2026-10-22 用户新增 AI 数据来源约束：远程 AI Bluevua 的绩效数字只能读取 Dashboard 本轮传入的冻结数据（当前周期、广告数据、汇总、已有历史），不得自行调用广告/报表 API 或其他数据库补数，也不得用旧对话数字替代。背景、品牌、测试计划、素材内容等仍可按远程 Bluevua 项目说明从本地资料/外部 API 查阅。缺失绩效需明确缺口，不能混入新快照。
 
 2026-10-22 分析名称校验：v5 已生成英文并进入中文纯翻译；headline 与冻结输入相符、编号已移除，但部分摘要仍用裸广告 ID。每日 runner 增加基于本次输入真实广告名的确定性格式整理，翻译全部完成后原子同步英文/中文及 source hash，不改数字/结论/URL/身份/Concluded，不再调用模型。此 Node 脚本无需 Next 构建。
+
+### 2026-10-22: low-reasoning isolated Testing translation
+
+LibreTranslate trial was removed after failing quality checks; existing shared Chinese results were retained. User authorized independent short Codex translation sessions with low reasoning, English-only input, automatic translation after daily English generation, and measurement of tomorrow's actual usage. Bridge runtime assets and private meter are documented in `docs/testing-ai-readouts.md`; `scripts/testing-translation-usage.py --date 2026-10-23` reads tomorrow's CT results. Account-wide quota deltas can include concurrent activity; use per-turn token usage where available. No website rebuild is required. User subsequently authorized syncing these runtime assets to GitHub; use a `[skip ci]` commit because the already-running Bridge is outside the Dashboard deployment directory.
