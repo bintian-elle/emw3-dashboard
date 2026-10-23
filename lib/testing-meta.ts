@@ -1,4 +1,5 @@
 import "server-only";
+import { resolveMetaCreativeLinks } from "@/lib/meta-creative-links";
 import {isMetaVideo,type MetaCreative} from "@/lib/meta-creative-type";
 import { connection } from "next/server";
 import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } from "@/lib/testing-google";
@@ -9,7 +10,7 @@ type MetaAction={action_type:string;value:string};
 type MetaInsightRow={ad_id?:string;ad_name?:string;adset_id:string;adset_name:string;reach?:string;spend?:string;impressions?:string;clicks?:string;inline_link_clicks?:string;actions?:MetaAction[];action_values?:MetaAction[]};
 type MetaAdRow={id:string;name:string;adset_id:string;configured_status?:string;effective_status?:string;creative?:MetaCreative&{body?:string;title?:string}};
 type MetaCampaignRow={id:string;name:string;status:string;effective_status:string};
-export type MetaActiveAd={linkClicks?:number|null;linkCtr?:number|null;adId:string;name:string;mediaType:"Image"|"Video";thumbnailUrl:string|null;videoUrl:string|null;spend:number;revenue:number;orders:number;impressions:number;clicks:number;cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null;cpm:number|null;hookRate:number|null;reach:number|null;costPerReach:number|null;creativeContent?:MetaCreative&{body?:string;title?:string}};
+export type MetaActiveAd={linkClicks?:number|null;linkCtr?:number|null;adId:string;name:string;postUrl?:string|null;previewUrl?:string|null;mediaType:"Image"|"Video";thumbnailUrl:string|null;videoUrl:string|null;spend:number;revenue:number;orders:number;impressions:number;clicks:number;cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null;cpm:number|null;hookRate:number|null;reach:number|null;costPerReach:number|null;creativeContent?:MetaCreative&{body?:string;title?:string}};
 export type MetaAdGroupMetric={campaignName:string;adGroupId:string;name:string;activeAds:MetaActiveAd[];spend:number;revenue:number;orders:number;impressions:number;clicks:number;cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null;cpm:number|null;hookRate:number|null;reach:number|null;costPerReach:number|null};
 export type MetaCampaign={campaignId:string;campaignName:string;campaignStatus:string;effectiveStatus:string;adGroups:MetaAdGroupMetric[];totals:{spend:number;revenue:number;orders:number;clicks:number;impressions:number;reach:number|null;costPerReach:number|null};metrics:ReturnType<typeof performance>} ;
 export type MetaCampaignTest={periodLabel:string;period:{start:string;end:string};campaigns:MetaCampaign[];adGroups:MetaAdGroupMetric[];totals:{spend:number;revenue:number;orders:number;clicks:number;impressions:number;reach:number|null;costPerReach:number|null}};
@@ -35,9 +36,9 @@ async function campaignTest(campaignId:string,period:{start:string;end:string}):
   const insightByAd=new Map(adInsights.data.map(row=>[row.ad_id,row]));
   const active=ads.data.filter(ad=>ad.configured_status==="ACTIVE"||ad.effective_status==="ACTIVE");
   const videoIds=new Set(active.filter(ad=>isMetaVideo(ad.name,ad.creative)).map(ad=>ad.id));
-  const mediaEntries=await Promise.all(active.map(async ad=>[ad.id,{thumbnailUrl:await creativeThumbnail(ad.creative?.id,ad.creative?.thumbnail_url??null),videoUrl:videoIds.has(ad.id)?await adPreviewUrl(ad.id):null}] as const));
+  const mediaEntries=await Promise.all(active.map(async ad=>[ad.id,{...await resolveMetaCreativeLinks(ad.id,ad.creative?.id,graph),thumbnailUrl:await creativeThumbnail(ad.creative?.id,ad.creative?.thumbnail_url??null),videoUrl:videoIds.has(ad.id)?await adPreviewUrl(ad.id).catch(()=>null):null}] as const));
   const mediaByAd=new Map(mediaEntries);const adsByGroup=new Map<string,MetaActiveAd[]>();
-  for(const ad of active){const insight=insightByAd.get(ad.id);const isVideo=videoIds.has(ad.id);const media=mediaByAd.get(ad.id);const item={adId:ad.id,name:ad.name,creativeContent:ad.creative,mediaType:isVideo?"Video" as const:"Image" as const,thumbnailUrl:media?.thumbnailUrl??null,videoUrl:media?.videoUrl??null,...performance(insight??{adset_id:ad.adset_id,adset_name:""})};adsByGroup.set(ad.adset_id,[...(adsByGroup.get(ad.adset_id)??[]),item]);}
+  for(const ad of active){const insight=insightByAd.get(ad.id);const isVideo=videoIds.has(ad.id);const media=mediaByAd.get(ad.id);const item={adId:ad.id,name:ad.name,creativeContent:ad.creative,mediaType:isVideo?"Video" as const:"Image" as const,thumbnailUrl:media?.thumbnailUrl??null,videoUrl:media?.videoUrl??null,postUrl:media?.postUrl??null,previewUrl:media?.previewUrl??media?.videoUrl??null,...performance(insight??{adset_id:ad.adset_id,adset_name:""})};adsByGroup.set(ad.adset_id,[...(adsByGroup.get(ad.adset_id)??[]),item]);}
   for(const items of adsByGroup.values())items.sort((a,b)=>b.spend-a.spend);
   const adGroups=groupInsights.data.map(row=>({campaignName:campaign.name,adGroupId:row.adset_id,name:row.adset_name,activeAds:adsByGroup.get(row.adset_id)??[],...performance(row)})).sort((a,b)=>b.spend-a.spend);
   const metrics=performance(campaignInsights.data[0]??{adset_id:"",adset_name:""});

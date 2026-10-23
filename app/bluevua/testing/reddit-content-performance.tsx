@@ -1,3 +1,5 @@
+import { CreativeSourceLink } from "@/components/application/media/creative-source-link";
+
 import {MetricSortScope,MetricSortButton,MetricSortedRows} from "./metric-sorting";
 import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import { ImageLightbox } from "@/components/application/media/image-lightbox";
@@ -5,6 +7,8 @@ import { VideoLightbox } from "@/components/application/media/video-lightbox";
 import { Chip } from "@/components/base/badges/chip";
 import { redditContentMetrics } from "@/lib/reddit-content-testing";
 import type { RedditAd, RedditCampaign, RedditMetrics } from "@/lib/testing-reddit";
+
+function safePostUrl(value: string | null) { try { const url = new URL(value??""); return url.protocol === "https:" && (url.hostname === "reddit.com" || url.hostname.endsWith(".reddit.com") || url.hostname === "redd.it") ? url.href : null; } catch { return null; } }
 
 function formatValue(value: number | null, key: string) {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -33,7 +37,7 @@ export function RedditContentPerformance({ campaign }: { campaign: RedditCampaig
     if (!expected) return null;
     return <MetricSortScope key={format}><section className="overflow-hidden rounded-3xl border border-border-button-default" aria-label={`${label} performance`}>
       <div className="grid gap-4 bg-background-secondary-default p-5"><div className="flex items-center gap-3"><h3 className="text-title-3-semibold text-text-primary">{label} performance</h3><Chip variant="caption" color={format === "Video" ? "purple" : format === "Image" ? "rose" : "lime"}>{ads.length} ads</Chip></div>{ads.length > 0 ? <Metrics row={aggregateRedditAds(ads)} kind={campaign.kind} format={format}/> : <p className="text-body-regular text-text-secondary">No matching {label.toLowerCase()} ads returned for this test.</p>}</div>
-      <MetricSortedRows rows={groups.filter(group => group.ads.length > 0).map(group => ({id:group.adGroupId,values:aggregateRedditAds(group.ads),content:<div key={group.adGroupId}><h4 className="border-t border-border-table px-5 py-3 text-body-medium text-text-secondary">Ad Group: {group.name}</h4><MetricSortedRows as="fragment" rows={group.ads.map(ad => ({id:ad.adId,values:{impressions:ad.impressions,cpc:ad.cpc,ctr:ad.ctr,revenue:ad.revenue,roas:ad.roas},content:<article key={ad.adId} id={`ad-${ad.adId}`} className="scroll-mt-48 grid gap-5 border-t border-border-table p-5 lg:grid-cols-2 lg:items-center"><div className="flex min-w-0 items-start gap-3">{format === "Video" && ad.videoUrl ? <VideoLightbox src={ad.videoUrl} thumbnailUrl={ad.thumbnailUrl} title={ad.name}/> : <ImageLightbox src={ad.thumbnailUrl} alt={ad.name}/>}<div className="min-w-0"><p className="break-words text-body-medium text-text-primary">{ad.name}</p>{ad.headline && <p className="mt-1 text-body-2-regular text-text-secondary">{ad.headline}</p>}{ad.body && <details className="mt-2"><summary className="cursor-pointer text-body-2-medium text-text-secondary">View ad copy</summary><p className="mt-2 whitespace-pre-wrap text-body-2-regular text-text-secondary">{ad.body}</p></details>}</div></div><Metrics row={ad} kind={campaign.kind} format={format}/></article>}))}/></div>}))}/>
+      <MetricSortedRows rows={groups.filter(group => group.ads.length > 0).map(group => ({id:group.adGroupId,values:aggregateRedditAds(group.ads),content:<div key={group.adGroupId}><h4 className="border-t border-border-table px-5 py-3 text-body-medium text-text-secondary">Ad Group: {group.name}</h4><MetricSortedRows as="fragment" rows={group.ads.map(ad => ({id:ad.adId,values:{impressions:ad.impressions,cpc:ad.cpc,ctr:ad.ctr,revenue:ad.revenue,roas:ad.roas},content:<article key={ad.adId} id={`ad-${ad.adId}`} className="scroll-mt-48 grid gap-5 border-t border-border-table p-5 lg:grid-cols-2 lg:items-center"><div className="flex min-w-0 items-start gap-3">{format === "Video" && ad.videoUrl ? <VideoLightbox src={ad.videoUrl} thumbnailUrl={ad.thumbnailUrl} title={ad.name}/> : <ImageLightbox src={ad.thumbnailUrl} alt={ad.name}/>}<div className="min-w-0"><p className="break-words text-body-medium text-text-primary">{safePostUrl(ad.postUrl)?<CreativeSourceLink href={safePostUrl(ad.postUrl)!} name={ad.name} kind="post"/>:ad.name}</p>{ad.headline && <p className="mt-1 text-body-2-regular text-text-secondary">{ad.headline}</p>}{ad.body && <details className="mt-2"><summary className="cursor-pointer text-body-2-medium text-text-secondary">View ad copy</summary><p className="mt-2 whitespace-pre-wrap text-body-2-regular text-text-secondary">{ad.body}</p></details>}</div></div><Metrics row={ad} kind={campaign.kind} format={format}/></article>}))}/></div>}))}/>
     </section></MetricSortScope>;
   })}</div>;
 }

@@ -1,3 +1,4 @@
+import { CreativeSourceLink } from "@/components/application/media/creative-source-link";
 import {MetricSortScope,MetricSortButton,MetricSortedRows} from "../../metric-sorting";
 import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import { notFound } from "next/navigation";
@@ -21,7 +22,7 @@ const metrics:Array<{label:string;key:keyof MetaActiveAd;format:"currency"|"deci
 function metric(value:number|null,format:"currency"|"decimal"|"percent"|"roas"|"cost"){if(value==null||!Number.isFinite(value))return "—";if(format==="cost")return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:4}).format(value);if(format==="currency")return currency.format(value);if(format==="percent")return percent.format(value);if(format==="roas")return value.toFixed(2);return decimal.format(value);}
 type SearchParams={period?:string|string[];start?:string|string[];end?:string|string[]};
 
-function AdIdentity({ad}:{ad:MetaActiveAd}){const src=highResolutionCreativeUrl(ad.thumbnailUrl);return <div className="flex min-w-0 items-center gap-3">{ad.videoUrl?<VideoLightbox src={ad.videoUrl} thumbnailUrl={src} title={ad.name}/>:<ImageLightbox src={src} alt={ad.name} size="lg"/>}<div className="min-w-0"><p className="break-words text-body-medium text-text-primary">{ad.name}</p><AdTypeChip className="mt-1" type={ad.mediaType}/></div></div>;}
+function AdIdentity({ad}:{ad:MetaActiveAd}){const src=highResolutionCreativeUrl(ad.thumbnailUrl);return <div className="flex min-w-0 items-center gap-3">{ad.videoUrl?<VideoLightbox src={ad.videoUrl} thumbnailUrl={src} title={ad.name}/>:<ImageLightbox src={src} alt={ad.name} size="lg"/>}<div className="min-w-0"><p className="break-words text-body-medium text-text-primary">{(ad.postUrl||ad.previewUrl)?<CreativeSourceLink href={(ad.postUrl||ad.previewUrl)!} name={ad.name} kind={ad.postUrl?"post":"preview"}/>:ad.name}</p><AdTypeChip className="mt-1" type={ad.mediaType}/></div></div>;}
 
 export default async function MetaAdGroupPage({params,searchParams}:{params:Promise<{group:string}>;searchParams:Promise<SearchParams>}){
   const route=await params;const query=await searchParams;const data=await getMetaCampaignTest(testingPeriodInput(query));const group=data.adGroups.find(item=>item.adGroupId===route.group);if(!group)notFound();
