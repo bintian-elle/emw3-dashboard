@@ -1,5 +1,6 @@
 import nextEnv from '@next/env';
 import pg from 'pg';
+import {prepareTestingWeeklyReuse} from './testing-weekly-reuse.mjs';
 nextEnv.loadEnvConfig(process.cwd());
 const pool=new pg.Pool({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},max:1});
 const base=process.env.CODEX_BRIDGE_URL?.replace(/\/$/,'');
@@ -28,6 +29,7 @@ async function tick(){
   activeJob=job;
   if(!job||new Date(job.next_poll_at)>new Date()){await client.query('commit');return}
   if(job.status==='queued'){
+   await prepareTestingWeeklyReuse(client,job);
    // Persist submission intent before network I/O so a crash cannot free the slot.
    await client.query(`update ai_job_queue set status='running',updated_at=now() where id=$1`,[job.id]);
    await client.query('commit');return;

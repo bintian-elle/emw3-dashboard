@@ -1,0 +1,81 @@
+--- a/src/anc_bridge/dashboard/contracts.py
++++ b/src/anc_bridge/dashboard/contracts.py
+@@ -1,4 +1,5 @@
+ """Strict wire contracts, also used as the native structured-output schemas."""
++from .testing_input import plan_testing_payloads
+ import base64
+ import binascii
+ import json
+@@ -118,17 +119,20 @@
+         if not self.analysis_payload:
+             raise ValueError('empty_analysis_payload')
+         # Bound nesting and nodes, reject non-JSON values / nonfinite numbers.
+-        stack: list[tuple[object, int]] = [(self.analysis_payload, 0)]
+-        count = 0
+-        while stack:
+-            value, depth = stack.pop()
+-            count += 1
+-            if depth > 20 or count > 30000:
+-                raise ValueError('payload_complexity')
+-            if isinstance(value, dict):
+-                stack.extend((v, depth + 1) for v in value.values())
+-            elif isinstance(value, list):
+-                stack.extend((v, depth + 1) for v in value)
++        if self.mode == 'testing_readout':
++            plan_testing_payloads(self.analysis_payload)
++        else:
++            stack: list[tuple[object, int]] = [(self.analysis_payload, 0)]
++            count = 0
++            while stack:
++                value, depth = stack.pop()
++                count += 1
++                if depth > 20 or count > 30000:
++                    raise ValueError('payload_complexity')
++                if isinstance(value, dict):
++                    stack.extend((v, depth + 1) for v in value.values())
++                elif isinstance(value, list):
++                    stack.extend((v, depth + 1) for v in value)
+         json.dumps(self.model_dump(), allow_nan=False, ensure_ascii=False).encode('utf-8')
+         return self
+ 
+--- a/src/anc_bridge/dashboard/provider.py
++++ b/src/anc_bridge/dashboard/provider.py
+@@ -4,6 +4,7 @@
+ import logging
+ import json
+ from datetime import datetime, timezone
++from .testing_input import plan_testing_payloads, shape
+ from .translation_runtime import translation_input, usage_snapshot, save_usage
+ from pathlib import Path
+ from tempfile import TemporaryDirectory
+@@ -35,6 +36,30 @@
+             raise ProviderFailure() from None
+ 
+     async def _generate(self, request, insight, record_identity):
++        if request.mode != 'testing_readout':
++            return await self._generate_once(request, insight, record_identity)
++        parts = plan_testing_payloads(request.analysis_payload)
++        logging.getLogger("anc_bridge.dashboard").info(json.dumps({"event": "testing_input_plan",
++            "raw_nodes": shape(request.analysis_payload)[0], "part_nodes": [shape(p)[0] for p in parts]}))
++        results = []
++        for index, payload in enumerate(parts):
++            prompt = request.insight_prompt
++            if len(parts) > 1:
++                prompt = (prompt or '') + (
++                    f'\nTransport part {index + 1}/{len(parts)}: analyse and return ONLY the '
++                    'period(s) supplied in this request. Preserve all applicable document '
++                    'requirements, test identities and framework evidence. Other periods '
++                    'are processed separately; do not fabricate their results.')
++            scoped = request.model_copy(update={'analysis_payload': payload, 'insight_prompt': prompt})
++            raw = await self._generate_once(scoped, insight, record_identity)
++            if len(parts) == 1:
++                return raw
++            result = RESULT_MODELS['testing_readout'].model_validate_json(raw)
++            results.extend(result.model_dump(mode='json')['period_readouts'])
++        return json.dumps({'schema_version': '1.0', 'run_mode': 'period_readout_batch',
++                           'period_readouts': results}, ensure_ascii=False)
++
++    async def _generate_once(self, request, insight, record_identity):
+         translation = request.dashboard_id == "bluevua-testing-translation"
+         workspace = TemporaryDirectory(prefix="testing-translation-") if translation else None
+         try:
