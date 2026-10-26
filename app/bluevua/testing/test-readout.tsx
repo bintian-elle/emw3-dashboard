@@ -1,4 +1,5 @@
 "use client";
+import {currentPmaxReadout} from "@/lib/pmax-testing-performance";
 import { cleanTestingReadoutCopy } from "@/lib/testing-readout-copy";
 
 import AskAIButton from "@/components/application/ai/ask-ai-button";
@@ -93,7 +94,8 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const staticPayload = records?.[staticKey];
   const framework = channel === "overview" ? undefined : staticPayload?.test_frameworks?.find(item => item.test_id === testIdentity || item.campaign_name === testIdentity)
     ?? staticPayload?.channel_frameworks?.find(item => item.channel === (channel ? channelNames[channel] : undefined));
-  const periodResult = periodKey ? records?.[periodKey] : undefined;
+  const savedPeriodResult = periodKey ? records?.[periodKey] : undefined;
+  const periodResult = currentPmaxReadout(savedPeriodResult,channel) ? savedPeriodResult : undefined;
   const test = periodResult?.tests?.find(item => item.test_id === testIdentity || item.campaign_name === testIdentity);
   const summary = test?.summary || (testIdentity === "overview" ? periodResult?.overview?.executive_summary : null);
   const overview = testIdentity === "overview" ? periodResult?.overview : undefined;
@@ -147,7 +149,8 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const detailsToggle = <Button type="button" variant="secondary" size="small" className="min-h-10" disabled={!hydrated} aria-expanded={expanded} aria-controls={collapsible ? controlledIds : detailsId} trailingIcon={expanded ? RiArrowUpSLine : RiArrowDownSLine} onClick={() => expanded ? collapse() : setExpandedCampaignKey(campaignKey)}>{expanded ? t("Hide details", "收起详情") : t("View detailed analysis", "查看详细分析")}</Button>;
   const savedAnalysis = analysisSection || <p className="p-5 text-body-regular text-text-secondary">{cached?.key !== requestKey ? t("Loading saved analysis…", "正在读取已保存的分析…") : t("No saved AI analysis for this reporting period.", "此时间区间暂无已保存的 AI 分析。")}</p>;
   const detailsSection = <div id={detailsId} hidden={!expanded}>{savedAnalysis}{expanded && <div className="border-t border-border-table p-5"><Button type="button" variant="secondary" size="small" aria-controls={collapsible ? controlledIds : detailsId} aria-expanded={expanded} trailingIcon={RiArrowUpSLine} onClick={collapse}>{t("Hide details", "收起详情")}</Button></div>}</div>;
-  if (!collapsible) return <>{frameworkSection}{dataSection}{channel!=="overview"&&children?<section className="mt-4 overflow-hidden rounded-3xl border border-border-table bg-background-primary-default"><div className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><p className="text-caption-1-semibold text-status-blue-text">{t("AI Summary","AI 摘要")}</p><AskAIButton disabled={!hydrated} open={chat.isOpen} onClick={chat.open} label={t("Ask AI","询问 AI")}/></div>{summary&&!expanded&&<ReadoutText text={summary}/>}<div className="mt-3">{detailsToggle}</div></div>{detailsSection}</section>:analysisSection}</>;
+  const summarySection = channel!=="overview"&&children ? <section className={cx(standalone ? "mb-6" : "mt-4", "overflow-hidden rounded-3xl border border-border-table bg-background-primary-default")}><div className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><p className="text-caption-1-semibold text-status-blue-text">{t("AI Summary","AI 摘要")}</p><AskAIButton disabled={!hydrated} open={chat.isOpen} onClick={chat.open} label={t("Ask AI","询问 AI")}/></div>{summary&&!expanded&&<ReadoutText text={summary}/>}<div className="mt-3">{detailsToggle}</div></div>{detailsSection}</section> : analysisSection;
+  if (!collapsible) return standalone ? <>{summarySection}{frameworkSection}{dataSection}</> : <>{frameworkSection}{dataSection}{summarySection}</>;
   return <div id={campaignId} data-campaign-anchor data-campaign-name={testIdentity} data-campaign-channel={channel ? channelNames[channel] : "Google Search"} tabIndex={-1} className="outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring">
     <div className={cx("px-5 py-4", expanded && "border-b border-border-table")}>
       <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-caption-1-semibold text-status-blue-text">{t("AI Summary", "AI 摘要")}</p><AskAIButton disabled={!hydrated} open={chat.isOpen} onClick={chat.open} label={t("Ask about this campaign", "追问此 Campaign")}/></div>

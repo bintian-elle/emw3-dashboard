@@ -1,4 +1,5 @@
 import "server-only";
+import {PMAX_TESTING_BASIS} from "@/lib/pmax-testing-performance";
 import type { BridgeChatAttachment } from "./ai-chat-attachment-contract";
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -22,12 +23,13 @@ export async function startTestingChat(user:SiteUser,input:{scope:TestingChatSco
  if(!process.env.CODEX_BRIDGE_URL||!process.env.CODEX_BRIDGE_API_KEY)throw Error('AI Bluevua is not configured on the server.');
  const owner=testingChatOwner(user),id=`testing-chat:${owner}:${input.requestId}`;
  const existing=await testingChatJob(user,id);if(existing)return existing;
- const [context,prompt,previous]=await Promise.all([loadTestingChatContext(input.scope,input.comparisons),readFile(path.join(process.cwd(),'prompts/ask-ai/testing.md'),'utf8'),pool.query(`select body->>'latest_user_message' question,result->>'answer_markdown' answer,body->'analysis_payload'->'chat'->'scope' scope,error from ai_job_queue where ${ownSql} and body->'analysis_payload'->'chat'->>'conversationId'=$2 order by created_at desc limit 12`,[owner,input.conversationId])]);
+ const [context,prompt,previous]=await Promise.all([loadTestingChatContext(input.scope,input.comparisons),readFile(path.join(process.cwd(),'prompts/ask-ai/testing.md'),'utf8'),pool.query(`select body->>'latest_user_message' question,result->>'answer_markdown' answer,body->'analysis_payload'->'chat'->'scope' scope,body->'analysis_payload'->'metric_basis' metric_basis,error from ai_job_queue where ${ownSql} and body->'analysis_payload'->'chat'->>'conversationId'=$2 order by created_at desc limit 12`,[owner,input.conversationId])]);
  if(signal.aborted)throw new DOMException('Cancelled','AbortError');
  // A cancelled native conversation is conservatively blocked by the Bridge.
  // A new segment retains the saved scoped history without reusing that turn.
  const stops=await pool.query(`select count(*) count from ai_job_queue where ${ownSql} and body->'analysis_payload'->'chat'->>'conversationId'=$2 and status='failed'`,[owner,input.conversationId]);
- const body={...(input.attachments?.length?{attachments:input.attachments}:{}),mode:'question',dashboard_id:'bluevua-testing-chat',language:input.language==='zh'?'zh-CN':'en',period:{start:input.scope.period.start,end:input.scope.period.end},comparison:null,preset_label:input.scope.period.label,comparison_label:'Explicit selected scope only',question:`${prompt}\n\nUser question: ${input.question}`,latest_user_message:input.question,conversation:{project:'bluevua',kind:'ask',owner_key:digest(`testing-chat\0${user.sub}\0${input.conversationId}\0${stops.rows[0].count}`),email:user.email},analysis_payload:{...context,generation_instructions:prompt,chat:{owner,conversationId:input.conversationId,scope:input.scope},historical_turns:previous.rows.reverse().filter(row=>row.answer).map(row=>({...row,answer:row.answer.slice(0,6000)}))}};
+ const pmaxScope=context.tests.some(test=>test.channel==='google-pmax');
+ const body={...(input.attachments?.length?{attachments:input.attachments}:{}),mode:'question',dashboard_id:'bluevua-testing-chat',language:input.language==='zh'?'zh-CN':'en',period:{start:input.scope.period.start,end:input.scope.period.end},comparison:null,preset_label:input.scope.period.label,comparison_label:'Explicit selected scope only',question:`${prompt}\n\nUser question: ${input.question}`,latest_user_message:input.question,conversation:{project:'bluevua',kind:'ask',owner_key:digest(`testing-chat\0${user.sub}\0${input.conversationId}\0${stops.rows[0].count}${pmaxScope?`\0${PMAX_TESTING_BASIS}`:""}`),email:user.email},analysis_payload:{...context,generation_instructions:prompt,chat:{owner,conversationId:input.conversationId,scope:input.scope},historical_turns:previous.rows.reverse().filter(row=>row.answer&&(!pmaxScope||row.metric_basis?.pmax===PMAX_TESTING_BASIS)).map(row=>({...row,answer:row.answer.slice(0,6000)}))}};
  await enqueueAiJob(id,body);
  return (await testingChatJob(user,id))!;
 }

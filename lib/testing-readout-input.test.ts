@@ -27,3 +27,9 @@ test('overview headline includes EDM while paid ROAS excludes it',()=>{
  const result=overviewReadoutReference({channels:{Meta:[row],Reddit:[{...row,spend:50,revenue:100}]},reachComponents:{Meta:500,Reddit:300,EDM:100},edm:{revenue:60,orders:1,uniqueClicks:5,delivered:100}});
  assert.equal(result.display.spend,150);assert.equal(result.display.revenue,360);assert.equal(result.display.orders,5);assert.equal(result.display.roas,2);assert.equal(result.display.ctr,25/2100);assert.equal(result.totalReach,900);
 });
+
+test('AI Overview uses the same unavailable impression denominator as the page',()=>{
+ const row={spend:10,revenue:20,orders:1,impressions:null,clicks:2};
+ const result=overviewReadoutReference({channels:{'Google PMAX':[row]},reachComponents:{Google:null}});
+ assert.equal(result.display.roas,2);assert.equal(result.display.ctr,null);assert.equal(result.paid.impressions,null);
+});

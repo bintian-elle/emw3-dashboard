@@ -30,7 +30,7 @@ export type GoogleTestGroup = {
   spend: number;
   revenue: number;
   orders: number;
-  impressions: number;
+  impressions: number | null;
   clicks: number;
   cpa: number | null;
   cvr: number | null;

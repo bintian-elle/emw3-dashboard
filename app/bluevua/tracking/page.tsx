@@ -11,7 +11,7 @@ import type { TrackingCacheState } from '@/lib/website-tracking-cache';
 import { TrackingFilters } from './tracking-filters';
 import { TrackingReportTable } from './tracking-report';
 export const metadata={title:'Website Tracking · Bluevua'};
-const empty:TrackingReport={rows:[],warnings:[],error:'This report is being prepared in the background.'};
+const empty:TrackingReport={rows:[],warnings:[],error:'Loading report…'};
 export default function TrackingPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
  return <Suspense fallback={<div className="p-8 text-body-regular text-text-secondary">Loading website tracking…</div>}><TrackingContent searchParams={searchParams}/></Suspense>;
 }
@@ -22,7 +22,7 @@ async function TrackingContent({searchParams}:{searchParams:Promise<Record<strin
  try{period=trackingPeriod({start:value('start'),end:value('end')});trackingFilter(device);}catch(error){validation=error instanceof Error?error.message:'Invalid filters.';device='all';}
  let data:TrackingData|undefined,connectionError:string|undefined,cache:TrackingCacheState|undefined;
  if(!validation)try{cache=await getWebsiteTracking(period,device);data=cache.data;}catch(error){connectionError=error instanceof Error?error.message:'Tracking data is temporarily unavailable.';}
- const unavailable:TrackingReport={...empty,error:cache?.error??connectionError??empty.error};
+ const unavailable:TrackingReport={...empty,error:cache?.error?'Reports are temporarily unavailable. Please try again later.':connectionError??empty.error};
  const events=data?.events??unavailable;
  const scopeLabel=trackingDeviceLabel(device);
  const overall=data?.overview??unavailable;
@@ -30,7 +30,7 @@ async function TrackingContent({searchParams}:{searchParams:Promise<Record<strin
  const metric=(event:string,index=0)=>events.error?'—':String(events.rows.find(row=>row.dimensions[0]===event)?.metrics[index]?.toLocaleString('en-US')??'0');
  return <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8"><div className="mx-auto flex max-w-7xl flex-col gap-6">
  <header id="overview"><p className="text-caption-1-semibold text-text-tertiary"><Link href="/bluevua">Bluevua</Link> / Website tracking</p><h1 className="mt-2 text-title-1-semibold text-text-primary">Website Tracking</h1><p className="mt-2 text-body-regular text-text-secondary">See which website features get used, where actions fail, and which product sources lead to purchases.</p><p className="mt-3 text-body-regular text-text-secondary">Tracked website: <a href="https://bluevua.com/" target="_blank" rel="noopener noreferrer" aria-label="Visit bluevua.com (opens in a new tab)" className="rounded-sm text-body-medium text-text-primary underline underline-offset-4 outline-none hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-border-focus-ring">bluevua.com</a><span className="text-body-2-regular text-text-tertiary"> · Includes www.bluevua.com</span></p><div className="mt-5"><TrackingFilters period={period} device={device}/></div><p className="mt-3 text-caption-1-regular text-text-tertiary">{period.start} – {period.end} · {data?.timeZone??'GA4 property time zone'}{data?.fetchedAt?` · Retrieved ${new Date(data.fetchedAt).toLocaleString('en-US',{timeZone:'America/Chicago'})} CT`:''}</p></header>
- {!validation&&!connectionError&&cache&&<TrackingCacheStatus key={`${period.start}:${period.end}:${device}`} refreshing={cache.refreshing} stale={cache.stale} capturedAt={data?.fetchedAt} error={cache.error}/>}
+ {!validation&&!connectionError&&cache&&<TrackingCacheStatus key={`${period.start}:${period.end}:${device}`} refreshing={cache.refreshing} capturedAt={data?.fetchedAt} error={cache.error}/>}
  {(validation||connectionError)&&<Card className="rounded-3xl"><CardHeader><CardTitle>{validation?'Check reporting filters':'Tracking data unavailable'}</CardTitle><CardDescription>{validation??connectionError}</CardDescription></CardHeader><CardContent className="mt-4"><p className="text-body-regular text-text-secondary">Reports will populate after the connection is available. No sample data is displayed.</p></CardContent></Card>}
  <section aria-label="Overall activity" className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-title-3-semibold text-text-primary">Overall activity</h2><span className="text-body-2-medium text-text-secondary">{scopeLabel}</span></div><TrackingStats kind="overall" values={overallValues}/>{overall.error&&<p role="status" className="text-body-regular text-text-secondary">{overall.error}</p>}{overall.warnings.map(warning=><p key={warning} role="status" className="text-caption-1-regular text-text-secondary">{warning}</p>)}</section>
  {device==='all'&&<DeviceBreakdown report={data?.devices??unavailable}/>}

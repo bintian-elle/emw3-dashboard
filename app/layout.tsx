@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { FloatingTableHeaders } from "@/components/application/dashboard/floating-table-headers";
 import { currentSiteUser } from "@/lib/current-site-user";
 import { readUserLanguage } from "@/lib/site-user-preferences";
 import { SiteLanguageProvider } from "@/components/application/dashboard/site-language-provider";
@@ -25,5 +26,5 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await currentSiteUser();
   const language = user ? await readUserLanguage(user.sub).catch(() => "en" as const) : "en";
-  return <html lang={language === "zh" ? "zh-CN" : "en"} className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><Suspense><AccountHeader/></Suspense>{children}</SiteLanguageProvider></body></html>;
+  return <html lang={language === "zh" ? "zh-CN" : "en"} className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><Suspense><AccountHeader/></Suspense>{children}<FloatingTableHeaders/></SiteLanguageProvider></body></html>;
 }

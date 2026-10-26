@@ -10,3 +10,8 @@ test("overall CTR combines raw ad clicks and email unique clicks over their expo
  assert.notEqual(result.ctr,(.1+.005)/2);
 });
 test("overall CTR is unavailable without exposures",()=>assert.equal(aggregateOverviewCtr({clicks:0,impressions:0},{uniqueClicks:0,delivered:0}).ctr,null));
+
+test('unknown PMax testing impressions do not become a false combined CTR',()=>{
+ const paid=aggregatePaidOverview([{spend:20,revenue:40,clicks:4,impressions:null},{spend:10,revenue:20,clicks:2,impressions:100}]);
+ assert.equal(paid.roas,2);assert.equal(paid.impressions,null);assert.equal(paid.ctr,null);assert.equal(aggregateOverviewCtr(paid,{uniqueClicks:3,delivered:100}).ctr,null);
+});

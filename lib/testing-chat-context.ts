@@ -1,4 +1,5 @@
 import "server-only";
+import {PMAX_TESTING_BASIS,currentPmaxReadout} from "@/lib/pmax-testing-performance";
 import { getGoogleContentTests } from "@/lib/testing-google";
 import { getExpandedGoogleTesting } from "@/lib/google-expanded-content-testing";
 import { getMetaCampaignTest } from "@/lib/testing-meta";
@@ -46,7 +47,16 @@ export async function loadTestingChatContext(scope: TestingChatScope, comparison
  })());
  for(const [channel,kind] of [['google-pmax','pmax'],['google-demand-gen','demand-gen']] as const)if(wanted(channel)&&scope.channel!=='concluded')tasks.push((async()=>{
   const data=await getExpandedGoogleTesting(kind,input);exactPeriod(data.period);
-  for(const campaign of data.campaigns.filter(c=>chosen(c.name))){add(channel,campaign.name,campaign);for(const group of campaign.groups)for(const row of group.rows)links.push({entityId:row.id,label:row.name,href:`/bluevua/testing/google/${kind}/${row.id}?${query}`});}
+  for(const campaign of data.campaigns.filter(c=>chosen(c.name))){
+   add(channel,campaign.name,campaign);
+   for(const group of campaign.groups)for(const row of group.rows){
+    links.push({entityId:row.id,label:row.name,href:`/bluevua/testing/google/${kind}/${row.id}?${query}`});
+    for(const asset of row.assetPerformance??[]){
+     const metadata=row.assets.find(a=>a.id===asset.assetId);
+     links.push({entityId:asset.assetId,label:metadata?.textAsset?.text||metadata?.youtubeVideoAsset?.youtubeVideoTitle||metadata?.name||asset.assetId,href:`/bluevua/testing/google/${kind}/${row.id}?${query}#asset-${asset.assetId}`});
+    }
+   }
+  }
  })());
  if(wanted('meta')&&scope.channel!=='concluded')tasks.push((async()=>{const data=await getMetaCampaignTest(input);exactPeriod(data.period);for(const campaign of data.campaigns.filter(c=>chosen(c.campaignName))){add('meta',campaign.campaignName,campaign);for(const group of campaign.adGroups)for(const ad of group.activeAds)links.push({label:ad.name,entityId:ad.adId,href:`/bluevua/testing/meta/${group.adGroupId}?${query}#ad-${ad.adId}`});}})());
  if(wanted('reddit')&&scope.channel!=='concluded')tasks.push((async()=>{
@@ -68,7 +78,7 @@ export async function loadTestingChatContext(scope: TestingChatScope, comparison
  const permanentKeys=scope.channel==='concluded'?concludedTestsForChannel('Google Search').filter(t=>tests.some(test=>test.campaign===t.campaignName)).map(t=>`period:concluded:${t.id}`):[];
  const saved=await readTestingReadoutCache([...new Set([concluded?`period:concluded:${concluded}`:'framework:v1',...(key?[key]:[]),...permanentKeys])]);
  const names=new Set(tests.map(t=>t.campaign));
- const readouts=saved.map(row=>{const payload=row.payload as Record<string,unknown>;return {key:row.cache_key,period_start:row.period_start,period_end:row.period_end,...Object.fromEntries(Object.entries(payload).filter(([field])=>!['tests','test_frameworks','channel_frameworks'].includes(field)&&(!scope.campaign||field!=='overview'))),tests:(payload.tests as Array<{campaign_name?:string;test_id:string}>|undefined)?.filter(t=>names.has(t.test_id)||names.has(t.campaign_name??'')),test_frameworks:(payload.test_frameworks as Array<{campaign_name?:string;test_id:string}>|undefined)?.filter(t=>names.has(t.test_id)||names.has(t.campaign_name??''))};});
+ const readouts=saved.map(row=>{const payload=row.payload as Record<string,unknown>,compatible=currentPmaxReadout(payload,"overview");return {key:row.cache_key,period_start:row.period_start,period_end:row.period_end,...Object.fromEntries(Object.entries(payload).filter(([field])=>!['tests','test_frameworks','channel_frameworks'].includes(field)&&((!scope.campaign&&compatible)||field!=='overview'))),tests:(payload.tests as Array<{campaign_name?:string;test_id:string;channel?:string}>|undefined)?.filter(t=>(compatible||t.channel!=="Google PMAX")&&(names.has(t.test_id)||names.has(t.campaign_name??''))) ,test_frameworks:(payload.test_frameworks as Array<{campaign_name?:string;test_id:string}>|undefined)?.filter(t=>names.has(t.test_id)||names.has(t.campaign_name??''))};});
  function count(value:unknown):number {if(!value||typeof value!=='object')return 0;if(Array.isArray(value))return value.reduce((n,v)=>n+count(v),0);const row=value as Record<string,unknown>;if(typeof row.adId==='string')return 1;if(row.adGroupAd&&typeof row.adGroupAd==='object')return 1;return Object.values(row).reduce<number>((n,v)=>n+count(v),0);}
- return {scope,view_context:{page:scope.page,visible_entities:links.filter(link=>link.href.split('?')[0]===scope.page)},tests,data_gaps:gaps,navigation_links:links,saved_analysis:readouts,entity_count:Math.max(1,tests.reduce((n,t)=>n+count(t.data),0)),metric_contract:{rates:'Decimal fractions in raw data; saved analytical rates may use percent units. Recompute ROAS=sum revenue/sum spend; CTR=clicks/impressions. EDM CTR=unique clicks/delivered; module CTR needs module denominator. Never sum ad/daily reach to claim unique people.',paid_roas:'Paid ROAS excludes EDM and Social revenue: sum reported Google/Meta/Reddit conversion value divided by their summed spend, for the supplied scope only. Account for attribution overlap without averaging channel ROAS.',scope:'Exact supplied period only. Missing metrics are unavailable, not zero. Saved analysis is historical unless dates match. No current-period backfill from chat history.'}};
+ return {scope,metric_basis:{pmax:PMAX_TESTING_BASIS},view_context:{page:scope.page,visible_entities:links.filter(link=>link.href.split('?')[0]===scope.page)},tests,data_gaps:gaps,navigation_links:links,saved_analysis:readouts,entity_count:Math.max(1,tests.reduce((n,t)=>n+count(t.data),0)),metric_contract:{pmax:"Group metrics are testing asset performance, reconciled against product-data totals. AssetPerformance rows are official per-asset associations and are not additive. Never sum their spend/conversions/value/impressions into group or Overview totals. Null impressions and CTR are unavailable; do not backfill from other scopes, asset sums or prior answers. Match assetId to assets metadata for names and media.",rates:'Decimal fractions in raw data; saved analytical rates may use percent units. Recompute ROAS=sum revenue/sum spend; CTR=clicks/impressions. EDM CTR=unique clicks/delivered; module CTR needs module denominator. Never sum ad/daily reach to claim unique people.',paid_roas:'Paid ROAS excludes EDM and Social revenue: sum reported Google/Meta/Reddit conversion value divided by their summed spend, for the supplied scope only. Account for attribution overlap without averaging channel ROAS.',scope:'Exact supplied period only. Missing metrics are unavailable, not zero. Saved analysis is historical unless dates match. No current-period backfill from chat history.'}};
 }
