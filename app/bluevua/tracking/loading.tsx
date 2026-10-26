@@ -1,0 +1,1 @@
+export default function Loading(){return <main aria-busy="true" className="min-h-screen bg-background-secondary-default p-8"><p role="status" className="text-body-regular text-text-secondary">Loading website tracking reports…</p></main>;}

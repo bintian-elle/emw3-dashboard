@@ -3,7 +3,7 @@ import Image from "next/image";
 import { ButtonLink } from "@/components/base/buttons/button";
 import { Emw3Logo } from "@/components/brand/emw3-logo";
 
-export function SidebarProjectLink({ reportName }: { reportName?: "Google Dashboard" | "EDM Dashboard" | "Testing" }) {
+export function SidebarProjectLink({ reportName }: { reportName?: "Google Dashboard" | "EDM Dashboard" | "Testing" | "Website Tracking" }) {
   return (
     <div className="flex flex-col gap-4">
       <Link href="/" className="inline-flex w-fit px-2 py-1" aria-label="Go to the EMW3 homepage">
