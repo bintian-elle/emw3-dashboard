@@ -2,6 +2,7 @@ export type TrackingPeriod = { start: string; end: string };
 export type TrackingDevice = 'all' | 'desktop' | 'mobile' | 'tablet';
 export type TrackingRow = { dimensions: string[]; metrics: number[] };
 export type TrackingReport = { rows: TrackingRow[]; error?: string; warnings: string[] };
+export type TrackingData={overview:TrackingReport;devices?:TrackingReport;events:TrackingReport;actions:TrackingReport;purchases:TrackingReport;lists:TrackingReport;timeZone?:string;currency?:string;fetchedAt:string;property:string};
 export const trackingEvents = ['cart_feature_action', 'cart_feature_result', 'view_item_list', 'select_item', 'compare_entry_view', 'compare_click', 'compare_view'];
 export const trackingFeatures = ['Switch to Bundle', 'You May Also Like', 'PDP Add-ons', 'Compare', 'Promo Code'];
 export function trackingPeriod(query: {start?: string; end?: string}, now = new Date()): TrackingPeriod {

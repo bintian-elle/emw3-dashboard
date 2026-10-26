@@ -47,3 +47,14 @@ Rendered verification for the device update: the All devices page showed the liv
 ## Refresh defaults (2026-10-26)
 
 Browser reloads of a filtered tracking URL clear its date/device query and section hash, restoring All devices and the last seven complete property-time-zone dates. A layout-level client guard checks navigation timing only once per document; ordinary filter changes, deep-link navigation and history traversal keep their selected scope. The page's Refresh button also clears selections before fetching defaults; on the default URL it refreshes data normally. Other dashboard pages and saved theme/language preferences are unaffected. Thirteen tracking/transport tests, TypeScript and targeted lint passed.
+
+
+## Persistent background cache (2026-10-26)
+
+Page rendering reads private snapshots without awaiting GA4. Cache keys include property, exact date range and device; the live reader and independent overall Users query are unchanged. Snapshots expire after one hour. Stale data remains visible while Next `after` updates it; cold reports show a preparing state and poll every five seconds until ready. Failed or partial updates retain the last successful snapshot, with a five-minute retry cooldown. The header retains the source retrieval timestamp.
+
+Snapshots live in ignored `.state/website-tracking` (directory 0700, files 0600), optionally overridden with `WEBSITE_TRACKING_CACHE_DIR`. Atomic rename prevents partial reads. Kernel advisory locks coordinate the web app and worker, recovering automatically after process exit: Linux requires `/usr/bin/flock`, macOS `/usr/bin/lockf`. No OAuth credentials are copied into cache or repository.
+
+`node --experimental-strip-types scripts/website-tracking-cache-worker.mjs --check` validates imports/configuration without querying GA4. Without flags it warms missing/stale default scopes; `--scheduled` refreshes All devices, Desktop, Mobile and Tablet sequentially. The independent `ops/emw3-website-tracking-cache.service` and `.timer` run hourly on the connected server. Install these two units, reload systemd and enable the timer; existing AI/Insights schedules are unaffected. Custom periods warm on first access.
+
+Validation: 157 unit tests passed, including cache isolation, stale reads, concurrent refresh, failed/partial retention, corrupt-file recovery, abandoned-lock contention and worker-crash recovery. TypeScript and targeted ESLint passed. Before caching, an authenticated production HTML fetch took 21.13 seconds.
