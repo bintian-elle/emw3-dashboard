@@ -1,0 +1,87 @@
+--- a/src/anc_bridge/dashboard/provider.py
++++ b/src/anc_bridge/dashboard/provider.py
+@@ -15,6 +15,7 @@
+ from .contracts import RESULT_MODELS
+ from .prompts import input_text, instructions
+ from .memory import MemoryProposal, PROPOSAL_INSTRUCTIONS, intent
++from .design_handoff import enabled, BluevuaDesignAnswer, ROUTING_INSTRUCTIONS, complete_handoff
+ 
+ 
+ class ProviderFailure(Exception):
+@@ -36,6 +37,12 @@
+             raise ProviderFailure() from None
+ 
+     async def _generate(self, request, insight, record_identity):
++        if enabled(request) and not intent(request):
++            raw = await self._generate_once(request, insight, record_identity, routing=True)
++            plan = BluevuaDesignAnswer.model_validate_json(raw)
++            if plan.design_handoff:
++                return await complete_handoff(request, plan, self.capacity_dir, self.cwd)
++            return RESULT_MODELS['question'](answer_markdown=plan.answer_markdown).model_dump_json()
+         if request.mode != 'testing_readout':
+             return await self._generate_once(request, insight, record_identity)
+         parts = plan_testing_payloads(request.analysis_payload)
+@@ -59,22 +66,24 @@
+         return json.dumps({'schema_version': '1.0', 'run_mode': 'period_readout_batch',
+                            'period_readouts': results}, ensure_ascii=False)
+ 
+-    async def _generate_once(self, request, insight, record_identity):
++    async def _generate_once(self, request, insight, record_identity, routing=False):
+         translation = request.dashboard_id == "bluevua-testing-translation"
+         workspace = TemporaryDirectory(prefix="testing-translation-") if translation else None
+         try:
+-            return await self._run(request, insight, record_identity, translation, workspace)
++            return await self._run(request, insight, record_identity, translation, workspace, routing)
+         finally:
+             if workspace:
+                 workspace.cleanup()
+ 
+-    async def _run(self, request, insight, record_identity, translation, workspace):
++    async def _run(self, request, insight, record_identity, translation, workspace, routing=False):
+         cwd = Path(workspace.name) if translation else (PROJECT if request.conversation else self.cwd)
+         sdk = SafeCodex(native_config(cwd, host_requests=True))
+         async with runtime_slot(self.capacity_dir, dashboard=True), sdk:
+             action = intent(request)
+             proposing = bool(action and action[0] == 'propose')
+             prompt = request.question if translation else (PROPOSAL_INSTRUCTIONS if proposing else instructions(request.mode, request.insight_prompt))
++            if routing:
++                prompt = (prompt or "") + "\n" + ROUTING_INSTRUCTIONS
+             thread = (await sdk.dashboard_thread(cwd, prompt, request._native_thread, request._conversation_title)
+                       if request.conversation and not translation else await sdk.dashboard_thread(cwd, prompt))
+             record_identity(thread.id, None)
+@@ -99,7 +108,7 @@
+                                     'period': request.period.model_dump()}, ensure_ascii=False)
+                         if proposing else translation_input(request) if translation else input_text(request, insight))
+                 turn = await sdk.dashboard_turn(thread, text,
+-                                                (MemoryProposal if proposing else RESULT_MODELS[request.mode]).model_json_schema(),
++                                                (MemoryProposal if proposing else BluevuaDesignAnswer if routing else RESULT_MODELS[request.mode]).model_json_schema(),
+                                                 images=images, effort="low" if translation else "medium" if request.mode == "testing_readout" else "xhigh")
+                 record_identity(thread.id, turn.id)
+                 finals = []
+--- a/src/anc_bridge/dashboard/service.py
++++ b/src/anc_bridge/dashboard/service.py
+@@ -14,6 +14,7 @@
+ from .contracts import RESULT_MODELS, JobRequest, ConversationRoute, strict_json
+ from .conversations import Conversations
+ from .provider import NativeProvider, ProviderFailure
++from .design_handoff import DESIGN_DEADLINE
+ from .settings import Settings
+ from .store import Jobs, Rejected, public
+ from .memory import MemoryProposal, TeamMemory, intent
+@@ -109,9 +110,13 @@
+             if request.insight_job_id:
+                 insight = json.loads(self.store.get(request.insight_job_id)['result'])
+             testing = request.mode == "testing_readout" or request.dashboard_id == "bluevua-testing-translation"
+-            async with asyncio.timeout(None if testing else self.c.timeout):
+-                raw = await self.provider.generate(request, insight,
+-                    lambda thread, turn: self.record_identity(job_id, thread, turn, bound))
++            async with asyncio.timeout(None if testing else self.c.timeout) as deadline:
++                deadline_token = DESIGN_DEADLINE.set(deadline)
++                try:
++                    raw = await self.provider.generate(request, insight,
++                        lambda thread, turn: self.record_identity(job_id, thread, turn, bound))
++                finally:
++                    DESIGN_DEADLINE.reset(deadline_token)
+             if len(raw.encode()) > (512 if request.mode == "testing_readout" else 128) * 1024:
+                 raise ValueError('output_too_large')
+             if action and action[0] == 'propose':
