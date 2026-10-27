@@ -74,7 +74,7 @@ Entry points: `/ai-tools` and `/ai-tools/dashboard-builder`. Homepage AI entry l
 NEXT_DIST_DIR=.next-ai-tools npm run dev -- --hostname 127.0.0.1 --port 3100
 ```
 
-Open http://127.0.0.1:3100/ai-tools/dashboard-builder. The separate build directory avoids interfering with the normal development server. APIs only execute in development on loopback hosts. This preview adds no production auth bypass or deployed service.
+Open http://127.0.0.1:3100/ai-tools/dashboard-builder. The separate build directory avoids interfering with the normal development server. Development loopback requests support the local preview. Production APIs use the existing authenticated site user and exact HTTPS same-origin checks; localhost-only API gating was removed for release.
 
 Prerequisites: Node with `--experimental-strip-types`, installed authenticated `codex` CLI on PATH, existing project dependencies. Optional `AI_DASHBOARD_CODEX_BIN` selects the local executable. `AI_DASHBOARD_SNAPSHOT_DIR` overrides the fixed snapshot directory. Default: `.state/ai-dashboard/snapshots/2026-09-snapshot-20261026/`.
 
