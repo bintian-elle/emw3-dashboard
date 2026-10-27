@@ -1,0 +1,1 @@
+export const CHANNEL_NAMES:Record<string,string>={ga4:'GA4',google_ads:'Google Ads',meta_ads:'Meta Ads',tiktok_ads:'TikTok Ads',microsoft_ads:'Microsoft Ads',reddit_ads:'Reddit Ads',chatgpt_ads:'ChatGPT Ads',edm:'EDM · Email & SMS',store:'Store sales',paid_media:'Paid media'};

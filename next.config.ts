@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // PDF.js resolves its native canvas dependency relative to the loaded module.
   // Keep PDF packages in node_modules so builds can move between release paths.
   serverExternalPackages: ["pdf-parse", "pdfjs-dist", "@napi-rs/canvas"],

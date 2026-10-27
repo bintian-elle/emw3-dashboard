@@ -7,9 +7,10 @@ import { Switch as AriaSwitch } from "react-aria-components";
 import { SwitchTrack } from "@/components/base/switch/switch";
 import { cx } from "@/utils/cx";
 
+import {resolveThemePreference,THEME_PREFERENCE_STORAGE_KEY} from '@/lib/theme-policy';
 export type ThemeMode = "light" | "dark";
 
-export const THEME_STORAGE_KEY = "boardui:theme";
+export const THEME_STORAGE_KEY = THEME_PREFERENCE_STORAGE_KEY;
 export const THEME_CHANGE_EVENT = "boardui:theme-change";
 
 const THEME_TRANSITION_DURATION = 820;
@@ -84,18 +85,36 @@ function installThemeTransitionStyle(
   return style;
 }
 
+function deviceDark():boolean|null {
+  if(typeof window==='undefined'||!window.matchMedia)return null;
+  if(window.matchMedia('(prefers-color-scheme: dark)').matches)return true;
+  if(window.matchMedia('(prefers-color-scheme: light)').matches)return false;
+  return null;
+}
+function preference(){try{return window.localStorage.getItem(THEME_STORAGE_KEY)||'auto';}catch{return 'auto';}}
 function storedTheme(): ThemeMode {
-  if (typeof window === "undefined") return "light";
-  try {
-    return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
-  } catch {
-    return "light";
-  }
+  if(typeof window==='undefined')return 'light';
+  return resolveThemePreference(preference(),deviceDark(),new Date().getHours());
+}
+export function ThemeInitializer(){
+  useEffect(()=>{
+    const refresh=()=>applyTheme(storedTheme(),{persist:false});
+    refresh();
+    const dark=window.matchMedia('(prefers-color-scheme: dark)'),light=window.matchMedia('(prefers-color-scheme: light)');
+    // A new browser appearance takes priority over an earlier manual override.
+    const followBrowser=()=>{try{window.localStorage.setItem(THEME_STORAGE_KEY,'auto');}catch{}refresh();};
+    dark.addEventListener('change',followBrowser);light.addEventListener('change',followBrowser);
+    window.addEventListener('focus',refresh);window.addEventListener('storage',refresh);
+    const timer=window.setInterval(refresh,60000);
+    return()=>{dark.removeEventListener('change',followBrowser);light.removeEventListener('change',followBrowser);window.removeEventListener('focus',refresh);window.removeEventListener('storage',refresh);clearInterval(timer);};
+  },[]);
+  return null;
 }
 
 export function applyTheme(theme: ThemeMode, { persist = true }: { persist?: boolean } = {}) {
   if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.style.colorScheme = theme;
   if (persist) {
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, theme);
@@ -189,7 +208,7 @@ function subscribe(onStoreChange: () => void) {
   const onThemeChange = () => onStoreChange();
   const onStorage = (event: StorageEvent) => {
     if (event.key !== THEME_STORAGE_KEY) return;
-    applyTheme(event.newValue === "dark" ? "dark" : "light", { persist: false });
+    applyTheme(storedTheme(), { persist: false });
   };
   window.addEventListener(THEME_CHANGE_EVENT, onThemeChange);
   window.addEventListener("storage", onStorage);
@@ -218,7 +237,7 @@ export interface ThemeToggleProps {
   transitionDuration?: number;
 }
 
-/** Manual light/dark control. It never reads the operating-system theme. */
+/** Shared manual override; Auto restores device appearance with local-time fallback. */
 export function ThemeToggle({
   collapsed = false,
   appearance = "sidebar",

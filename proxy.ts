@@ -15,6 +15,10 @@ function blockedResponse() {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  // Local-only AI tools preview; production authentication is unchanged.
+  // Bundled open-source font files are static assets, not protected report data.
+  if (/^\/fonts\/overpass\/(?:overpass-(?:400|500|600|700|800)\.ttf|OFL\.txt)$/.test(pathname)) return NextResponse.next();
+  if (process.env.NODE_ENV === "development" && ["localhost", "127.0.0.1", "[::1]"].includes(request.nextUrl.hostname) && (pathname === "/ai-tools" || pathname.startsWith("/ai-tools/") || pathname.startsWith("/api/ai-dashboard/"))) return NextResponse.next();
   const serviceToken=request.cookies.get(CODEX_SITE_COOKIE)?.value||request.headers.get("authorization")?.replace(/^Bearer /, "");
   if(await validCodexSiteToken(serviceToken)){
     if(!codexReadPath(request.method,pathname))return NextResponse.json({error:"Codex service access is read-only."},{status:403});

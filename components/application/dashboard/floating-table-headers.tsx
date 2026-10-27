@@ -24,7 +24,7 @@ export function FloatingTableHeaders(){
   let horizontalSource:HTMLElement|null=null;
   const resize=new ResizeObserver(()=>{dirty=true;schedule();});
   function scan(){
-   const next=Array.from(document.querySelectorAll<HTMLTableElement>("table")).filter(table=>!overlay.contains(table)&&table.tHead);
+   const next=Array.from(document.querySelectorAll<HTMLTableElement>("table")).filter(table=>!overlay.contains(table)&&!table.closest("[data-disable-floating-headers]")&&table.tHead);
    if(next.length!==tables.length||next.some((table,index)=>table!==tables[index])){
     resize.disconnect();tables=next;
     tables.forEach(table=>resize.observe(table));

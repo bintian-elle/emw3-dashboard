@@ -72,3 +72,11 @@ test('kernel lease is released when a worker crashes',()=>withDirectory(async di
   assert.ok(next);await next.release();
  }finally{child.kill('SIGKILL');}
 }));
+
+test('incomplete extended reports cannot overwrite the last successful snapshot',()=>withDirectory(async directory=>{
+ await refreshTrackingCache(period,'all',async()=>data(),{directory,now});
+ const later=now+CACHE_TTL_MS+1,bad=data(later);
+ bad.collection={visitors:{rows:[],warnings:[]},clicks:{rows:[],warnings:[],error:'failed'}};
+ assert.equal(await refreshTrackingCache(period,'all',async()=>bad,{directory,now:later}),false);
+ assert.equal((await readTrackingCache(period,'all',{directory,now:later})).data?.fetchedAt,data().fetchedAt);
+}));

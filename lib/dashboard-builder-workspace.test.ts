@@ -1,0 +1,13 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {updateTextPresentation,repairGeneratedSummary,createBlankReport} from './dashboard-builder-workspace.ts';
+import {buildPageSummary} from './ai-dashboard-text.ts';
+import type {Workspace} from './ai-dashboard-editor.ts';
+const workspace:Workspace={order:['sales','summary'],hidden:[],colors:{},report:{title:'Overview',summary:'',snapshotId:'test',generatedAt:'2026-10-26',range:{start:'2026-10-20',end:'2026-10-26'},warnings:[],widgets:[{id:'sales',title:'Store revenue',kind:'metric',source:'store',groupBy:'overview',metrics:['revenue'],range:{start:'2026-10-20',end:'2026-10-26'},currency:'USD',timezone:'UTC',rows:[{label:'Store',revenue:100}],warnings:[]}]},texts:[]};
+const summary={id:'summary',title:'Summary',kind:'text' as const,role:'summary' as const,autoSummary:true,content:buildPageSummary(workspace.report)};
+test('focusing and blurring the generated summary never freezes it to an old reporting period',()=>{assert.deepEqual(updateTextPresentation(summary,{content:summary.content}),summary);assert.equal(updateTextPresentation(summary,{title:'Weekly summary'}).autoSummary,true);assert.equal(updateTextPresentation(summary,{content:'My own interpretation'}).autoSummary,false);});
+test('recover only untouched generated prose while preserving a user-written summary',()=>{const broken={...workspace,texts:[{...summary,autoSummary:false}]};assert.equal(repairGeneratedSummary(broken).texts?.[0].autoSummary,true);const custom={...broken,texts:[{...summary,content:'My own interpretation',autoSummary:false}]};assert.deepEqual(repairGeneratedSummary(custom),custom);});
+
+test('an already migrated report recovers the untouched old generated summary from its prior period',()=>{const current={...workspace,report:{...workspace.report,range:{start:'2026-10-13',end:'2026-10-19'}},texts:[{...summary,autoSummary:false}]};const repaired=repairGeneratedSummary(current,[workspace]);assert.equal(repaired.texts?.[0].autoSummary,true);assert.match(repaired.texts?.[0].content||'',/Oct 13/);assert.doesNotMatch(repaired.texts?.[0].content||'',/Oct 20/);});
+
+test('a new blank dashboard passes AI context validation without inheriting overview widgets',async()=>{const {validateEditorContext}=await import('./ai-dashboard-actions.ts');const {editorContext,newEditor}=await import('./ai-dashboard-editor.ts');const original=structuredClone(workspace.report);const blank=createBlankReport(workspace.report);assert.equal(blank.widgets.length,0);assert.doesNotThrow(()=>validateEditorContext(editorContext(newEditor({...workspace,report:blank,order:[],texts:[]}))));assert.deepEqual(workspace.report,original);});

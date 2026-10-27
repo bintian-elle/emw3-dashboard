@@ -1,0 +1,10 @@
+import nextEnv from '@next/env';
+nextEnv.loadEnvConfig(process.cwd());
+import {PROJECTS} from '../lib/ai-dashboard-options.ts';
+import {validateDashboardProject} from '../lib/ai-dashboard-project.ts';
+import {defaultDashboardRange} from '../lib/ai-dashboard-periods.ts';
+import {generateProjectOverview} from '../lib/ai-dashboard-published.ts';
+const args=process.argv.slice(2);const unknown=args.filter((arg,index)=>!['--project','--force','--cached-only'].includes(arg)&&args[index-1]!=='--project');if(unknown.length)throw Error('Unknown generation argument.');
+const projectFlag=args.indexOf('--project');const projects=projectFlag>=0?[validateDashboardProject(args[projectFlag+1])]:PROJECTS.map(p=>p.id);const range=defaultDashboardRange();
+const results=[];for(const project of projects)results.push(await generateProjectOverview(project,{range,force:args.includes('--force'),cachedOnly:args.includes('--cached-only')}));
+console.log(JSON.stringify({targetRange:range,results}));if(results.some(r=>r.status==='failed'))process.exitCode=1;

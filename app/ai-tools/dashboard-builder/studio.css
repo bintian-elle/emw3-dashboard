@@ -1,0 +1,59 @@
+@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/overpass/overpass-400.ttf') format('truetype'); }
+@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/overpass/overpass-500.ttf') format('truetype'); }
+@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/overpass/overpass-600.ttf') format('truetype'); }
+@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/overpass/overpass-700.ttf') format('truetype'); }
+@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 800; font-display: swap; src: url('/fonts/overpass/overpass-800.ttf') format('truetype'); }
+
+/* Presentation tokens sampled from the user's Weekly Meeting Deck PDF:
+ * Overpass; royal blue 56/101/220; table blue 66/133/244; orange 246/125/38.
+ * The report stays white regardless of the surrounding application theme. */
+.ai-dashboard .dashboard-report-surface {
+  color-scheme: light;
+  --font-sans: 'Deck Overpass', Arial, sans-serif;
+  --color-background-primary-default: var(--color-white);
+  --color-background-secondary-default: var(--color-neutral-100);
+  --color-background-secondary-hover: var(--color-neutral-200);
+  --color-background-tertiary-default: var(--color-neutral-200);
+  --color-text-primary: var(--color-neutral-950);
+  --color-text-secondary: var(--color-neutral-600);
+  --color-text-tertiary: var(--color-neutral-500);
+  --color-text-placeholder: var(--color-neutral-400);
+  --color-border-button-default: var(--color-neutral-200);
+  --color-border-button-hover: var(--color-neutral-300);
+  --color-border-table: var(--color-neutral-200);
+  --color-separator-border: var(--color-neutral-200);
+  --color-foreground-icon-primary: var(--color-neutral-950);
+  --color-foreground-icon-secondary: var(--color-neutral-500);
+  --color-status-lime-background: var(--color-lime-200);
+  --color-status-lime-text: var(--color-lime-800);
+  --color-status-rose-background: var(--color-rose-200);
+  --color-status-rose-text: var(--color-rose-800);
+  --color-status-purple-text: var(--color-purple-600);
+  --color-report-rule: var(--color-border-button-default);
+  background: var(--color-background-primary-default);
+  font-family: var(--font-sans);
+}
+/* Cards stay neutral. Only actual chart marks carry series colors. */
+.dashboard-report-title, .dashboard-component-heading h2, .dashboard-text-title, .dashboard-metric-label { color: var(--color-text-primary); }
+.dashboard-component-heading h2, .dashboard-text-title { font-weight: 600; }
+.dashboard-report-card { border: 1px solid var(--color-report-rule); border-radius: .75rem; box-shadow: none; }
+.dashboard-component-heading { padding-bottom: 0; border: 0; }
+.dashboard-report-card table thead { background: var(--color-background-secondary-default); color: var(--color-text-secondary); }
+.dashboard-report-card table thead tr { color: inherit; }
+.dashboard-report-card table thead th { padding-left: .75rem; padding-right: .75rem; font-weight: 600; }
+.dashboard-report-card table tbody tr:nth-child(even) { background: var(--color-background-secondary-default); }
+.dashboard-report-card .recharts-wrapper { font-family: Arial, sans-serif; }
+.dark .ai-dashboard { --color-text-secondary: color-mix(in srgb, var(--color-text-primary) 80%, var(--color-background-primary-default)); --color-text-tertiary: color-mix(in srgb, var(--color-text-primary) 64%, var(--color-background-primary-default)); }
+.dashboard-drag-handle { touch-action: none; cursor: grab; }
+.dashboard-drag-handle:active { cursor: grabbing; }
+@media (hover: none) { .dashboard-drag-handle, .dashboard-remove-control { opacity: .65; } }
+@media (prefers-reduced-motion: reduce) { .dashboard-drag-handle { transition: none; } }
+
+/* Fit chat into the visible viewport, including the shared account bar above it. */
+.dashboard-chat-messages { overscroll-behavior: contain; }
+@media (min-width: 1280px) {
+  .dashboard-chat { height: calc(100dvh - var(--dashboard-visible-top, 0px)); overflow: hidden; }
+}
+@media (max-width: 1279px) {
+  .dashboard-chat { height: min(48rem, 100dvh); }
+}
