@@ -5,8 +5,8 @@ const range={start:'2026-09-01',end:'2026-09-30'};
 const widget={id:'spend',title:'Spend',kind:'metric',source:'google_ads',groupBy:'overview',metrics:['spend']};
 const spec={title:'September overview',summary:'Snapshot report',range,widgets:[widget]};
 test('calendar last month and last 30 days remain distinct',()=>{
- assert.deepEqual(resolveRequestedRange('Show overview for last month'),range);
- assert.deepEqual(resolveRequestedRange('Show overview for last 30 days'),{start:'2026-09-26',end:'2026-10-25'});
+ assert.deepEqual(resolveRequestedRange('Show overview for last month','2026-10-26'),range);
+ assert.deepEqual(resolveRequestedRange('Show overview for last 30 days','2026-10-26'),{start:'2026-09-26',end:'2026-10-25'});
 });
 test('refuses unsupported dates, sources and fields',async()=>{
  await assert.rejects(()=>querySnapshot({source:'google_ads',groupBy:'day',start:'2023-09-26',end:'2023-10-25'}),/days/i);

@@ -1,3 +1,4 @@
+import type {Appearance} from './ai-dashboard-appearance.ts';
 import type {ContentTestingSnapshot} from './ai-dashboard-content-testing.ts';
 import {dashboardProject} from './ai-dashboard-project.ts';
 import type {ProjectId} from './ai-dashboard-options.ts';
@@ -11,7 +12,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import path from 'node:path';
 import {canReadJob,validateReport,validateRange,resolveRequestedRange,type DashboardReport,type ReportSpec} from './ai-dashboard.ts';
-export type DashboardJob={contentTesting?:ContentTestingSnapshot;project?:ProjectId;id:string;owner:string;prompt:string;status:'queued'|'running'|'completed'|'failed';stage:string;createdAt:string;updatedAt:string;parent:ReportSpec|null;result:DashboardReport|null;error:string|null;editor?:EditorContext;answer?:string;edit?:{changed:boolean;order:string[];hidden:string[];colors:ChartColors;baseRevision:number;texts?:TextBlock[]};elapsedMs?:number;conversation?:Array<{role:'user'|'assistant';text:string}>};
+export type DashboardJob={contentTesting?:ContentTestingSnapshot;project?:ProjectId;id:string;owner:string;prompt:string;status:'queued'|'running'|'completed'|'failed';stage:string;createdAt:string;updatedAt:string;parent:ReportSpec|null;result:DashboardReport|null;error:string|null;editor?:EditorContext;answer?:string;edit?:{changed:boolean;order:string[];hidden:string[];colors:ChartColors;baseRevision:number;texts?:TextBlock[];appearance?:Appearance};elapsedMs?:number;conversation?:Array<{role:'user'|'assistant';text:string}>};
 export function jobsDirectory(){return path.join(process.cwd(),'.state','ai-dashboard','jobs');}
 export function ownerLock(owner:string){return path.join(jobsDirectory(),'.owner-'+createHash('sha256').update(owner).digest('hex'));}
 export function jobFile(id:string){if(!/^[0-9a-f-]{36}$/.test(id))throw Error('Task not found.');return path.join(jobsDirectory(),id,'job.json');}

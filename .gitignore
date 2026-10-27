@@ -56,3 +56,6 @@ next-env.d.ts
 
 # Isolated release verification build
 /.next-release/
+
+# Versioned production release artifacts
+/.next-release*/

@@ -43,3 +43,9 @@ Website Tracking's existing hourly timer remains enabled. Its new cache warmup c
 Production compilation/type checking succeeded. Targeted suites cover Builder/editor/history/data access, Content Testing scope enforcement, private model catalogs, brand-profile routing and indefinite waiting, plus Website Tracking and collector cache rules.
 
 HTTPS production smoke checks passed for the three database catalogs, authenticated hydration, page rendering and security boundaries. Real Codex component editing and read-only Content Testing analysis passed on the identical pre-release process. No marketing source writes were performed.
+
+## Granular component appearance (2026-10-27)
+
+AI `style` operations edit a validated per-component `appearance` map, separate from source data: chart data disclosure, metric caption (hide/custom/default), chart legend/grid/data labels, table guide lines/striping/density/header. Existing defaults are preserved. The same map is persisted in IndexedDB, sent in editor context and included in Undo/Redo; weekly hydration preserves appearance while refreshing numbers. Live-DOM PDF capture reflects these styles.
+
+Local UI verification exercised a compound Chinese request hiding chart data and a metric caption while adding table lines/compact rows. It retained every widget and value, supported Undo/Redo, survived reload, then hid the legend, enabled chart labels/both grid directions and removed striping. Browser console was clean. A CLI-version guard prevents a newer model catalog from changing an older CLI's model selection. The local preview may select the already-installed bundled CLI through `AI_DASHBOARD_CODEX_BIN`, without changing global Codex settings.
