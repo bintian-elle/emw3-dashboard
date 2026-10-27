@@ -19,7 +19,7 @@ async function main(){
   const requested=await resolvePublishedRequestedRange(job.prompt,job.project||'bluevua');
   const published=await readPublishedOverview(job.project||'bluevua');
   // Presentation-only edits and reads of the current report never wait for an API refresh.
-  if(requested&&(requested.start!==base.report.range.start||requested.end!==base.report.range.end)){job.status='running';job.stage='Preparing requested period';await saveJob(job);await prepareDashboardData(requested);}
+  if(!job.contentTesting&&requested&&(requested.start!==base.report.range.start||requested.end!==base.report.range.end)){job.status='running';job.stage='Preparing requested period';await saveJob(job);await prepareDashboardData(requested);}
   job.status='running';job.stage='Working on your dashboard…';await saveJob(job);
   const cache=new Map<string,Dataset>();const inherited:Query[]=base.report.widgets.map(w=>({source:w.source,groupBy:w.groupBy,...base.report.range}));
   const backendAudit:string[]=[],inflight=new Map<string,Promise<Dataset>>();async function readAuthorized(query:Query){const key=queryKey(query);if(!inflight.has(key))inflight.set(key,(async()=>{const data=await querySnapshot(query);cache.set(key,data);backendAudit.push(JSON.stringify(query));return data;})());return inflight.get(key)!;}
