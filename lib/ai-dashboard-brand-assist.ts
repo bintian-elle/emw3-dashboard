@@ -12,7 +12,7 @@ export type BrandAssistantInput={project:string;prompt:string;metrics:unknown;co
 export type BrandAssistantResult={assistant:string;notes:string[];sources:string[];status:'available'|'unavailable'|'skipped'};
 export type BrandAssistantRun={assistant:string;prompt:string;args:string[];timeoutMs:number;signal:AbortSignal};
 export type BrandAssistantOptions={mode?:'anc'|'ssh';timeoutMs?:number;readContext?:(file:string)=>Promise<string>;runner?:(request:BrandAssistantRun)=>Promise<string>};
-export function wantsBrandAssistance(prompt:string){return /summari[sz]|summary|insights?|why\b|strateg|recommend|interpret|explain.*(?:performance|trend|change)|摘要|总结|洞察|为什么|为何|策略|战略|建议|原因|解读/i.test(prompt);}
+export function wantsBrandAssistance(prompt:string){if(/^(?:rename|delete|remove|move|reorder|drag)\b|^change\b.*(?:title|color)|^(?:删除|移除|移动|拖动|重命名)|(?:标题|颜色|配色).*(?:改成|换成)/i.test(prompt.trim()))return false;return /summari[sz]|summary|insights?|why\b|strateg|recommend|interpret|explain.*(?:performance|trend|change)|摘要|总结|洞察|为什么|为何|策略|战略|建议|原因|解读/i.test(prompt);}
 async function safeRead(file:string){const root=path.dirname(file.includes('/knowledge/')?path.dirname(file):file);for(const relative of [root,file.includes('/knowledge/')?path.dirname(file):root,file])if((await lstat(relative)).isSymbolicLink())throw Error('symlink');const stat=await lstat(file);if(!stat.isFile()||stat.size>24000)throw Error('context_size');return readFile(file,'utf8');}
 const setting=(key:string,value:unknown)=>['-c',`${key}=${JSON.stringify(value)}`];
 export async function runBrandAssistant(request:BrandAssistantRun):Promise<string>{
