@@ -1,5 +1,7 @@
 # Published Dashboard Builder overviews
 
+Production deployment and timer activation are recorded in [dashboard-builder-production.md](dashboard-builder-production.md).
+
 The deployment-time remote schedule is Tuesday at 04:00 America/New_York. The local Codex custom automation has been removed; no local recurring job is required. Scheduling is configured only when deploying to the remote host; this module does not install timers or deploy services. The desired report week is the last fully completed Tuesday–Monday week in America/Chicago. At this schedule both zones have advanced to Tuesday. Source account calendars are still independently validated.
 
 ## Storage and serving
