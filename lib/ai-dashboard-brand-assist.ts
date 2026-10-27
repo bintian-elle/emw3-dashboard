@@ -27,7 +27,7 @@ export async function consultBrandAssistant(input:BrandAssistantInput,options:Br
  const profile=project?BRAND_ASSISTANTS[project]:null;
  const empty=(status:BrandAssistantResult['status']):BrandAssistantResult=>({assistant:profile?.assistant||'',notes:[],sources:[],status});
  if(!profile||!project)return empty('unavailable');if(!wantsBrandAssistance(input.prompt))return empty('skipped');
- const controller=new AbortController(),timeoutMs=Math.min(options.timeoutMs||20000,20000);let timer:ReturnType<typeof setTimeout>|undefined;
+ const controller=new AbortController(),timeoutMs=Math.min(options.timeoutMs||45000,45000);let timer:ReturnType<typeof setTimeout>|undefined;
  try{return await Promise.race([new Promise<BrandAssistantResult>(resolve=>{timer=setTimeout(()=>{controller.abort();resolve(empty('unavailable'));},timeoutMs);}), (async():Promise<BrandAssistantResult>=>{
  if(options.mode==='ssh'){const response=await sshConsult(input,controller.signal);if(response.assistant!==profile.assistant||!Array.isArray(response.notes)||!Array.isArray(response.sources)||!['available','unavailable','skipped'].includes(response.status))return empty('unavailable');return response;}
  const docs:Record<string,string>={};let total=0;
