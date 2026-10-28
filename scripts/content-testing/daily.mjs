@@ -39,4 +39,6 @@ try{
   // English is available immediately. Translation uses independent low-reasoning queue sessions.
   await run(process.execPath,['scripts/refresh-testing-readouts.mjs','--translations-only']);
  }
+ // Retain one-time analysis discovery for newly finalized concluded tests.
+ await run(process.execPath,['scripts/refresh-testing-readouts.mjs','--concluded-only']);
 }finally{await db.end();}
