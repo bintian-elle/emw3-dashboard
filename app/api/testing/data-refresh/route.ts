@@ -41,21 +41,24 @@ export async function GET(request:NextRequest){
  }catch(error){const setup=(error as {code?:string})?.code==='42P01';const updatedAt=channel==='social'?await socialUpdatedAt(null).catch(()=>null):null;return Response.json({updatedAt,refreshing:false,available:false,message:setup?'Shared cache setup is required.':'Shared data cache is unavailable. Please try again later.',messageCode:setup?'cache_setup_required':'cache_unavailable'},{headers});}
 }
 export async function POST(request:NextRequest){
- try{await dashboardOwner(request);requireSameOrigin(request);}catch{return Response.json({error:'Unauthorized'},{status:403,headers});}
- let body:{channel?:unknown;period?:unknown;start?:unknown;end?:unknown};
+ const secret=process.env.CRON_SECRET?.trim()||process.env.AI_WORKER_SECRET?.trim();
+ const internal=Boolean(secret&&request.headers.get('authorization')===`Bearer ${secret}`);
+ if(!internal)try{await dashboardOwner(request);requireSameOrigin(request);}catch{return Response.json({error:'Unauthorized'},{status:403,headers});}
+ let body:{channel?:unknown;period?:unknown;start?:unknown;end?:unknown;scheduled?:boolean;weekly?:boolean};
  try{body=await request.json();}catch{return Response.json({error:'Invalid refresh request.'},{status:400,headers});}
  const channel=channelOf(body.channel);
  if(!channel||!supported.has(channel))return Response.json({error:'Refresh is not available for this data source yet.'},{status:400,headers});
  const value=(v:unknown)=>typeof v==='string'?v:undefined;
  const input=inputFor(channel,{period:value(body.period),start:value(body.start),end:value(body.end)});
  try{
-  const result=channel.startsWith('google-')?await publishGoogleTestingSnapshots(googleChannel=>source(googleChannel,{})):await publishTestingDataSnapshot(channel,input,()=>source(channel,input));
+  if(internal&&body.scheduled&&channel.startsWith('google-'))await (await import('@/lib/google-testing-warehouse')).assertGoogleWarehouseUpdatedToday();
+  const result=channel.startsWith('google-')?await publishGoogleTestingSnapshots(googleChannel=>source(googleChannel,{})):await publishTestingDataSnapshot(channel,input,()=>source(channel,input),internal&&body.scheduled?(body.weekly?{reuseExisting:true}:{skipValidToday:payload=>channel==='social'?isSocialSnapshot(payload):channel==='meta'&&input.preset==='mtd'?Boolean((payload as {history?:unknown;currency?:unknown})?.history&&(payload as {currency?:unknown})?.currency):true}):undefined);
   // Publishing has committed; a transient revalidation error must not be reported as a failed refresh.
   try{revalidatePath('/bluevua/testing','layout');}catch{/* Clients still refresh and read the committed shared snapshot. */}
   return Response.json({updatedAt:result.updatedAt,refreshing:false,available:true},{headers});
  }catch(error){
   const message=error instanceof Error?error.message:'';
   const rateLimited=error instanceof TestingDataRefreshBusy||error instanceof TestingDataRefreshRateLimit||/\b429\b|rate.?limit|too many requests/i.test(message);
-  return Response.json({error:rateLimited?'Refresh is rate limited. Please try again later. Existing data is unchanged.':'Refresh failed. Please try again later. Existing data is unchanged.'},{status:rateLimited?429:503,headers});
+  return Response.json({reason:internal?message.slice(0,800):undefined,error:rateLimited?'Refresh is rate limited. Please try again later. Existing data is unchanged.':'Refresh failed. Please try again later. Existing data is unchanged.'},{status:rateLimited?429:503,headers});
  }
 }

@@ -9,7 +9,9 @@ export function warehouseCoverage(runs:WarehouseRun[],start:string,end:string,no
   if(!Number.isFinite(completed)||completed>now+60000)return [];
   // Current and recent attribution can change: old extraction records are not sufficient.
   const stableEnd=new Date(now-8*86400000).toISOString().slice(0,10);
-  const last=now-completed<=36*3600000?match[2]:match[2]<stableEnd?match[2]:stableEnd;
+  const completedYesterday=new Date(completed-86400000).toISOString().slice(0,10);
+  const extractionEnd=match[2]<completedYesterday?match[2]:completedYesterday;
+  const last=now-completed<=36*3600000?extractionEnd:extractionEnd<stableEnd?extractionEnd:stableEnd;
   const yesterday=new Date(now-86400000).toISOString().slice(0,10);
   const limit=end<yesterday?end:yesterday;
   const a=match[1]>start?match[1]:start,b=last<limit?last:limit;

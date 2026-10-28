@@ -25,7 +25,7 @@ export async function readGoogleTestingApiData():Promise<Snapshot>{
  state.pending=load().finally(()=>{state.pending=null;});return state.pending;
 }
 async function load():Promise<Snapshot>{
- const today=new Date().toISOString().slice(0,10),start="2025-01-01";
+ const today=new Date(Date.now()-86400000).toISOString().slice(0,10),start="2025-01-01";
  if(state.snapshot?.version===2&&state.snapshot.end>=today&&Date.now()-state.snapshot.capturedAt<6*3600000)return state.snapshot;
  const directory=process.env.GOOGLE_ADS_CREATIVE_DIR||path.join(process.cwd(),".state/google-creatives");
  const filename=path.join(directory,"testing-performance.json");
@@ -49,7 +49,7 @@ export const readGoogleSearchSharedSnapshot=cache(async ():Promise<GoogleSearchS
 /** Build a complete new search snapshot in memory; publishing is the caller's atomic commit. */
 export async function fetchFreshGoogleSearchSnapshot():Promise<GoogleSearchSharedSnapshot>{
  const inventory=await fetchFreshGoogleContentInventory();
- const today=new Date().toISOString().slice(0,10),start="2025-01-01";
+ const today=new Date(Date.now()-86400000).toISOString().slice(0,10),start="2025-01-01";
  const query=`SELECT campaign.id,campaign.name,campaign.status,ad_group.id,ad_group.name,ad_group_ad.ad.id,segments.date,metrics.cost_micros,metrics.conversions,metrics.conversions_value,metrics.impressions,metrics.clicks FROM ad_group_ad WHERE campaign.name IN (${campaigns}) AND segments.date BETWEEN '${start}' AND '${today}' AND ad_group_ad.status IN ('ENABLED','PAUSED','REMOVED')`;
  const campaignIds=[...new Set(inventory.ads.map(ad=>ad.campaign.id))];
  if(campaignIds.some(id=>!/^\d+$/.test(id)))throw Error("Google Ads returned an invalid campaign identifier.");

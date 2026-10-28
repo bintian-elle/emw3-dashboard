@@ -2,7 +2,8 @@
 Description=Refresh Content Testing readouts once per day
 
 [Timer]
-OnCalendar=*-*-* 09:15:00 UTC
+OnCalendar=*-*-* 05:20:00 America/New_York
+AccuracySec=1s
 Persistent=true
 Unit=emw3-testing-readouts.service
 

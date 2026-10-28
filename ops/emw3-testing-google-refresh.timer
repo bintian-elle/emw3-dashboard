@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh Google Testing snapshots at 05:15 Eastern
+
+[Timer]
+# The controller skips successful scopes; RestartSec retries Slack delivery only.
+OnCalendar=*-*-* 05:15:00 America/New_York
+Persistent=true
+AccuracySec=1s
+Unit=emw3-testing-google-refresh.service
+
+[Install]
+WantedBy=timers.target

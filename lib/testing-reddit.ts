@@ -29,7 +29,7 @@ async function accessToken(){
   return tokenRefresh;
 }
 async function refreshAccessToken(){const c=await credentials();const response=await fetch("https://www.reddit.com/api/v1/access_token",{method:"POST",headers:{Authorization:`Basic ${Buffer.from(`${c.CLIENT_ID}:${c.CLIENT_SECRET}`).toString("base64")}`,"Content-Type":"application/x-www-form-urlencoded","User-Agent":USER_AGENT},body:new URLSearchParams({grant_type:"refresh_token",refresh_token:c.refresh_token}),cache:"no-store"});if(!response.ok)throw new Error(`Reddit OAuth failed (HTTP ${response.status}).`);const body=await response.json() as {access_token?:string;expires_in?:number};if(!body.access_token)throw new Error("Unable to refresh Reddit access token.");tokenCache={value:body.access_token,expires:Date.now()+Math.max(60,(body.expires_in??3600)-120)*1000};return body.access_token;}
-const reddit=createRedditRequester({fetcher:async(endpoint,init)=>fetch(`${API}${endpoint}`,{...init,headers:{Authorization:`Bearer ${await accessToken()}`,"User-Agent":USER_AGENT,"Content-Type":"application/json",...(init.headers??{})},signal:AbortSignal.timeout(30000),next:{revalidate:3600}})});
+const reddit=createRedditRequester({fetcher:async(endpoint,init)=>fetch(`${API}${endpoint}`,{...init,headers:{Authorization:`Bearer ${await accessToken()}`,"User-Agent":USER_AGENT,"Content-Type":"application/json",...(init.headers??{})},signal:AbortSignal.timeout(30000),next:{revalidate:86400}})});
 // A separate requester has no successful-response cache from prior page reads.
 // The no-cache header also bypasses Next's development HMR fetch cache.
 function freshRedditRequester(){return createRedditRequester({fetcher:async(endpoint,init)=>fetch(`${API}${endpoint}`,{...init,headers:{Authorization:`Bearer ${await accessToken()}`,"User-Agent":USER_AGENT,"Content-Type":"application/json",...(init.headers??{}),"Cache-Control":"no-cache"},signal:AbortSignal.timeout(30000),cache:"no-store"})});}
@@ -59,7 +59,9 @@ export async function fetchFreshRedditTestingData(input:RedditPeriodInput={}) {
  const request=freshRedditRequester();
  const data=await getRedditTestingData(input,true,request);
  const daily=await getRedditOverviewDaily(data,request);
- return {data,daily};
+ const c=await credentials();
+ const metadata=input.preset===redditSinceStartPreset?await request<{data:{currency?:string;currency_code?:string}}>(`/ad_accounts/${c.Ad_Account_ID}`):null;
+ return {data,daily,...(metadata?{currency:metadata.data.currency??metadata.data.currency_code??null}:{})};
 }
 
 /** Content-testing scope used by Reddit, its ad-group details and Overview. */
@@ -78,6 +80,7 @@ export async function getRedditContentTestingData(input:RedditPeriodInput={}) {
 
 /** Stable account metadata, used only by the background analysis refresh. */
 export async function getRedditTestingCurrency(){
+ const stored=await readTestingDataSnapshot<{currency?:string}>('reddit',{preset:redditSinceStartPreset});if(stored?.payload.currency)return stored.payload.currency;
  const c=await credentials();
  const result=await reddit<{data:{currency?:string;currency_code?:string}}>(`/ad_accounts/${c.Ad_Account_ID}`);
  return result.data.currency??result.data.currency_code??null;

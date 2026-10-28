@@ -16,11 +16,11 @@ export type MetaActiveAd={linkClicks?:number|null;linkCtr?:number|null;adId:stri
 export type MetaAdGroupMetric={campaignName:string;adGroupId:string;name:string;activeAds:MetaActiveAd[];spend:number;revenue:number;orders:number;impressions:number;clicks:number;cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null;cpm:number|null;hookRate:number|null;reach:number|null;costPerReach:number|null};
 export type MetaCampaign={campaignId:string;campaignName:string;campaignStatus:string;effectiveStatus:string;adGroups:MetaAdGroupMetric[];totals:{spend:number;revenue:number;orders:number;clicks:number;impressions:number;reach:number|null;costPerReach:number|null};metrics:ReturnType<typeof performance>} ;
 export type MetaCampaignTest={periodLabel:string;period:{start:string;end:string};campaigns:MetaCampaign[];adGroups:MetaAdGroupMetric[];totals:{spend:number;revenue:number;orders:number;clicks:number;impressions:number;reach:number|null;costPerReach:number|null}};
-export type MetaTestingSnapshot={data:MetaCampaignTest;daily:OverviewDailySource};
+export type MetaTestingSnapshot={data:MetaCampaignTest;daily:OverviewDailySource;history?:Awaited<ReturnType<typeof metaTestingHistory>>;currency?:string};
 const snapshotDaily=new WeakMap<MetaCampaignTest,OverviewDailySource>();
 
 function token(){const value=process.env.META_ACCESS_TOKEN;if(!value)throw new Error("Meta credentials are not configured.");return value;}
-async function graph<T>(path:string,params:Record<string,string>,fresh=false):Promise<T>{const query=new URLSearchParams({...params,access_token:token()});const response=await fetch(`https://graph.facebook.com/${META_API_VERSION}/${path}?${query}`,fresh?{cache:"no-store",headers:{"Cache-Control":"no-cache"}}:{next:{revalidate:3600}});if(!response.ok){const body=await response.text();let code:number|undefined;try{code=JSON.parse(body)?.error?.code;}catch{/* Non-JSON errors remain generic. */}if(response.status===429||(code!=null&&[4,17,32,613].includes(code)))throw new Error("Meta API rate limit (HTTP 429). Please try again later.");throw new Error(`Meta API request failed for ${path} (${response.status}): ${body.slice(0,300)}`);}return response.json() as Promise<T>;}
+async function graph<T>(path:string,params:Record<string,string>,fresh=false):Promise<T>{const query=new URLSearchParams({...params,access_token:token()});const response=await fetch(`https://graph.facebook.com/${META_API_VERSION}/${path}?${query}`,fresh?{cache:"no-store",headers:{"Cache-Control":"no-cache"}}:{next:{revalidate:86400}});if(!response.ok){const body=await response.text();let code:number|undefined;try{code=JSON.parse(body)?.error?.code;}catch{/* Non-JSON errors remain generic. */}if(response.status===429||(code!=null&&[4,17,32,613].includes(code)))throw new Error("Meta API rate limit (HTTP 429). Please try again later.");throw new Error(`Meta API request failed for ${path} (${response.status}): ${body.slice(0,300)}`);}return response.json() as Promise<T>;}
 type MetaGraph = <T>(path:string,params:Record<string,string>)=>Promise<T>;
 async function graphCollection<T>(read:MetaGraph,path:string,params:Record<string,string>):Promise<{data:T[]}>{
  const rows:T[]=[];const seen=new Set<string>();let after:string|undefined;
@@ -87,7 +87,9 @@ export async function fetchFreshMetaCampaignTest(input:TestingPeriodInput={}):Pr
   if(failure)throw failure;
   const daily=await buildMetaOverviewDaily(data,read);
   if(failure)throw failure;
-  return {data,daily};
+  const extra=input.preset==='mtd'?{history:await metaTestingHistory(read),currency:await metaTestingCurrency(read)}:{};
+  if(failure)throw failure;
+  return {data,daily,...extra};
 }
 
 export async function getMetaCampaignTest(input:TestingPeriodInput={}):Promise<MetaCampaignTest>{
@@ -101,12 +103,12 @@ export async function getMetaCampaignTest(input:TestingPeriodInput={}):Promise<M
 }
 
 /** Background-only source data for testing analysis; cached, never page-triggered AI. */
-export async function getMetaTestingReadoutHistory(){
+async function metaTestingHistory(read:MetaGraph=graph){
  const rows:Array<MetaInsightRow&{date_start:string}>=[];
  for(const id of META_CAMPAIGN_IDS){
   let after:string|undefined;
   do{
-   const result=await graph<{data:Array<MetaInsightRow&{date_start:string}>;paging?:{next?:string;cursors?:{after:string}}}>(`${id}/insights`,{time_range:JSON.stringify({since:'2026-09-01',until:new Date().toISOString().slice(0,10)}),time_increment:'1',fields:'ad_id,ad_name,adset_id,adset_name,spend,impressions,reach,clicks,inline_link_clicks,actions,action_values',level:'ad',limit:'500',...(after?{after}:{})});
+   const result=await read<{data:Array<MetaInsightRow&{date_start:string}>;paging?:{next?:string;cursors?:{after:string}}}>(`${id}/insights`,{time_range:JSON.stringify({since:'2026-09-01',until:new Date().toISOString().slice(0,10)}),time_increment:'1',fields:'ad_id,ad_name,adset_id,adset_name,spend,impressions,reach,clicks,inline_link_clicks,actions,action_values',level:'ad',limit:'500',...(after?{after}:{})});
    rows.push(...result.data);after=result.paging?.next?result.paging.cursors?.after:undefined;
   }while(after);
  }
@@ -114,9 +116,9 @@ export async function getMetaTestingReadoutHistory(){
 }
 
 /** Stable account metadata, used only by the background analysis refresh. */
-export async function getMetaTestingCurrency(){
- const campaign=await graph<{account_id:string}>(META_CAMPAIGN_IDS[0],{fields:"account_id"});
- return (await graph<{currency:string}>(`act_${campaign.account_id}`,{fields:"currency"})).currency;
+async function metaTestingCurrency(read:MetaGraph=graph){
+ const campaign=await read<{account_id:string}>(META_CAMPAIGN_IDS[0],{fields:"account_id"});
+ return (await read<{currency:string}>(`act_${campaign.account_id}`,{fields:"currency"})).currency;
 }
 
 /** Campaign daily totals preserve Overview scope; ad rows supply daily asset counts/CVR. */
@@ -143,3 +145,6 @@ export async function getMetaOverviewDaily(data:MetaCampaignTest):Promise<Overvi
  const daily=snapshotDaily.get(data);
  return daily??buildMetaOverviewDaily(data,graph);
 }
+
+export async function getMetaTestingReadoutHistory(){const stored=await readTestingDataSnapshot<MetaTestingSnapshot>('meta',{preset:'mtd'});return stored?.payload.history??metaTestingHistory();}
+export async function getMetaTestingCurrency(){const stored=await readTestingDataSnapshot<MetaTestingSnapshot>('meta',{preset:'mtd'});return stored?.payload.currency??metaTestingCurrency();}

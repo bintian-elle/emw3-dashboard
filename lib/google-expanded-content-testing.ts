@@ -33,14 +33,14 @@ function testingDays(data:Snapshot,channel:ExpandedChannel):DailyRow[]{
  return pmaxTestingDays(data.days,data.pmaxProductDays);
 }
 async function load(channel:ExpandedChannel):Promise<Snapshot>{
- const directory=process.env.GOOGLE_ADS_CREATIVE_DIR||path.join(process.cwd(),".state/google-creatives");const file=path.join(directory,`${channel}-content-testing.json`),end=new Date(Date.now()-(channel==="pmax"?86400000:0)).toISOString().slice(0,10);
+ const directory=process.env.GOOGLE_ADS_CREATIVE_DIR||path.join(process.cwd(),".state/google-creatives");const file=path.join(directory,`${channel}-content-testing.json`),end=new Date(Date.now()-86400000).toISOString().slice(0,10);
  try{const saved=JSON.parse(await readFile(file,"utf8")) as Snapshot;if(saved.version===(channel==="pmax"?3:2)&&(channel!=="pmax"||(Array.isArray(saved.pmaxProductDays)&&Array.isArray(saved.pmaxAssetDays)))&&saved.end>=end&&Date.now()-saved.capturedAt<6*3600000)return saved;}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
  const result=await fetchFreshGoogleExpandedSnapshot(channel);
  await mkdir(directory,{recursive:true,mode:0o700});const temp=`${file}.${process.pid}.tmp`;await writeFile(temp,JSON.stringify(result),{mode:0o600});await rename(temp,file);return result;
 }
 /** Fetch inventory, creatives and history in memory without changing existing snapshots. */
 export async function fetchFreshGoogleExpandedSnapshot(channel:ExpandedChannel):Promise<GoogleExpandedSnapshot>{
- const end=new Date(Date.now()-(channel==="pmax"?86400000:0)).toISOString().slice(0,10);
+ const end=new Date(Date.now()-86400000).toISOString().slice(0,10);
  const pmax=channel==="pmax",scope=pmax?`campaign.name IN (${names.map(n=>`'${n}'`).join(",")}) AND asset_group.name LIKE '%Content Testing%'`:`campaign.name='EM-DG-Conversion-Prospecting-Purchase-April26' AND ad_group.id = 202844993442 AND ad_group_ad.ad.name LIKE '%content testing%'`;
  const adFields=["marketing_images","square_marketing_images","portrait_marketing_images","tall_portrait_marketing_images","headlines","descriptions"].map(field=>`ad_group_ad.ad.demand_gen_multi_asset_ad.${field}`).concat(["videos","headlines","descriptions"].map(field=>`ad_group_ad.ad.demand_gen_video_responsive_ad.${field}`));
  const inventory=await queryGoogleTestingApi<InventoryRow>(`SELECT campaign.id,campaign.name,campaign.status,${pmax?"asset_group.id,asset_group.name,asset_group.status":"ad_group.id,ad_group.name,ad_group.status,ad_group_ad.status,ad_group_ad.ad.id,ad_group_ad.ad.name,ad_group_ad.ad.type,"+adFields.join(",")} FROM ${pmax?"asset_group":"ad_group_ad"} WHERE ${scope}`);

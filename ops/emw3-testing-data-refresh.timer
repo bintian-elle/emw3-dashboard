@@ -1,0 +1,12 @@
+[Unit]
+Description=Collect Testing data at 04:00 Eastern and retry failed scopes at 05:00
+
+[Timer]
+# The controller skips successful scopes; RestartSec retries Slack delivery only.
+OnCalendar=*-*-* 04,05:00:00 America/New_York
+Persistent=true
+AccuracySec=1s
+Unit=emw3-testing-data-refresh.service
+
+[Install]
+WantedBy=timers.target

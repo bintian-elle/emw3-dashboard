@@ -14,3 +14,7 @@ test('stale sync cannot cover recent attribution or imply zeros from an unknown 
  assert.deepEqual(warehouseCoverage([run('2026-10-21','2026-10-27','2026-10-26T00:00:00Z')],'2026-10-21','2026-10-27',now),[]);
  assert.deepEqual(warehouseCoverage([{query_text:'SELECT * FROM ad_group_ad',completed_at:new Date(now)}],'2026-10-21','2026-10-27',now),[]);
 });
+test('yesterday’s extraction of a then-current partial day never proves that whole day is covered',()=>{
+ const covered=warehouseCoverage([run('2026-10-20','2026-10-27','2026-10-27T11:55:00Z')],'2026-10-26','2026-10-27',now);
+ assert.deepEqual(uncoveredWindows(covered,'2026-10-26','2026-10-27'),[{start:'2026-10-27',end:'2026-10-27'}]);
+});

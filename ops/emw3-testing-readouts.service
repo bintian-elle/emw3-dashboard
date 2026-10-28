@@ -1,14 +1,17 @@
 [Unit]
+StartLimitIntervalSec=0
 Description=Generate and publish shared Content Testing AI readouts
-After=network-online.target emw3-ai-queue.service emw3-testing-social-refresh.service
+After=network-online.target emw3-ai-queue.service emw3-testing-data-refresh.service emw3-testing-google-refresh.service
 Wants=network-online.target emw3-ai-queue.service
 
 [Service]
 Type=oneshot
+Restart=on-failure
+RestartSec=1h
 User=ubuntu
 WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
 Environment=NODE_ENV=production
-ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/content-testing/daily.mjs
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/testing-refresh/run.mjs insights
 TimeoutStartSec=20h
 Environment=PYTHONPATH=/home/ubuntu/work/anc-slack-bridge/src
 Environment=CONTENT_TESTING_PYTHON=/home/ubuntu/work/anc-slack-bridge/.venv/bin/python

@@ -28,3 +28,11 @@ export async function warehouseFirstDaily<T>(kind:Kind,ids:string[],start:string
  for(const window of stored.missing)rows.push(...await fetchMissing(window));
  return rows;
 }
+
+/** AI's morning batch must wait for today's complete ad and asset extraction jobs. */
+export async function assertGoogleWarehouseUpdatedToday(now=new Date()){
+ const customer=(process.env.GOOGLE_ADS_CUSTOMER_ID??'').replaceAll('-','');
+ const result=await db.query<{resource_name:string;completed:Date}>(`select resource_name,max(completed_at) completed from etl_run_log where customer_id=$1 and resource_name=any($2::text[]) and status='SUCCESS' and query_text ilike '%segments.date%' group by resource_name`,[customer,['ad_group_ad','asset_group_asset']]);
+ const day=(date:Date)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
+ if(['ad_group_ad','asset_group_asset'].some(resource=>!result.rows.some(row=>row.resource_name===resource&&day(new Date(row.completed))===day(now))))throw Error('Google warehouse has not completed today’s ad and asset refresh.');
+}

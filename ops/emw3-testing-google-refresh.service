@@ -1,0 +1,19 @@
+[Unit]
+StartLimitIntervalSec=0
+Description=Daily Testing google snapshots with a bounded retry budget
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Restart=on-failure
+RestartSec=1h
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
+Environment=NODE_ENV=production
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/testing-refresh/run.mjs google
+TimeoutStartSec=30min
+Nice=10
+UMask=0077
+NoNewPrivileges=true
