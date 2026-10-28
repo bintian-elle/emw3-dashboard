@@ -12,4 +12,4 @@ export function collectionPlan(){return [
  ...['meta','reddit','edm'].flatMap(channel=>['lastWeek','wtd','mtd'].map(period=>({key:`${channel}:${period}`,channel,period,weekly:period==='lastWeek'}))),
  {key:'reddit:sinceSep24',channel:'reddit',period:'sinceSep24'},
  {key:'social:all',channel:'social'}];}
-export function safeReason(value){return String(value).replace(/Bearer\s+\S+/gi,'Bearer [redacted]').replace(/((?:access_token|refresh_token|client_secret|api_key|password)\s*[=:]\s*)[^\s&,"}]+/gi,'$1[redacted]').slice(0,600);}
+export function safeReason(value){const detail=value instanceof Error&&value.cause?`${value.message} (${value.cause.code||value.cause.message||value.cause})`:String(value);return detail.replace(/Bearer\s+\S+/gi,'Bearer [redacted]').replace(/((?:access_token|refresh_token|client_secret|api_key|password)\s*[=:]\s*)[^\s&,"}]+/gi,'$1[redacted]').slice(0,600);}

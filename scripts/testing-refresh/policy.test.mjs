@@ -16,3 +16,4 @@ test('refreshes every required period and both lifetime sources',()=>{
  assert.ok(plan.filter(i=>i.period==='lastWeek').every(i=>i.weekly));
 });
 test('failure notifications redact credentials',()=>assert.equal(safeReason('Bearer secret access_token=123'),'Bearer [redacted] access_token=[redacted]'));
+test('connection failures include their underlying cause in the alert',()=>assert.match(safeReason(new Error('fetch failed',{cause:{code:'ECONNREFUSED'}})),/ECONNREFUSED/));

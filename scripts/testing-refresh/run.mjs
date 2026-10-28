@@ -24,7 +24,7 @@ for(const item of plan){
  if(dueAttempt(current,hour,mode==='data'?4:5,now.getTime(),mode)){
   current.attempts++;current.lastAttempt=new Date().toISOString();await save();
   try{if(mode==='insights'){await prerequisites();await execute(process.execPath,['scripts/content-testing/daily.mjs']);}else current.updatedAt=await refresh(item);current.success=true;delete current.error;}
-  catch(error){current.error=safeReason(error instanceof Error?error.message:error);console.error(`${item.key}: ${current.error}`);}
+  catch(error){current.error=safeReason(error);console.error(`${item.key}: ${current.error}`);}
   await save();
  }
 }
