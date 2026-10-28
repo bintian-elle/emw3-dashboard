@@ -28,14 +28,14 @@ export function currentPmaxReadout(payload:unknown,channel?:string):boolean{
  if(!['google-pmax','overview'].includes(channel??''))return true;
  return (payload as {metric_basis?:{pmax?:string}}|undefined)?.metric_basis?.pmax===PMAX_TESTING_BASIS;
 }
-export async function fetchPmaxAssetPerformance<T extends PmaxDailyRow>(search:<R>(query:string)=>Promise<R[]>,ids:string[],end:string){
+export async function fetchPmaxAssetPerformance<T extends PmaxDailyRow>(search:<R>(query:string)=>Promise<R[]>,ids:string[],end:string,readAssetDays?:(ids:string[])=>Promise<T[]>){
  if(!ids.length)return {productDays:[] as T[],assetDays:[] as T[]};
  if(ids.some(id=>!/^\d+$/.test(id)))throw Error('Invalid PMax asset group scope.');
  const where=`asset_group.id IN (${ids.join(',')}) AND segments.date BETWEEN '2025-01-01' AND '${end}'`;
  const metrics='segments.date,metrics.cost_micros,metrics.conversions_value,metrics.conversions,metrics.impressions,metrics.clicks';
  const [productDays,assetDays]=await Promise.all([
   search<T>(`SELECT campaign.id,asset_group.id,asset_group_listing_group_filter.id,${metrics} FROM asset_group_product_group_view WHERE ${where} AND asset_group_listing_group_filter.parent_listing_group_filter IS NULL`),
-  search<T>(`SELECT campaign.id,asset_group.id,asset.id,asset_group_asset.field_type,asset_group_asset.status,${metrics} FROM asset_group_asset WHERE ${where}`),
+  readAssetDays?readAssetDays(ids):search<T>(`SELECT campaign.id,asset_group.id,asset.id,asset_group_asset.field_type,asset_group_asset.status,${metrics} FROM asset_group_asset WHERE ${where}`),
  ]);
  return {productDays,assetDays};
 }

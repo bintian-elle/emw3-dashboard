@@ -1,6 +1,6 @@
 import "server-only";
 import { resolveMetaCreativeLinks } from "@/lib/meta-creative-links";
-import { readTestingDataSnapshot } from "@/lib/testing-data-cache";
+import { readTestingDataSnapshot, initializeTestingDataSnapshot } from "@/lib/testing-data-cache";
 import {isMetaVideo,type MetaCreative} from "@/lib/meta-creative-type";
 import { connection } from "next/server";
 import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } from "@/lib/testing-google";
@@ -92,7 +92,7 @@ export async function fetchFreshMetaCampaignTest(input:TestingPeriodInput={}):Pr
 
 export async function getMetaCampaignTest(input:TestingPeriodInput={}):Promise<MetaCampaignTest>{
   await connection();
-  const snapshot=await readTestingDataSnapshot<MetaTestingSnapshot>("meta",input);
+  const snapshot=await readTestingDataSnapshot<MetaTestingSnapshot>("meta",input)??await initializeTestingDataSnapshot("meta",input,()=>fetchFreshMetaCampaignTest(input));
   if(snapshot?.payload?.data && snapshot.payload.daily){
     snapshotDaily.set(snapshot.payload.data,snapshot.payload.daily);
     return snapshot.payload.data;

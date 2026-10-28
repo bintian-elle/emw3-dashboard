@@ -31,3 +31,17 @@ export async function isTestingDataRefreshRunning(channel:TestingDataChannel,inp
  const client=await database().connect(),key=testingDataSnapshotKey(channel,input);
  try{await client.query('begin');const result=await client.query<{locked:boolean}>('select pg_try_advisory_xact_lock(hashtext($1),hashtext($2)) as locked',[`testing-data:${channel}`,key]);await client.query('commit');return !result.rows[0]?.locked;}catch(error){await client.query('rollback').catch(()=>{});throw error;}finally{client.release();}
 }
+
+/** All Google channel refresh controls publish the same atomic batch. */
+export async function publishGoogleTestingSnapshots(load:(channel:'google-search'|'google-pmax'|'google-demand-gen')=>Promise<unknown>){
+ const {publishGoogleTestingData}=await import('./testing-data-publication');
+ const client=await database().connect();
+ try{return await publishGoogleTestingData((sql,values)=>client.query(sql,values),load);}finally{client.release();}
+}
+
+/** Fill a missing scope once, recording only a complete, uncached source read. */
+export async function initializeTestingDataSnapshot<T>(channel:TestingDataChannel,input:TestingDataInput,load:()=>Promise<T>):Promise<TestingDataSnapshot<T>|null>{
+ let sourceStarted=false;
+ try{return await publishTestingDataSnapshot(channel,input,async()=>{sourceStarted=true;return load();},{reuseExisting:true});}
+ catch(error){if(sourceStarted)throw error;return readTestingDataSnapshot<T>(channel,input);}
+}

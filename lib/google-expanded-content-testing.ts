@@ -1,4 +1,5 @@
 import "server-only";
+import {warehouseFirstDaily} from "@/lib/google-testing-warehouse";
 import {cache} from "react";
 import {compareCampaignNamesNewestFirst} from "@/lib/campaign-name-order";
 import {connection} from "next/server";
@@ -44,12 +45,13 @@ export async function fetchFreshGoogleExpandedSnapshot(channel:ExpandedChannel):
  const adFields=["marketing_images","square_marketing_images","portrait_marketing_images","tall_portrait_marketing_images","headlines","descriptions"].map(field=>`ad_group_ad.ad.demand_gen_multi_asset_ad.${field}`).concat(["videos","headlines","descriptions"].map(field=>`ad_group_ad.ad.demand_gen_video_responsive_ad.${field}`));
  const inventory=await queryGoogleTestingApi<InventoryRow>(`SELECT campaign.id,campaign.name,campaign.status,${pmax?"asset_group.id,asset_group.name,asset_group.status":"ad_group.id,ad_group.name,ad_group.status,ad_group_ad.status,ad_group_ad.ad.id,ad_group_ad.ad.name,ad_group_ad.ad.type,"+adFields.join(",")} FROM ${pmax?"asset_group":"ad_group_ad"} WHERE ${scope}`);
  const fields="segments.date,metrics.cost_micros,metrics.conversions_value,metrics.conversions,metrics.impressions,metrics.clicks";
- const days=inventory.length?await queryGoogleTestingApi<DailyRow>(`SELECT campaign.id,${pmax?"asset_group.id":"ad_group_ad.ad.id"},${fields} FROM ${pmax?"asset_group":"ad_group_ad"} WHERE ${scope} AND segments.date BETWEEN '2025-01-01' AND '${end}'`):[];
+ const dailyQuery=(start:string,last:string)=>queryGoogleTestingApi<DailyRow>(`SELECT campaign.id,${pmax?"asset_group.id":"ad_group_ad.ad.id"},${fields} FROM ${pmax?"asset_group":"ad_group_ad"} WHERE ${scope} AND segments.date BETWEEN '${start}' AND '${last}'`);
+ const days=inventory.length?(pmax?await dailyQuery("2025-01-01",end):await warehouseFirstDaily<DailyRow>("ads",inventory.map(row=>row.adGroupAd!.ad.id),"2025-01-01",end,window=>dailyQuery(window.start,window.end))):[];
  let assets:AssetRow[]=[],adAssets:TestingAsset[]=[];
  const assetFields="asset.id,asset.name,asset.type,asset.text_asset.text,asset.image_asset.full_size.url,asset.youtube_video_asset.youtube_video_id,asset.youtube_video_asset.youtube_video_title";
  if(pmax&&inventory.length)assets=await queryGoogleTestingApi<AssetRow>(`SELECT asset_group.id,asset_group_asset.field_type,asset_group_asset.status,asset_group_asset.source,${assetFields} FROM asset_group_asset WHERE asset_group.id IN (${inventory.map(r=>r.assetGroup!.id).join(",")})`);
  if(!pmax){const ids=[...new Set(inventory.flatMap(row=>Object.values(row.adGroupAd!.ad.demandGenMultiAssetAd??row.adGroupAd!.ad.demandGenVideoResponsiveAd??{}).flatMap(items=>items.flatMap(item=>item.asset?[item.asset.split('/').at(-1)!]:[]))))];if(ids.length)adAssets=(await queryGoogleTestingApi<{asset:TestingAsset}>(`SELECT ${assetFields} FROM asset WHERE asset.id IN (${ids.join(",")})`)).map(row=>row.asset);}
- const pmaxPerformance=pmax?await fetchPmaxAssetPerformance(queryGoogleTestingApi,inventory.map(r=>r.assetGroup!.id),end):null;
+ const pmaxPerformance=pmax?await fetchPmaxAssetPerformance(queryGoogleTestingApi,inventory.map(r=>r.assetGroup!.id),end,async ids=>warehouseFirstDaily<PmaxDailyRow>("pmax-assets",ids,"2025-01-01",end,window=>queryGoogleTestingApi<PmaxDailyRow>(`SELECT campaign.id,asset_group.id,asset.id,asset_group_asset.field_type,asset_group_asset.status,${fields} FROM asset_group_asset WHERE asset_group.id IN (${ids.join(',')}) AND segments.date BETWEEN '${window.start}' AND '${window.end}'`))):null;
  return {version:pmax?3:2,capturedAt:Date.now(),end,inventory,days,assets,adAssets,...(pmaxPerformance?{pmaxProductDays:pmaxPerformance.productDays,pmaxAssetDays:pmaxPerformance.assetDays}:{})};
 }
 export const readGoogleExpandedSharedSnapshot=cache(async (channel:ExpandedChannel):Promise<GoogleExpandedSnapshot|null>=>{

@@ -1,4 +1,5 @@
 import "server-only";
+import {warehouseFirstDaily} from "@/lib/google-testing-warehouse";
 import {cache} from "react";
 import {mkdir,readFile,writeFile,rename} from "node:fs/promises";
 import path from "node:path";
@@ -33,7 +34,7 @@ async function load():Promise<Snapshot>{
  try{
  const query=`SELECT campaign.id,campaign.name,campaign.status,ad_group.id,ad_group.name,ad_group_ad.ad.id,segments.date,metrics.cost_micros,metrics.conversions,metrics.conversions_value,metrics.impressions,metrics.clicks FROM ad_group_ad WHERE campaign.name IN (${campaigns}) AND segments.date BETWEEN '${start}' AND '${today}' AND ad_group_ad.status IN ('ENABLED','PAUSED','REMOVED')`;
  const inventory=await googleContentTestingInventory();
- const rows=inventory.ads.length?await queryGoogleTestingApi<Row>(query+` AND ad_group_ad.labels CONTAINS ANY ('${inventory.labelResource}')`):[];
+ const rows=inventory.ads.length?await warehouseFirstDaily<Row>("ads",inventory.ads.map(row=>row.adGroupAd.ad.id),start,today,window=>queryGoogleTestingApi<Row>(query.replace(`BETWEEN '${start}' AND '${today}'`,`BETWEEN '${window.start}' AND '${window.end}'`)+` AND ad_group_ad.labels CONTAINS ANY ('${inventory.labelResource}')`)):[];
  const snapshot:Snapshot={version:2,capturedAt:Date.now(),start,end:today,rows};
  await mkdir(directory,{recursive:true,mode:0o700});const temporary=`${filename}.${process.pid}.tmp`;await writeFile(temporary,JSON.stringify(snapshot),{mode:0o600});await rename(temporary,filename);state.snapshot=snapshot;return snapshot;
  }catch(error){state.failedUntil=Date.now()+60000;throw error;}
@@ -54,7 +55,7 @@ export async function fetchFreshGoogleSearchSnapshot():Promise<GoogleSearchShare
  if(campaignIds.some(id=>!/^\d+$/.test(id)))throw Error("Google Ads returned an invalid campaign identifier.");
  const assetFields="asset.id,asset.name,asset.type,asset.text_asset.text,asset.image_asset.full_size.url,asset.youtube_video_asset.youtube_video_id,asset.sitelink_asset.link_text,asset.sitelink_asset.description1,asset.sitelink_asset.description2,asset.final_urls,asset.callout_asset.callout_text";
  const [rows,assets]=await Promise.all([
-  inventory.ads.length?queryGoogleTestingApi<Row>(query+` AND ad_group_ad.labels CONTAINS ANY ('${inventory.labelResource}')`):Promise.resolve([]),
+  inventory.ads.length?warehouseFirstDaily<Row>("ads",inventory.ads.map(row=>row.adGroupAd.ad.id),start,today,window=>queryGoogleTestingApi<Row>(query.replace(`BETWEEN '${start}' AND '${today}'`,`BETWEEN '${window.start}' AND '${window.end}'`)+` AND ad_group_ad.labels CONTAINS ANY ('${inventory.labelResource}')`)):Promise.resolve([]),
   campaignIds.length?Promise.all((["campaign_asset","ad_group_asset"] as const).map(resource=>queryGoogleTestingApi<CreativeArchive["assets"][number]>(`SELECT campaign.id,${resource==="ad_group_asset"?"ad_group.id,":""}${resource}.field_type,${assetFields} FROM ${resource} WHERE campaign.id IN (${campaignIds.join(",")})`))).then(groups=>groups.flat()):Promise.resolve([]),
  ]);
  return {version:1,inventory,performance:{version:2,capturedAt:Date.now(),start,end:today,rows},assets};

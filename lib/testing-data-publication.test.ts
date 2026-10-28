@@ -63,3 +63,28 @@ test('concurrent scheduled runs cannot fetch twice and a later retry skips the c
  const retry=await publishTestingData(client(),'social','all',load,{skipValidToday:valid});
  assert.equal(retry.skipped,true);assert.equal(fetches,1);
 });
+
+test('Google publishes all channels with exactly one timestamp after complete success',async()=>{
+ const {publishGoogleTestingData}=await import('./testing-data-publication.ts');
+ const calls:string[]=[],timestamps:unknown[]=[];let loaded=0;
+ const query:TestingDataQuery=async(sql,params)=>{calls.push(sql);if(sql.includes('pg_try'))return{rows:[{locked:true}]};if(sql==='select clock_timestamp() as updated_at')return{rows:[{updated_at:'2026-10-28T18:00:00Z'}]};if(sql.startsWith('insert')){assert.equal(loaded,3);timestamps.push(params?.[3]);}return{rows:[]};};
+ const result=await publishGoogleTestingData(query,async channel=>{loaded++;return {channel};});
+ assert.equal(new Set(timestamps).size,1);assert.equal(timestamps.length,3);assert.equal(result.updatedAt,'2026-10-28T18:00:00.000Z');assert.equal(calls.at(-1),'commit');
+});
+test('Google batch failure never writes any new snapshot or time',async()=>{
+ const {publishGoogleTestingData}=await import('./testing-data-publication.ts');const calls:string[]=[];
+ const query:TestingDataQuery=async sql=>{calls.push(sql);return{rows:sql.includes('pg_try')?[{locked:true}]:[]};};
+ await assert.rejects(()=>publishGoogleTestingData(query,async channel=>{if(channel==='google-demand-gen')throw Error('upstream failed');return{};}),/upstream failed/);
+ assert.equal(calls.some(sql=>sql.startsWith('insert')),false);assert.equal(calls.at(-1),'rollback');
+});
+test('first-visit initialization reuses a concurrent publication without another API call',async()=>{
+ let loaded=false;
+ const query:TestingDataQuery=async sql=>({rows:sql.includes('pg_try')?[{locked:true}]:sql.startsWith('select updated_at,payload')?[{updated_at:'2026-10-28T18:00:00Z',payload:{data:1}}]:[]});
+ const result=await publishTestingData(query,'meta','period',async()=>{loaded=true;return{};},{reuseExisting:true});
+ assert.equal(loaded,false);assert.equal(result.skipped,true);assert.deepEqual(result.payload,{data:1});
+});
+test('a Google write error rolls back the whole batch even after a first staged write',async()=>{
+ const {publishGoogleTestingData}=await import('./testing-data-publication.ts');const calls:string[]=[];let inserts=0;
+ const query:TestingDataQuery=async sql=>{calls.push(sql);if(sql.includes('pg_try'))return{rows:[{locked:true}]};if(sql==='select clock_timestamp() as updated_at')return{rows:[{updated_at:'2026-10-28T18:00:00Z'}]};if(sql.startsWith('insert')&&++inserts===2)throw Error('database write failed');return{rows:[]};};
+ await assert.rejects(()=>publishGoogleTestingData(query,async()=>({})),/database write failed/);assert.equal(inserts,2);assert.equal(calls.includes('commit'),false);assert.equal(calls.at(-1),'rollback');
+});

@@ -1,7 +1,7 @@
 import {NextRequest} from 'next/server';
 import {dashboardOwner,requireSameOrigin} from '@/lib/ai-dashboard-access';
 import {testingDataChannels,type TestingDataChannel,type TestingDataInput} from '@/lib/testing-data-cache-contract';
-import {isTestingDataRefreshRunning,publishTestingDataSnapshot,readRequiredTestingDataSnapshot,TestingDataRefreshBusy,TestingDataRefreshRateLimit} from '@/lib/testing-data-cache';
+import {isTestingDataRefreshRunning,publishGoogleTestingSnapshots,publishTestingDataSnapshot,readRequiredTestingDataSnapshot,TestingDataRefreshBusy,TestingDataRefreshRateLimit} from '@/lib/testing-data-cache';
 import {testingPeriodInput} from '@/lib/testing-google';
 import {redditPeriodInput} from '@/lib/reddit-testing-period';
 import {isSocialSnapshot,socialDisplayTimestamp} from '@/lib/testing-social-snapshot';
@@ -49,7 +49,7 @@ export async function POST(request:NextRequest){
  const value=(v:unknown)=>typeof v==='string'?v:undefined;
  const input=inputFor(channel,{period:value(body.period),start:value(body.start),end:value(body.end)});
  try{
-  const result=await publishTestingDataSnapshot(channel,input,()=>source(channel,input));
+  const result=channel.startsWith('google-')?await publishGoogleTestingSnapshots(googleChannel=>source(googleChannel,{})):await publishTestingDataSnapshot(channel,input,()=>source(channel,input));
   // Publishing has committed; a transient revalidation error must not be reported as a failed refresh.
   try{revalidatePath('/bluevua/testing','layout');}catch{/* Clients still refresh and read the committed shared snapshot. */}
   return Response.json({updatedAt:result.updatedAt,refreshing:false,available:true},{headers});
