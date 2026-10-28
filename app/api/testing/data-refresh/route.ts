@@ -52,7 +52,7 @@ export async function POST(request:NextRequest){
  const input=inputFor(channel,{period:value(body.period),start:value(body.start),end:value(body.end)});
  try{
   if(internal&&body.scheduled&&channel.startsWith('google-'))await (await import('@/lib/google-testing-warehouse')).assertGoogleWarehouseUpdatedToday();
-  const result=channel.startsWith('google-')?await publishGoogleTestingSnapshots(googleChannel=>source(googleChannel,{})):await publishTestingDataSnapshot(channel,input,()=>source(channel,input),internal&&body.scheduled?(body.weekly?{reuseExisting:true}:{skipValidToday:payload=>channel==='social'?isSocialSnapshot(payload):channel==='meta'&&input.preset==='mtd'?Boolean((payload as {history?:unknown;currency?:unknown})?.history&&(payload as {currency?:unknown})?.currency):true}):undefined);
+  const result=channel.startsWith('google-')?await publishGoogleTestingSnapshots(googleChannel=>source(googleChannel,{})):await publishTestingDataSnapshot(channel,input,()=>source(channel,input),internal&&body.scheduled&&body.weekly?{reuseExisting:true}:undefined);
   // Publishing has committed; a transient revalidation error must not be reported as a failed refresh.
   try{revalidatePath('/bluevua/testing','layout');}catch{/* Clients still refresh and read the committed shared snapshot. */}
   return Response.json({updatedAt:result.updatedAt,refreshing:false,available:true},{headers});
