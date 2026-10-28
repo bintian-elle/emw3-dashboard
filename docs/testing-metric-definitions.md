@@ -62,7 +62,7 @@ The three Google refresh buttons now refresh all three channels in one batch. Al
 
 ### Daily refresh and website snapshot cache (Eastern time)
 
-- Meta, Reddit, EDM and Social refresh at **04:00 America/New_York**. Only failed scopes retry at **05:00**, once. Successful scopes are never refetched by that retry. Exact Last Week snapshots are reused for their fixed range; WTD/MTD and Reddit/Social lifetime snapshots update daily.
+- Meta, Reddit, EDM and Social refresh at **04:00 America/New_York**. Only failed scopes retry at **05:00**, once. Successful scopes are never refetched by that retry. Raw Last Week, WTD/MTD and Reddit/Social lifetime snapshots all update daily. Only the Last Week AI report keeps its Tuesday-only generation policy; data freshness and report generation are separate.
 - Google snapshots refresh together at **05:15** after confirming today's Google warehouse ad/asset sync jobs succeeded. Google Ads Scripts are managed separately in the marketing account; the user set the script window to 01:00–02:00 Pacific (04:00–05:00 Eastern).
 - AI starts at **05:20**, only after today's collection and Google snapshots completed. It reads those saved Dashboard snapshots. The existing English-first / saved Chinese translation workflow and Tuesday-only Last Week analysis policy remain.
 - Failure after the 05:00 retry (or Google/AI's later scheduled attempt) DMs Bintian using the existing AI Bluevua Slack bot, including sanitized scope/reason. Notification delivery can retry without repeating exhausted API calls. No tokens enter Git. Failed refreshes retain previous snapshots, timestamps and AI results.

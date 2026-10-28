@@ -13,7 +13,9 @@ test('only retries other channels in the 05:00 window, with no third API attempt
 });
 test('refreshes every required period and both lifetime sources',()=>{
  const plan=collectionPlan();assert.equal(plan.length,11);assert.ok(plan.some(i=>i.key==='reddit:sinceSep24'));
- assert.ok(plan.filter(i=>i.period==='lastWeek').every(i=>i.weekly));
+ assert.ok(plan.filter(i=>i.period==='lastWeek').every(i=>!i.weekly));
 });
 test('failure notifications redact credentials',()=>assert.equal(safeReason('Bearer secret access_token=123'),'Bearer [redacted] access_token=[redacted]'));
 test('connection failures include their underlying cause in the alert',()=>assert.match(safeReason(new Error('fetch failed',{cause:{code:'ECONNREFUSED'}})),/ECONNREFUSED/));
+
+test('Last Week data refreshes daily while its AI report stays on Tuesday',async()=>{const {dailyPresets}=await import('../content-testing/daily-policy.mjs');assert.equal(collectionPlan().filter(i=>i.period==='lastWeek').length,3);assert.ok(!dailyPresets(3,true).includes('lastWeek'));assert.ok(dailyPresets(2,true).includes('lastWeek'));});
