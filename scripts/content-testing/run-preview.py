@@ -46,7 +46,7 @@ def decode(raw,packet):
         if 'reach' not in report['executive_summary'].lower() and '触达' not in report['executive_summary']:
             reach=totals.get('totalReach')
             if reach is not None:
-                report['executive_summary']=f'已记录的 Total Reach 为 {reach:,.0f}。'+report['executive_summary']
+                report['executive_summary']=(f'Recorded Total Reach is {reach:,.0f}. ' if packet.get('language')=='en' else f'已记录的 Total Reach 为 {reach:,.0f}。')+report['executive_summary']
     else:
         assert len(actual)==len(set(actual)) and set(actual)==expected,'Campaign identity coverage mismatch'
     assert all(c['summary'].strip() and c['detail_markdown'].strip() for c in report['campaigns'])
@@ -118,6 +118,9 @@ async def run(root,only=None):
             if packet.get('language')=='en':instructions+='\nPRODUCTION LANGUAGE OVERRIDE: Write all public titles, summaries, section headings and Markdown in English. Preserve IDs, names, figures and links. This is the English source for a separate Chinese translation. Keep channel chapter order and campaign-specific detail routing. Do not publish or modify anything; the controller persists results.'
             thread=await sdk.dashboard_thread(BRAND,instructions,thread_id=target_thread)
             request={'current_prompt':instructions,'presentation_priority':packet.get('presentation_instructions','本轮current_prompt为最新规则。章节、详略、表格及逐Campaign深度以它和required_sections为准，不沿用历史回答或其他轮次的字数/表格限制。'),'run_id':manifest['run_id'],'task':'本地中文预览；只分析当前渠道；按自己的 prompt 完整生成。' if report_id!='overview' else '全部渠道已完成；现在按 Overview prompt 汇总本轮报告。','input_file':str(root/'inputs'/f'{report_id}.json'),'instructions':'先读取 input_file，核对指定日期、scope、required_sections、tests 和缺口；按需要读取 Bluevua 项目背景与对应素材 Markdown，也可联网查官方/竞品/公开内容。只返回 schema JSON。sections 必须按 required_sections 顺序完整回应；摘要和逐 Campaign 短评可供页面直接显示。不要创建对话/agent、修改项目文件、写数据库/缓存或发 Slack。先看真实内容再提具体行动，不可编造已看过素材。'}
+            if packet.get('language')=='en':
+                request['task']='Generate the English channel report; synthesize Overview only after all same-run channel reports are complete.'
+                request['instructions']+=' All public prose and section titles must be English. Put micro deep dives only in the matching campaigns[].detail_markdown; sections contain macro analysis and next actions only.'
             turn=await sdk.dashboard_turn(thread,json.dumps(request,ensure_ascii=False),schema(packet),effort='medium')
             record={'thread_id':target_thread,'turn_id':turn.id,'status':'running','started_at':time.time()}
             state['turns'][report_id]=record;state['status']='running';state['current']=report_id;save(state_path,state)
