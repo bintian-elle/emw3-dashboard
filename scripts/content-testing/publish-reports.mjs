@@ -19,8 +19,9 @@ export async function loadReports(folder){
  return channelReportRecords(manifest,reports);
 }
 
-export async function publishReports({english,chinese,backupDir,replaceToday=false}){
- const en=await loadReports(english),zh=chinese?await loadReports(chinese):[];
+export async function publishReports({english,chinese,backupDir,replaceToday=false,includeLifetimes=true}){
+ const selected=rows=>rows.filter(row=>includeLifetimes||!['period:reddit-lifetime','period:social-lifetime'].includes(row.cache_key));
+ const en=selected(await loadReports(english)),zh=chinese?selected(await loadReports(chinese)):[];
  if(chinese&&JSON.stringify(en.map(row=>row.cache_key))!==JSON.stringify(zh.map(row=>row.cache_key)))throw Error('Translation periods do not match.');
  nextEnv.loadEnvConfig(process.cwd());
  const db=new pg.Client({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},connectionTimeoutMillis:15000});

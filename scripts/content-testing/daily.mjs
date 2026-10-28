@@ -35,7 +35,7 @@ try{
   await run(python,['scripts/content-testing/prepare-daily.py','--root',folder,'--snapshot',snapshot,'--period',label,'--prompts',path.resolve('prompts/content-testing'),...(first?['--reuse',first]:[])]);
   await run(python,['scripts/content-testing/run-preview.py','--root',folder]);
   await run(process.execPath,['--experimental-strip-types','scripts/content-testing/polish-preview.mjs',path.join(folder,'results')]);
-  const result=await publishReports({english:folder,backupDir:path.join(root,`backup-${preset}`)});console.log(JSON.stringify(result));first??=folder;
+  const result=await publishReports({english:folder,includeLifetimes:!first,backupDir:path.join(root,`backup-${preset}`)});console.log(JSON.stringify(result));first??=folder;
   // English is available immediately. Translation uses independent low-reasoning queue sessions.
   await run(process.execPath,['scripts/refresh-testing-readouts.mjs','--translations-only']);
  }
