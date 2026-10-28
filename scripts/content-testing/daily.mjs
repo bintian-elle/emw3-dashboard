@@ -1,7 +1,7 @@
 import nextEnv from '@next/env';
 import pg from 'pg';
 import path from 'node:path';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
 import {dailyPresets} from './daily-policy.mjs';
 import {publishReports} from './publish-reports.mjs';
@@ -22,9 +22,12 @@ try{
  const root=path.resolve('.state/content-testing-daily',today);await mkdir(root,{recursive:true,mode:0o700});
  const snapshot=path.join(root,'snapshot.json');
  const secret=process.env.CRON_SECRET?.trim()||process.env.AI_WORKER_SECRET?.trim();if(!secret)throw Error('Refresh credential missing.');
+ let existingSnapshot=false;try{JSON.parse(await readFile(snapshot,'utf8'));existingSnapshot=true;}catch(error){if(error.code!=='ENOENT')throw error;}
+ if(!existingSnapshot){
  const response=await fetch('http://127.0.0.1:3000/api/testing/readouts/refresh',{method:'POST',headers:{authorization:`Bearer ${secret}`,'content-type':'application/json'},body:JSON.stringify({snapshotOnly:true,presets}),signal:AbortSignal.timeout(600000)});
  if(!response.ok)throw Error(`Dashboard snapshot failed: ${response.status}`);
  await writeFile(snapshot,JSON.stringify(await response.json()),{mode:0o600});
+ }
  const python=process.env.CONTENT_TESTING_PYTHON||'/home/ubuntu/work/anc-slack-bridge/.venv/bin/python';
  let first;
  for(const preset of presets){

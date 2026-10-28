@@ -17,7 +17,7 @@ def prepare(root,source,selected,prompts,reuse=None):
         lifetime=slug in ('reddit-lifetime','social-media')
         period=next(p for p in source['periods'] if p['period']['label']==('Lifetime snapshot' if slug=='social-media' else 'Lifetime (Sep 24, 2026 – Now)')) if lifetime else regular
         prompt=(prompts/f'{"reddit" if slug=="reddit-lifetime" else slug}.md').read_text()
-        titles=runner.numbered_report_parts(prompt)[1:]
+        titles=[title for title in runner.numbered_report_parts(prompt)[1:] if not any(marker in title for marker in ('下钻','模块内容','Micro Deep Dive','Module Performance'))]
         assert titles,slug
         tests=[t for t in period['tests'] if t['channel']==channel]
         assert tests,f'{slug}: no configured tests; do not publish incomplete coverage'
