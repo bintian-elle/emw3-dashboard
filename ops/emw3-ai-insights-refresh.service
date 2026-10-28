@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh Dashboard English and Chinese Insights
+After=network-online.target emw3-ai-queue.service pm2-ubuntu.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/ai-insights-refresh.mjs
+TimeoutStartSec=35min
+UMask=0077

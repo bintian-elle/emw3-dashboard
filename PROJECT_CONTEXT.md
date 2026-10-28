@@ -57,7 +57,7 @@
 | 框架 | Next.js 16.3.3、React / React DOM 19.2.8、TypeScript 5 |
 | 样式与组件 | Tailwind CSS 4、源代码内 BoardUI、React Aria、Radix、现有自定义 AI 组件 |
 | 图表与交互 | Recharts 3、Motion、TanStack React Table |
-| 图标 | 项目同时有 Remix Icon 与 Lucide；新增 UI 遵循 AGENTS.md |
+| 图标 | 项目同时有 Remix Icon 与 Lucide；新增 UI 遵循 design.md |
 | AI 呈现 | Streamdown 及相关插件、Markdown、SSE 状态/回答通道 |
 | 数据访问 | Node `pg` 连接 PostgreSQL / Supabase PostgreSQL |
 | 附件 | 图片、文本、Markdown、CSV、JSON；`pdf-parse` 提取 PDF 文本 |
@@ -238,7 +238,7 @@ Reddit 当前从 `credentials/reddit.json` 读取凭据，不是环境变量；�
 - 不让聊天历史或附件自动授权记忆写入；不把团队记忆变成全局任意文件写权限。
 - 不擅自重启 Slack/shared Codex 服务、不覆盖他人工作树、不复制热 SQLite 文件作为备份。
 - 不因为磁盘扩容就移除低内存保护或默认启用 Turbopack。
-- UI 修改遵循 `AGENTS.md` 与 `docs/design-system.md`：优先现有组件、语义色、组合 typography；保留既有折线图交互和好转绿色/恶化红色的业务语义。
+- UI 修改遵循 `design.md`：优先现有组件、语义色、组合 typography；保留既有折线图交互和好转绿色/恶化红色的业务语义。
 
 ## 11. 开发入口与参考
 
@@ -253,8 +253,8 @@ npm run build
 
 修改 Next.js 代码前先阅读 `node_modules/next/dist/docs/` 对应指南；本项目版本与旧知识可能不兼容。
 
-- `AGENTS.md`：工作与 UI 约束。
-- `docs/design-system.md`：设计方案。
+- `AGENTS.md`：工作约束与设计规则入口。
+- `design.md`：全站页面设计与 UI 实现规则。
 - `prompts/insights/edm.md`：EDM Insights 的运行提示词，完整包含 `docs/EDM Prompt.pdf` 六页正文及诊断补充；只用于 EDM 页面。创建新任务时读取，已有任务与缓存不变。部署路径见同目录 README。
 - `docs/ai-queue-operations.md`：队列与调度运维。
 - `docs/ai-team-memory.md`：记忆命令、安全边界与部署验证。
@@ -408,3 +408,15 @@ Today's Testing batch was rejected before model execution because raw JSON grew 
 ### 2026-10-27: Testing Ask AI Design handoff
 
 User authorized AI Bluevua to hand design requests to AI Design and return the result inside the original Ask AI chat. Implemented as a Dashboard Bridge-only runtime addition: optional internal structured brief, fixed Design project/native session, separately journaled identities, existing Answer response/history, scoped extended deadline and cancellation. Ordinary analysis/EDM/translation/readouts retain their route; no Slack context is forged or message dispatched. Preserve frozen Dashboard performance data and existing Design delivery/host approval rules. Runtime, narrow restoration patch, tests and operations guide are in `ops/testing-design-handoff-runtime.py`, `ops/bridge-testing-design-handoff.patch`, `ops/test_testing_design_handoff_runtime.py`, `docs/testing-ai-design-handoff.md`. 83 regressions and an actual isolated read-only Bluevua→Design native probe passed. Website Prompt hot reload supports this; no Next.js rebuild or daily readout regeneration is needed.
+
+### 2026-10-27: live Overview headline totals (local only)
+
+- Executive Summary now receives the exact same selected-period headline-metrics object and display formatters as Business Performance cards. Spend/Reach/Revenue/paid ROAS/Purchases/CTR use current page inputs; cached AI interpretation, channel/creative evidence, recommendations and Delta remain unchanged.
+- EN/ZH live leads are deterministic templates. Only recognizable leading aggregate-total sentences are removed from displayed cached prose; no global numeric substitution, source-cache/translation writes, Prompt revision change or model regeneration. Unknown CTR/ROAS retain em dashes and existing card rounding/EDM/paid scope is preserved.
+- TypeScript, focused ESLint and 23 pure regressions passed. Actual local EN and existing cached ZH both showed Reach 83,146, Revenue $4,402, ROAS 2.71 and Purchases 16 matching the same page. Chinese QA used a temporary nested language provider, then removed it and restored the ordinary EN page without writing account preferences. No push or deployment.
+
+### 2026-10-28 — Dashboard Slack conversation tracking
+- User convention: `Dashboard · slack · <original requester> · <topic>`. Website Ask AI keeps Bluevua-prefixed names; no sidebar section.
+- 10 visible Slack histories were named and filed under the remote Dashboard directory. First-turn Bridge profiles prove the requester identity; continuation participants do not replace it.
+- Remote Bridge now identifies explicit Dashboard discussions, assigns new matching native threads to the Dashboard project, and files idle histories after completion while preserving native execution context. Metadata failure is isolated from AI delivery.
+- Runtime source/patch/tests and operational notes: `ops/slack-dashboard-tracking.py`, `ops/bridge-slack-dashboard-tracking.patch`, `ops/test_slack_dashboard_tracking.py`, `docs/dashboard-conversation-tracking.md`. 49 regressions passed; drained release is serving. No website rebuild/shared Codex restart. No GitHub push requested for this task.

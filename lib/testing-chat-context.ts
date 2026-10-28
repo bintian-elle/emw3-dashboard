@@ -1,3 +1,4 @@
+import {withoutTestingFramework} from "@/lib/testing-readout-content";
 import "server-only";
 import {PMAX_TESTING_BASIS,currentPmaxReadout} from "@/lib/pmax-testing-performance";
 import { getGoogleContentTests } from "@/lib/testing-google";
@@ -14,7 +15,7 @@ import { testingReadoutKey } from "@/lib/testing-readout-contract";
 import { googleContentTestingInventory } from "@/lib/google-content-testing-scope";
 import { readGoogleAdPerformanceArchive } from "@/lib/google-ad-performance-archive";
 import { aggregateGoogleAdPerformance } from "@/lib/google-ad-performance";
-import { apiGoogleAdArchive, readGoogleTestingApiData } from "@/lib/google-testing-api";
+import { apiGoogleAdArchive, readGoogleTestingApiData, readGoogleSearchSharedSnapshot } from "@/lib/google-testing-api";
 import type { TestingChatScope, TestingChatChannel } from "@/lib/testing-chat-contract";
 
 type Test = { campaign: string; channel: TestingChatChannel; data: unknown };
@@ -36,8 +37,9 @@ export async function loadTestingChatContext(scope: TestingChatScope, comparison
  if(wanted('google-search')&&scope.channel!=='concluded')tasks.push((async()=>{
   const reports=await getGoogleContentTests(input);
   for(const report of reports)exactPeriod(report.period);
-  const inventory=await googleContentTestingInventory();
-  let archive=await readGoogleAdPerformanceArchive();
+  const shared=await readGoogleSearchSharedSnapshot();
+  const inventory=shared?.inventory??await googleContentTestingInventory();
+  let archive=shared?apiGoogleAdArchive(shared.performance):await readGoogleAdPerformanceArchive();
   if(!archive||input.start<archive.range.start||input.end>archive.range.end)archive=apiGoogleAdArchive(await readGoogleTestingApiData());
   for(const report of reports.filter(r=>chosen(r.campaignName))){
    const ads=inventory.ads.filter(row=>row.campaign.name===report.campaignName);
@@ -76,9 +78,9 @@ export async function loadTestingChatContext(scope: TestingChatScope, comparison
  const concluded=scope.period.concludedTestId??(scope.channel==='concluded'?concludedTestsForChannel('Google Search').find(t=>t.campaignName===scope.campaign)?.id:undefined);
  const key=testingReadoutKey({...scope.period,...(concluded?{concludedTestId:concluded}:{})});
  const permanentKeys=scope.channel==='concluded'?concludedTestsForChannel('Google Search').filter(t=>tests.some(test=>test.campaign===t.campaignName)).map(t=>`period:concluded:${t.id}`):[];
- const saved=await readTestingReadoutCache([...new Set([concluded?`period:concluded:${concluded}`:'framework:v1',...(key?[key]:[]),...permanentKeys])]);
+ const saved=await readTestingReadoutCache([...new Set([...(concluded?[`period:concluded:${concluded}`]:[]),...(key?[key]:[]),...permanentKeys])]);
  const names=new Set(tests.map(t=>t.campaign));
- const readouts=saved.map(row=>{const payload=row.payload as Record<string,unknown>,compatible=currentPmaxReadout(payload,"overview");return {key:row.cache_key,period_start:row.period_start,period_end:row.period_end,...Object.fromEntries(Object.entries(payload).filter(([field])=>!['tests','test_frameworks','channel_frameworks'].includes(field)&&((!scope.campaign&&compatible)||field!=='overview'))),tests:(payload.tests as Array<{campaign_name?:string;test_id:string;channel?:string}>|undefined)?.filter(t=>(compatible||t.channel!=="Google PMAX")&&(names.has(t.test_id)||names.has(t.campaign_name??''))) ,test_frameworks:(payload.test_frameworks as Array<{campaign_name?:string;test_id:string}>|undefined)?.filter(t=>names.has(t.test_id)||names.has(t.campaign_name??''))};});
+ const readouts=saved.map(row=>{const payload=withoutTestingFramework(row.payload) as Record<string,unknown>,compatible=currentPmaxReadout(payload,"overview");return {key:row.cache_key,period_start:row.period_start,period_end:row.period_end,...Object.fromEntries(Object.entries(payload).filter(([field])=>!['tests','test_frameworks','channel_frameworks'].includes(field)&&((!scope.campaign&&compatible)||field!=='overview'))),tests:(payload.tests as Array<{campaign_name?:string;test_id:string;channel?:string}>|undefined)?.filter(t=>(compatible||t.channel!=="Google PMAX")&&(names.has(t.test_id)||names.has(t.campaign_name??'')))};});
  function count(value:unknown):number {if(!value||typeof value!=='object')return 0;if(Array.isArray(value))return value.reduce((n,v)=>n+count(v),0);const row=value as Record<string,unknown>;if(typeof row.adId==='string')return 1;if(row.adGroupAd&&typeof row.adGroupAd==='object')return 1;return Object.values(row).reduce<number>((n,v)=>n+count(v),0);}
  return {scope,metric_basis:{pmax:PMAX_TESTING_BASIS},view_context:{page:scope.page,visible_entities:links.filter(link=>link.href.split('?')[0]===scope.page)},tests,data_gaps:gaps,navigation_links:links,saved_analysis:readouts,entity_count:Math.max(1,tests.reduce((n,t)=>n+count(t.data),0)),metric_contract:{pmax:"Group metrics are testing asset performance, reconciled against product-data totals. AssetPerformance rows are official per-asset associations and are not additive. Never sum their spend/conversions/value/impressions into group or Overview totals. Null impressions and CTR are unavailable; do not backfill from other scopes, asset sums or prior answers. Match assetId to assets metadata for names and media.",rates:'Decimal fractions in raw data; saved analytical rates may use percent units. Recompute ROAS=sum revenue/sum spend; CTR=clicks/impressions. EDM CTR=unique clicks/delivered; module CTR needs module denominator. Never sum ad/daily reach to claim unique people.',paid_roas:'Paid ROAS excludes EDM and Social revenue: sum reported Google/Meta/Reddit conversion value divided by their summed spend, for the supplied scope only. Account for attribution overlap without averaging channel ROAS.',scope:'Exact supplied period only. Missing metrics are unavailable, not zero. Saved analysis is historical unless dates match. No current-period backfill from chat history.'}};
 }

@@ -12,7 +12,7 @@
 
 EDM 新任务一次返回英文分析、中文翻译及各自 4 个推荐问题；两种语言共用一个任务与数据快照。中文只翻译英文，不重新分析或检索。网页刷新后 AI 区域默认中文，仍可手动切换英文。现有成功缓存仍可复用，不会因切换语言或刷新重复生成。
 
-`content-testing.md` 用于 Testing Overview 和各 Testing channel 的结构化分析，与 EDM 主 Dashboard 的 `edm.md` 分开。固定 Test goal / Hypothesis 在 Campaign 上线或变动前生成一次，保存于共享数据库 `testing_ai_readout_cache` 的 `framework:v1`；支持 `test_frameworks` 按 exact test_id/campaign_name 优先匹配，再使用 `channel_frameworks`。生成的业务答案放数据库或私有 `.state/`，不随 prompt 提交 Git。
+`content-testing.md` 用于 Testing Overview 和各 Testing channel 的结构化分析，与 EDM 主 Dashboard 的 `edm.md` 分开。正在测试内容的测试目标与测试假设已取消，不再生成、展示或读取 `framework:v1`；已结束测试保留目标、假设和独立全周期结果中的 framework。Campaign 名单从期间分析中的测试身份读取。生成的业务答案放数据库或私有 `.state/`，不随 prompt 提交 Git。
 
 每日任务复用保存的固定框架，生成 Last Week (Tue–Mon)、Week-to-date、Month-to-date；Social Media 只有 lifetime 指标，因此另外保存每日 lifetime snapshot，不冒充三个时段内的数据。时段与页面共用日期计算。页面只显示成功入库的 AI 内容，不显示手写的分析兜底。
 

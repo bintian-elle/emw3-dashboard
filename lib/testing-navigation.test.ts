@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {safeTestingReturnTo,withTestingReturnTo,isConcludedTestingNavigation} from "./testing-navigation.ts";
+import {safeTestingReturnTo,withTestingReturnTo,isConcludedTestingNavigation,testingCampaignAnchor,testingCampaignHref} from "./testing-navigation.ts";
 const arm="/bluevua/testing/google/concluded/test/treatment";
 test("archive origin survives both drill-down levels",()=>{
  const armLink=withTestingReturnTo(arm,"/bluevua/testing/concluded/google");
@@ -24,4 +24,21 @@ test("overview origin preserves its selected reporting period",()=>{
  const arm=withTestingReturnTo("/bluevua/testing/google/concluded/test/treatment",overview);
  assert.equal(isConcludedTestingNavigation("/bluevua/testing/google/concluded/test/treatment",overview),false);
  assert.ok(arm.includes(encodeURIComponent(overview)));
+});
+
+test("campaign return preserves origin, updates dates and targets the matching card",()=>{
+ const name="EM | Autumn brew / A&B %";
+ const result=testingCampaignHref("/bluevua/testing?period=custom&start=2026-01-01&end=2026-01-05", "edm", name,{period:"lastWeek"});
+ const url=new URL(result,"https://test");
+ assert.equal(url.pathname,"/bluevua/testing");
+ assert.equal(url.searchParams.get("period"),"lastWeek");
+ assert.equal(url.searchParams.has("start"),false);
+ assert.equal(url.searchParams.has("end"),false);
+ assert.equal(decodeURIComponent(url.hash.slice(1)),testingCampaignAnchor("edm",name));
+});
+test("campaign return rejects external origins and accepts custom dates",()=>{
+ const url=new URL(testingCampaignHref("https://outside.example", "meta", "Campaign", {period:"custom",start:"2026-09-01",end:"2026-09-07"}),"https://test");
+ assert.equal(url.pathname,"/bluevua/testing");
+ assert.equal(url.searchParams.get("start"),"2026-09-01");
+ assert.equal(url.searchParams.get("end"),"2026-09-07");
 });

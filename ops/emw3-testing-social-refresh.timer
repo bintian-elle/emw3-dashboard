@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Social Media data before daily Testing Insights
+
+[Timer]
+OnCalendar=*-*-* 08:15:00 UTC
+Persistent=true
+AccuracySec=1s
+Unit=emw3-testing-social-refresh.service
+
+[Install]
+WantedBy=timers.target

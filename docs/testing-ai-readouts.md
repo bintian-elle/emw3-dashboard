@@ -1,5 +1,8 @@
 # Content Testing AI readouts
 
+Current behavior (2026-10-28): Test goals and hypotheses have been removed from the UI, readout requests, AI generation prompts, publishing and AI context. Legacy framework fields/evidence are filtered without deleting historical records. Detail/summary loading says "Fetching analysis…"; the reader is not shown storage implementation labels. Campaign comparison menus use period test identities, independent of generated frameworks. Remaining performance analysis, evidence, Delta and recommendations continue through the existing readout workflow.
+
+
 Static `framework:v1` and exact-period results live in the same shared Supabase database as Insights (`KLAVIYO_DATABASE_URL`). Local and production read the same records. Deploying code does not generate another answer.
 
 ## Static framework
@@ -171,3 +174,13 @@ Install after the low-reasoning translation patch, dry-run/apply with `patch -p1
 `prepareTestingWeeklyReuse` in `scripts/testing-weekly-reuse.mjs` runs before the queue's first submission. Last Week is omitted from a new batch only if the exact Last Week range already has a published cache and a completed, published batch from the same prompt revision. That normally means one new Last Week report on Tuesday; a missed/failed Tuesday run is filled on the next daily run. A changed prompt revision or framework regeneration forces a fresh report. Already-running/submitted jobs are never rewritten. Other daily periods and Lifetime continue normally. Only the cached weekly period is omitted; each remaining period retains all configured tests. Duplicate catalog financial rows are remapped to an actually supplied period. The stored `reused_weekly_periods` metadata makes reuse explicit; the old weekly English/Chinese cache remains available and is not translated again while its source hash stays unchanged.
 
 This optimization is in the separately loaded queue worker, so updating/restarting that worker requires no Next.js rebuild and does not interrupt the native analysis already in flight. Keep `scripts/testing-weekly-reuse.mjs` alongside `scripts/ai-queue-worker.mjs` during deployment. Run `node --test scripts/testing-weekly-reuse.test.mjs` for exact-range/revision, catch-up and active-job coverage.
+
+## Channel-prompt production publication (October 28)
+
+The approved local Chinese reports and their direct English translations are imported into `testing_ai_readout_cache` and `testing_ai_readout_translations` as one transaction. Reports live under `payload.channel_reports`; Campaign detail remains under `tests[].preview_sections`. Both channel panels and Campaign cards read the selected language from this shared store in development and production. File-backed previews are optional development overrides, not a production dependency.
+
+`node --experimental-strip-types scripts/content-testing/publish-reports.mjs EN_DIR ZH_DIR BACKUP_DIR --replace-today` backs up the replaced rows privately on EC2, removes only today's non-concluded Content Testing period records plus the exact replacement keys, imports both languages, and validates persisted English payloads. It never deletes EDM's independent insights or concluded lifetime records. The Chinese source hash is computed from the persisted PostgreSQL JSON to match the normal reader. Preserve the local source until database verification and deployment checks succeed; archive the source on EC2 before deleting local preview files.
+
+`emw3-testing-readouts.service` runs `scripts/content-testing/daily.mjs`: authenticated Dashboard snapshots, serial English channel reports in the existing `Bluevua · Content Testing Insights` conversation, then Overview, database publication, and independent low-reasoning Chinese translation. WTD and MTD run daily; exact Last Week is reused except Tuesday or a missing-week catch-up. Reddit/Social lifetime are regenerated once daily and reused across that day's period reports. Translation failures do not hide English results or delete the prior website build. Long Markdown is split into bounded translation pieces while preserving identifiers, figures and links.
+
+Install `emw3-testing-social-refresh.service/.timer` alongside the analysis units. Social refresh runs at 08:15 UTC; channel analysis runs at 09:15 UTC. Inspect timer/service status after installation; enabling a timer does not mean its upstream refresh succeeded. Code, prompts and unit files are committed together; operational archives and credentials remain outside Git.

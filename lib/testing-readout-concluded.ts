@@ -29,10 +29,10 @@ export async function refreshConcludedTestingReadouts() {
     const exists = await pool.query("select id from ai_job_queue where id=$1", [id]);
     if (!exists.rowCount) {
       const [source, prompt, extra, checklist, archive] = await Promise.all([
-        readFile(path.join(process.cwd(), "prompts/insights/content-testing-source.md"), "utf8"),
-        readFile(path.join(process.cwd(), "prompts/insights/content-testing.md"), "utf8"),
+        readFile(path.join(process.cwd(), "prompts/content-testing/master.md"), "utf8"),
+        readFile(path.join(process.cwd(), "prompts/content-testing/google-search.md"), "utf8"),
         readFile(path.join(process.cwd(), "prompts/insights/content-testing-concluded.md"), "utf8"),
-        readFile(path.join(process.cwd(), "prompts/insights/content-testing-requirements.json"), "utf8"),
+        Promise.resolve(JSON.stringify({channels:[{channel:"Google Search",requirements:[]}]})),
         readGoogleCreativeArchive(),
       ]);
       const document = JSON.parse(checklist) as { channels: Array<{ channel: string; requirements: Array<{ id: string }> }> };
@@ -43,7 +43,7 @@ export async function refreshConcludedTestingReadouts() {
       // Lifetime snapshot is the existing native lifetime schema label. The stable
       // concluded ID is controller metadata, never confused with Social's cache key.
       const period = { label: "Lifetime snapshot", ...snapshot.report.period, concludedTestId: definition.id };
-      const instructions = `${source}\n\n${prompt}\n\n${extra}`;
+      const instructions = `${source}\n\n${prompt}\n\n${extra}\n\nConcluded-test override: the concluded instructions above take precedence over the active-test removal of goals, hypotheses and framework. Generate a fixed Test goal and Hypothesis for this concluded test and include evidence in this exact form: [FRAMEWORK] {"goal":"...","hypothesis":"...","hypothesisBasis":"documented|inferred|unavailable"}.`;
       const body = {
         mode: "testing_readout", dashboard_id: "bluevua-content-testing-concluded", language: "en",
         period: snapshot.report.period, comparison: null, preset_label: "Concluded test · Lifetime", comparison_label: "Documented test versus control",

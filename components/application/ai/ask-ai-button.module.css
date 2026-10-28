@@ -53,6 +53,10 @@
 }
 .composer > * { border-radius: 0.75rem; background: var(--color-background-primary-default); }
 
+/* A panel-bound composer keeps its thinking border without an inset card. */
+.composer.flush { padding: 1px 0 0; border-radius: 0; }
+.composer.flush > * { border-radius: 0; background: var(--color-background-secondary-default); }
+
 @keyframes border-flow { to { --ai-angle: 360deg; } }
 @keyframes sparkle-breathe { 50% { opacity: 0.55; transform: scale(0.9); } }
 @media (prefers-reduced-motion: reduce) {

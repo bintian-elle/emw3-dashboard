@@ -14,7 +14,7 @@ export function createRedditRequester({fetcher, pause = (ms: number) => new Prom
     try {
       for (let attempt = 0; attempt < 3; attempt++) {
         let response:Response;
-        try{response=await fetcher(endpoint,init);}catch(error){if(attempt===2)throw new Error("Reddit reporting timed out. Please try again shortly.",{cause:error});await pause(500*2**attempt);continue;}
+        try{response=await fetcher(endpoint,init);}catch(error){if(error instanceof Error&&/\bHTTP 429\b/.test(error.message))throw error;if(attempt===2)throw new Error("Reddit reporting timed out. Please try again shortly.",{cause:error});await pause(500*2**attempt);continue;}
         if (response.ok) return await response.json();
         if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 2) {
           throw new Error(`Reddit reporting is temporarily unavailable (HTTP ${response.status}). Please try again shortly.`);

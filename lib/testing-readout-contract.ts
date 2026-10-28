@@ -15,11 +15,12 @@ export function testingReadoutKey(period: ReadoutPeriod) {
   return slug ? `period:${slug}:${period.start}:${period.end}` : null;
 }
 export type CachedTestReadout = {
-  test_id: string; channel?: string; campaign_name?: string | null; summary: string | null;
+  test_id: string; channel?: string; campaign_name?: string | null; summary: string | null; preview_sections?: Array<{title:string;markdown:string}>;
   confidence?: string; recommended_action?: string | null; data_gaps?: string[]; asset_insights?: string[]; evidence?: string[];
   delta?: { comparison_label?: string | null; metrics?: Array<{ name: string; unit?: string; test_value?: number | null; comparison_value?: number | null; absolute_delta?: number | null; relative_delta_pct?: number | null; percentage_point_delta?: number | null; interpretation?: string | null }> };
 };
 export type CachedPeriodReadout = {
+  channel_reports?: import("./testing-prompt-preview").PromptPreviewReport[];
   schema_version: string; run_mode: "period_readout"; period: ReadoutPeriod; captured_at?:string|null;
   overview?: { executive_summary?: string | null; key_findings?: string[]; recommended_actions?: string[]; data_gaps?: string[] };
   tests: CachedTestReadout[];

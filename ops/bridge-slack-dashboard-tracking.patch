@@ -1,0 +1,56 @@
+--- a/src/anc_bridge/sdk.py
++++ b/src/anc_bridge/sdk.py
+@@ -94,6 +94,9 @@
+                         raise NativeThreadUnavailable(thread_id, 'missing') from None
+                 raise
+         else:
++            from .slack_dashboard_tracking import valid_plan, DASHBOARD_PROJECT_ID
++            if valid_plan(getattr(self, 'dashboard_slack_filing', None)):
++                params = {**params, 'projectId': DASHBOARD_PROJECT_ID}
+             started=await self._client.thread_start(params)
+             return AsyncThread(self,started.thread.id)
+         return AsyncThread(self,result.thread.id)
+--- a/src/anc_bridge/execution.py
++++ b/src/anc_bridge/execution.py
+@@ -34,6 +34,21 @@
+             shared=self.s.one("SELECT text FROM messages WHERE conversation=? AND role='shared_reference'",(t['conversation'],))
+             if not shared:raise BridgeError('shared_context_snapshot_missing_start_new_conversation')
+             spec['continued_reference']=shared['text']
++        if isinstance(context, dict) and context.get('sender_id') and t.get('conversation'):
++            from .slack_dashboard_tracking import filing_plan, cached_plan
++            first = self.s.one('SELECT t.input_snapshot,tc.payload FROM turns t '
++                               'JOIN turn_contexts tc ON tc.turn_id=t.id '
++                               'WHERE t.conversation=? ORDER BY t.sequence LIMIT 1',
++                               (t['conversation'],))
++            if first:
++                try:
++                    origin = json.loads(first['payload'])
++                except (TypeError, ValueError):
++                    origin = None
++                plan = filing_plan(spec['input'], origin, first['input_snapshot'],
++                                   cached_plan(spec.get('thread_id')))
++                if plan:
++                    spec['_dashboard_slack_filing'] = plan
+         return Path(self.c.auth_home),spec
+ 
+     async def tick(self, *, start_new=True):
+--- a/src/anc_bridge/worker.py
++++ b/src/anc_bridge/worker.py
+@@ -101,6 +101,7 @@
+         from .native_runtime import instructions, turn_context
+         replacement = {}
+         from .startup import resume, start
++        sdk.dashboard_slack_filing = spec.get('_dashboard_slack_filing')
+         try:
+             thread=await resume(sdk,spec['cwd'],instructions(spec),spec.get('thread_id'),emit) if spec.get('request_id') else await sdk.native_thread(spec['cwd'],instructions(spec),spec.get('thread_id'))
+         except NativeThreadUnavailable as exc:
+@@ -213,6 +214,9 @@
+             control_task.cancel()
+             approval_task.cancel()
+             await asyncio.gather(control_task,approval_task,return_exceptions=True)
++            if complete and spec.get('_dashboard_slack_filing'):
++                from .slack_dashboard_tracking import file_completed
++                await file_completed(sdk, thread.id, spec['_dashboard_slack_filing'])
+ 
+ 
+ async def stdin_main():

@@ -1,9 +1,11 @@
 import "server-only";
+import {cache} from "react";
 import {compareCampaignNamesNewestFirst} from "@/lib/campaign-name-order";
 import {connection} from "next/server";
 import {mkdir,readFile,writeFile,rename} from "node:fs/promises";
 import path from "node:path";
 import {queryGoogleTestingApi} from "@/lib/google-testing-api";
+import {readTestingDataSnapshot} from "@/lib/testing-data-cache";
 import {resolveTestingPeriod,testingPeriodLabels,type TestingPeriodInput} from "@/lib/testing-google";
 import {PMAX_TESTING_BASIS,pmaxMetrics,pmaxTestingDays,fetchPmaxAssetPerformance,type PmaxDailyRow} from "@/lib/pmax-testing-performance";
 import type {GoogleAdMetrics} from "@/lib/google-ad-performance";
@@ -16,7 +18,8 @@ type InventoryRow={campaign:Campaign;assetGroup?:Group;adGroup?:Group;adGroupAd?
 type DailyRow={campaign:{id:string};assetGroup?:{id:string};adGroupAd?:{ad:{id:string}};segments:{date:string};metrics:{costMicros?:string;conversionsValue?:number;conversions?:number;impressions?:string|null;clicks?:string}};
 type AssetRow={assetGroup:{id:string};asset:TestingAsset;assetGroupAsset:{fieldType:string;status?:string;source?:string}};
 export type PmaxAssetPerformance={assetId:string;fieldType:string;status:string;metrics:GoogleAdMetrics};
-type Snapshot={version:2|3;capturedAt:number;end:string;inventory:InventoryRow[];days:DailyRow[];assets:AssetRow[];adAssets:TestingAsset[];pmaxProductDays?:DailyRow[];pmaxAssetDays?:PmaxDailyRow[]};
+export type GoogleExpandedSnapshot={version:2|3;capturedAt:number;end:string;inventory:InventoryRow[];days:DailyRow[];assets:AssetRow[];adAssets:TestingAsset[];pmaxProductDays?:DailyRow[];pmaxAssetDays?:PmaxDailyRow[]};
+type Snapshot=GoogleExpandedSnapshot;
 export type ExpandedTestRow={adType?:string;id:string;name:string;status:string;metrics:GoogleAdMetrics;metricsBasis?:string;assetPerformance?:PmaxAssetPerformance[];assets:TestingAsset[];texts:string[]};
 export type ExpandedTestCampaign={id:string;name:string;status:string;groups:Array<{id:string;name:string;rows:ExpandedTestRow[]}>};
 export type ExpandedTestingData={channel:ExpandedChannel;period:{start:string;end:string};periodLabel:string;campaigns:ExpandedTestCampaign[]};
@@ -31,6 +34,12 @@ function testingDays(data:Snapshot,channel:ExpandedChannel):DailyRow[]{
 async function load(channel:ExpandedChannel):Promise<Snapshot>{
  const directory=process.env.GOOGLE_ADS_CREATIVE_DIR||path.join(process.cwd(),".state/google-creatives");const file=path.join(directory,`${channel}-content-testing.json`),end=new Date(Date.now()-(channel==="pmax"?86400000:0)).toISOString().slice(0,10);
  try{const saved=JSON.parse(await readFile(file,"utf8")) as Snapshot;if(saved.version===(channel==="pmax"?3:2)&&(channel!=="pmax"||(Array.isArray(saved.pmaxProductDays)&&Array.isArray(saved.pmaxAssetDays)))&&saved.end>=end&&Date.now()-saved.capturedAt<6*3600000)return saved;}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
+ const result=await fetchFreshGoogleExpandedSnapshot(channel);
+ await mkdir(directory,{recursive:true,mode:0o700});const temp=`${file}.${process.pid}.tmp`;await writeFile(temp,JSON.stringify(result),{mode:0o600});await rename(temp,file);return result;
+}
+/** Fetch inventory, creatives and history in memory without changing existing snapshots. */
+export async function fetchFreshGoogleExpandedSnapshot(channel:ExpandedChannel):Promise<GoogleExpandedSnapshot>{
+ const end=new Date(Date.now()-(channel==="pmax"?86400000:0)).toISOString().slice(0,10);
  const pmax=channel==="pmax",scope=pmax?`campaign.name IN (${names.map(n=>`'${n}'`).join(",")}) AND asset_group.name LIKE '%Content Testing%'`:`campaign.name='EM-DG-Conversion-Prospecting-Purchase-April26' AND ad_group.id = 202844993442 AND ad_group_ad.ad.name LIKE '%content testing%'`;
  const adFields=["marketing_images","square_marketing_images","portrait_marketing_images","tall_portrait_marketing_images","headlines","descriptions"].map(field=>`ad_group_ad.ad.demand_gen_multi_asset_ad.${field}`).concat(["videos","headlines","descriptions"].map(field=>`ad_group_ad.ad.demand_gen_video_responsive_ad.${field}`));
  const inventory=await queryGoogleTestingApi<InventoryRow>(`SELECT campaign.id,campaign.name,campaign.status,${pmax?"asset_group.id,asset_group.name,asset_group.status":"ad_group.id,ad_group.name,ad_group.status,ad_group_ad.status,ad_group_ad.ad.id,ad_group_ad.ad.name,ad_group_ad.ad.type,"+adFields.join(",")} FROM ${pmax?"asset_group":"ad_group_ad"} WHERE ${scope}`);
@@ -41,10 +50,17 @@ async function load(channel:ExpandedChannel):Promise<Snapshot>{
  if(pmax&&inventory.length)assets=await queryGoogleTestingApi<AssetRow>(`SELECT asset_group.id,asset_group_asset.field_type,asset_group_asset.status,asset_group_asset.source,${assetFields} FROM asset_group_asset WHERE asset_group.id IN (${inventory.map(r=>r.assetGroup!.id).join(",")})`);
  if(!pmax){const ids=[...new Set(inventory.flatMap(row=>Object.values(row.adGroupAd!.ad.demandGenMultiAssetAd??row.adGroupAd!.ad.demandGenVideoResponsiveAd??{}).flatMap(items=>items.flatMap(item=>item.asset?[item.asset.split('/').at(-1)!]:[]))))];if(ids.length)adAssets=(await queryGoogleTestingApi<{asset:TestingAsset}>(`SELECT ${assetFields} FROM asset WHERE asset.id IN (${ids.join(",")})`)).map(row=>row.asset);}
  const pmaxPerformance=pmax?await fetchPmaxAssetPerformance(queryGoogleTestingApi,inventory.map(r=>r.assetGroup!.id),end):null;
- const result:Snapshot={version:pmax?3:2,capturedAt:Date.now(),end,inventory,days,assets,adAssets,...(pmaxPerformance?{pmaxProductDays:pmaxPerformance.productDays,pmaxAssetDays:pmaxPerformance.assetDays}:{})};await mkdir(directory,{recursive:true,mode:0o700});const temp=`${file}.${process.pid}.tmp`;await writeFile(temp,JSON.stringify(result),{mode:0o600});await rename(temp,file);return result;
+ return {version:pmax?3:2,capturedAt:Date.now(),end,inventory,days,assets,adAssets,...(pmaxPerformance?{pmaxProductDays:pmaxPerformance.productDays,pmaxAssetDays:pmaxPerformance.assetDays}:{})};
 }
+export const readGoogleExpandedSharedSnapshot=cache(async (channel:ExpandedChannel):Promise<GoogleExpandedSnapshot|null>=>{
+ const stored=await readTestingDataSnapshot(channel==="pmax"?"google-pmax":"google-demand-gen",{});
+ const value=stored?.payload as GoogleExpandedSnapshot|undefined;
+ if(!value||value.version!==(channel==="pmax"?3:2)||!value.end||!Number.isFinite(value.capturedAt)||!Array.isArray(value.inventory)||!Array.isArray(value.days)||!Array.isArray(value.assets)||!Array.isArray(value.adAssets)||(channel==="pmax"&&(!Array.isArray(value.pmaxProductDays)||!Array.isArray(value.pmaxAssetDays))))return null;
+ return value;
+});
 export async function getExpandedGoogleTesting(channel:ExpandedChannel,input:TestingPeriodInput={}):Promise<ExpandedTestingData>{
- await connection();let request=pending.get(channel);if(!request){request=load(channel);pending.set(channel,request);void request.finally(()=>{setTimeout(()=>{if(pending.get(channel)===request)pending.delete(channel);},60000).unref();}).catch(()=>{});}const data=await request;
+ await connection();let data=await readGoogleExpandedSharedSnapshot(channel);
+ if(!data){let request=pending.get(channel);if(!request){request=load(channel);pending.set(channel,request);void request.finally(()=>{setTimeout(()=>{if(pending.get(channel)===request)pending.delete(channel);},60000).unref();}).catch(()=>{});}data=await request;}
  const period=resolveTestingPeriod(new Date(Date.now()-86400000).toISOString().slice(0,10),input);
  const campaigns:ExpandedTestCampaign[]=[],daily=testingDays(data,channel);
  for(const row of data.inventory){let campaign=campaigns.find(c=>c.id===row.campaign.id);if(!campaign){campaign={...row.campaign,groups:[]};campaigns.push(campaign);}const g=row.assetGroup??row.adGroup!;let group=campaign.groups.find(item=>item.id===g.id);if(!group){group={id:g.id,name:g.name,rows:[]};campaign.groups.push(group);}const id=row.assetGroup?.id??row.adGroupAd!.ad.id;
@@ -68,13 +84,13 @@ export function expandedGoogleReports(data:ExpandedTestingData):import("@/lib/te
   return types.flatMap(creativeType=>{
    const rows=g.rows.filter(row=>creativeType==="Mixed"||(row.adType==="DEMAND_GEN_VIDEO_RESPONSIVE_AD"?"Video":"Picture")===creativeType);
    if(!rows.length)return [];
-   return [{campaignName:c.name,campaignStatus:c.status,period:data.period,periodLabel:data.periodLabel,adCount:rows.length,creativeType,groups:rows.map(row=>({label:"" as const,name:row.name,adGroupId:row.id,...row.metrics}))}];
+   return [{channel:data.channel,campaignName:c.name,campaignStatus:c.status,period:data.period,periodLabel:data.periodLabel,adCount:rows.length,creativeType,groups:rows.map(row=>({label:"" as const,name:row.name,adGroupId:row.id,...row.metrics}))}];
   });
  }));
 }
 
 /** Reuse the same daily snapshot; no per-period API request for AI history. */
-export async function getExpandedGoogleTestingReadoutHistory(channel:ExpandedChannel){
- const data=await load(channel);
- return {capturedAt:new Date(data.capturedAt).toISOString(),rows:testingDays(data,channel).filter(row=>row.segments.date>='2026-09-01').map(row=>({date:row.segments.date,campaignId:row.campaign.id,entityId:row.assetGroup?.id??row.adGroupAd?.ad.id,...metrics([row])}))};
+export async function getExpandedGoogleTestingReadoutHistory(channel:ExpandedChannel,start="2026-09-01"){
+ const data=await readGoogleExpandedSharedSnapshot(channel)??await load(channel);
+ return {capturedAt:new Date(data.capturedAt).toISOString(),rows:testingDays(data,channel).filter(row=>row.segments.date>=start).map(row=>({date:row.segments.date,campaignId:row.campaign.id,entityId:row.assetGroup?.id??row.adGroupAd?.ad.id,...metrics([row])}))};
 }

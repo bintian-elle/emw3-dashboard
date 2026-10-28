@@ -1,8 +1,10 @@
 import "server-only";
 import { resolveMetaCreativeLinks } from "@/lib/meta-creative-links";
+import { readTestingDataSnapshot } from "@/lib/testing-data-cache";
 import {isMetaVideo,type MetaCreative} from "@/lib/meta-creative-type";
 import { connection } from "next/server";
 import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } from "@/lib/testing-google";
+import type { OverviewDailySource } from "./overview-daily-metrics";
 
 const META_API_VERSION="v25.0";
 const META_CAMPAIGN_IDS=["120251709189500383"] as const;
@@ -14,29 +16,43 @@ export type MetaActiveAd={linkClicks?:number|null;linkCtr?:number|null;adId:stri
 export type MetaAdGroupMetric={campaignName:string;adGroupId:string;name:string;activeAds:MetaActiveAd[];spend:number;revenue:number;orders:number;impressions:number;clicks:number;cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null;cpm:number|null;hookRate:number|null;reach:number|null;costPerReach:number|null};
 export type MetaCampaign={campaignId:string;campaignName:string;campaignStatus:string;effectiveStatus:string;adGroups:MetaAdGroupMetric[];totals:{spend:number;revenue:number;orders:number;clicks:number;impressions:number;reach:number|null;costPerReach:number|null};metrics:ReturnType<typeof performance>} ;
 export type MetaCampaignTest={periodLabel:string;period:{start:string;end:string};campaigns:MetaCampaign[];adGroups:MetaAdGroupMetric[];totals:{spend:number;revenue:number;orders:number;clicks:number;impressions:number;reach:number|null;costPerReach:number|null}};
+export type MetaTestingSnapshot={data:MetaCampaignTest;daily:OverviewDailySource};
+const snapshotDaily=new WeakMap<MetaCampaignTest,OverviewDailySource>();
 
 function token(){const value=process.env.META_ACCESS_TOKEN;if(!value)throw new Error("Meta credentials are not configured.");return value;}
-async function graph<T>(path:string,params:Record<string,string>):Promise<T>{const query=new URLSearchParams({...params,access_token:token()});const response=await fetch(`https://graph.facebook.com/${META_API_VERSION}/${path}?${query}`,{next:{revalidate:3600}});if(!response.ok){const body=await response.text();throw new Error(`Meta API request failed for ${path} (${response.status}): ${body.slice(0,300)}`);}return response.json() as Promise<T>;}
+async function graph<T>(path:string,params:Record<string,string>,fresh=false):Promise<T>{const query=new URLSearchParams({...params,access_token:token()});const response=await fetch(`https://graph.facebook.com/${META_API_VERSION}/${path}?${query}`,fresh?{cache:"no-store",headers:{"Cache-Control":"no-cache"}}:{next:{revalidate:3600}});if(!response.ok){const body=await response.text();let code:number|undefined;try{code=JSON.parse(body)?.error?.code;}catch{/* Non-JSON errors remain generic. */}if(response.status===429||(code!=null&&[4,17,32,613].includes(code)))throw new Error("Meta API rate limit (HTTP 429). Please try again later.");throw new Error(`Meta API request failed for ${path} (${response.status}): ${body.slice(0,300)}`);}return response.json() as Promise<T>;}
+type MetaGraph = <T>(path:string,params:Record<string,string>)=>Promise<T>;
+async function graphCollection<T>(read:MetaGraph,path:string,params:Record<string,string>):Promise<{data:T[]}>{
+ const rows:T[]=[];const seen=new Set<string>();let after:string|undefined;
+ do{
+  const page=await read<{data:T[];paging?:{next?:string;cursors?:{after?:string}}}>(path,{...params,...(after?{after}:{})});
+  rows.push(...page.data);
+  const next=page.paging?.next?page.paging.cursors?.after:undefined;
+  if(page.paging?.next&&(!next||seen.has(next)))throw Error("Incomplete Meta report");
+  if(next)seen.add(next);after=next;
+ }while(after);
+ return {data:rows};
+}
 const number=(value?:string)=>Number(value??0);
 const ratio=(a:number,b:number)=>b>0?a/b:null;
 const actionValue=(actions:MetaAction[]|undefined,type:string)=>number(actions?.find(action=>action.action_type===type)?.value);
 function performance(row:MetaInsightRow){const spend=number(row.spend),revenue=actionValue(row.action_values,"omni_purchase"),orders=actionValue(row.actions,"omni_purchase"),impressions=number(row.impressions),clicks=number(row.clicks),videoViews=actionValue(row.actions,"video_view");const reach=row.reach==null?null:number(row.reach),linkClicks=row.inline_link_clicks==null?null:number(row.inline_link_clicks);return {linkClicks,linkCtr:linkClicks==null?null:ratio(linkClicks,impressions),spend,revenue,orders,impressions,clicks,reach,costPerReach:reach==null?null:ratio(spend,reach),cpa:ratio(spend,orders),cvr:ratio(orders,clicks),roas:ratio(revenue,spend),ctr:ratio(clicks,impressions),cpc:ratio(spend,clicks),cpm:ratio(spend*1000,impressions),hookRate:videoViews>0?ratio(videoViews,impressions):null};}
-async function adPreviewUrl(adId:string){const result=await graph<{data:Array<{body?:string}>}>(`${adId}/previews`,{ad_format:"MOBILE_FEED_STANDARD"});const match=result.data[0]?.body?.match(/<iframe[^>]+src="([^"]+)"/i);return match?.[1]?.replaceAll("&amp;","&")??null;}
-async function creativeThumbnail(creativeId:string|undefined,fallback:string|null){if(!creativeId)return fallback;const result=await graph<{thumbnail_url?:string}>(creativeId,{fields:"thumbnail_url",thumbnail_width:"600",thumbnail_height:"600"});return result.thumbnail_url??fallback;}
+async function adPreviewUrl(adId:string,read:MetaGraph){const result=await read<{data:Array<{body?:string}>}>(`${adId}/previews`,{ad_format:"MOBILE_FEED_STANDARD"});const match=result.data[0]?.body?.match(/<iframe[^>]+src="([^"]+)"/i);return match?.[1]?.replaceAll("&amp;","&")??null;}
+async function creativeThumbnail(creativeId:string|undefined,fallback:string|null,read:MetaGraph){if(!creativeId)return fallback;const result=await read<{thumbnail_url?:string}>(creativeId,{fields:"thumbnail_url",thumbnail_width:"600",thumbnail_height:"600"});return result.thumbnail_url??fallback;}
 
-async function campaignTest(campaignId:string,period:{start:string;end:string}):Promise<MetaCampaign>{
+async function campaignTest(campaignId:string,period:{start:string;end:string},read:MetaGraph=graph):Promise<MetaCampaign>{
   const timeRange=JSON.stringify({since:period.start,until:period.end});
-  const campaign=await graph<MetaCampaignRow>(campaignId,{fields:"id,name,status,effective_status"});
+  const campaign=await read<MetaCampaignRow>(campaignId,{fields:"id,name,status,effective_status"});
   const [groupInsights,adInsights,ads,campaignInsights]=await Promise.all([
-    graph<{data:MetaInsightRow[]}>(`${campaignId}/insights`,{time_range:timeRange,fields:"adset_id,adset_name,spend,impressions,reach,clicks,inline_link_clicks,actions,action_values",level:"adset",limit:"200"}),
-    graph<{data:MetaInsightRow[]}>(`${campaignId}/insights`,{time_range:timeRange,fields:"ad_id,ad_name,adset_id,adset_name,spend,impressions,reach,clicks,inline_link_clicks,actions,action_values",level:"ad",limit:"500"}),
-    graph<{data:MetaAdRow[]}>(`${campaignId}/ads`,{fields:"id,name,adset_id,configured_status,effective_status,creative{id,body,title,thumbnail_url,video_id,object_type,asset_feed_spec,object_story_spec}",limit:"100"}),
-    graph<{data:MetaInsightRow[]}>(`${campaignId}/insights`,{time_range:timeRange,fields:"spend,impressions,reach,clicks,inline_link_clicks,actions,action_values",level:"campaign"}),
+    graphCollection<MetaInsightRow>(read,`${campaignId}/insights`,{time_range:timeRange,fields:"adset_id,adset_name,spend,impressions,reach,clicks,inline_link_clicks,actions,action_values",level:"adset",limit:"200"}),
+    graphCollection<MetaInsightRow>(read,`${campaignId}/insights`,{time_range:timeRange,fields:"ad_id,ad_name,adset_id,adset_name,spend,impressions,reach,clicks,inline_link_clicks,actions,action_values",level:"ad",limit:"500"}),
+    graphCollection<MetaAdRow>(read,`${campaignId}/ads`,{fields:"id,name,adset_id,configured_status,effective_status,creative{id,body,title,thumbnail_url,video_id,object_type,asset_feed_spec,object_story_spec}",limit:"100"}),
+    graphCollection<MetaInsightRow>(read,`${campaignId}/insights`,{time_range:timeRange,fields:"spend,impressions,reach,clicks,inline_link_clicks,actions,action_values",level:"campaign"}),
   ]);
   const insightByAd=new Map(adInsights.data.map(row=>[row.ad_id,row]));
   const active=ads.data.filter(ad=>ad.configured_status==="ACTIVE"||ad.effective_status==="ACTIVE");
   const videoIds=new Set(active.filter(ad=>isMetaVideo(ad.name,ad.creative)).map(ad=>ad.id));
-  const mediaEntries=await Promise.all(active.map(async ad=>[ad.id,{...await resolveMetaCreativeLinks(ad.id,ad.creative?.id,graph),thumbnailUrl:await creativeThumbnail(ad.creative?.id,ad.creative?.thumbnail_url??null),videoUrl:videoIds.has(ad.id)?await adPreviewUrl(ad.id).catch(()=>null):null}] as const));
+  const mediaEntries=await Promise.all(active.map(async ad=>[ad.id,{...await resolveMetaCreativeLinks(ad.id,ad.creative?.id,read),thumbnailUrl:await creativeThumbnail(ad.creative?.id,ad.creative?.thumbnail_url??null,read),videoUrl:videoIds.has(ad.id)?await adPreviewUrl(ad.id,read).catch(()=>null):null}] as const));
   const mediaByAd=new Map(mediaEntries);const adsByGroup=new Map<string,MetaActiveAd[]>();
   for(const ad of active){const insight=insightByAd.get(ad.id);const isVideo=videoIds.has(ad.id);const media=mediaByAd.get(ad.id);const item={adId:ad.id,name:ad.name,creativeContent:ad.creative,mediaType:isVideo?"Video" as const:"Image" as const,thumbnailUrl:media?.thumbnailUrl??null,videoUrl:media?.videoUrl??null,postUrl:media?.postUrl??null,previewUrl:media?.previewUrl??media?.videoUrl??null,...performance(insight??{adset_id:ad.adset_id,adset_name:""})};adsByGroup.set(ad.adset_id,[...(adsByGroup.get(ad.adset_id)??[]),item]);}
   for(const items of adsByGroup.values())items.sort((a,b)=>b.spend-a.spend);
@@ -47,16 +63,41 @@ async function campaignTest(campaignId:string,period:{start:string;end:string}):
   return {campaignId,campaignName:campaign.name,campaignStatus:campaign.status,effectiveStatus:campaign.effective_status,adGroups,totals,metrics};
 }
 
-export async function getMetaCampaignTest(input:TestingPeriodInput={}):Promise<MetaCampaignTest>{
-  await connection();
+async function buildMetaCampaignTest(input:TestingPeriodInput,read:MetaGraph):Promise<MetaCampaignTest>{
   const preset=input.preset??"lastWeek";
   const latest=new Date(Date.now()-86_400_000).toISOString().slice(0,10);
   const period=resolveTestingPeriod(latest,input);
   const campaigns:MetaCampaign[]=[];
-  for(const campaignId of META_CAMPAIGN_IDS)campaigns.push(await campaignTest(campaignId,period));
+  for(const campaignId of META_CAMPAIGN_IDS)campaigns.push(await campaignTest(campaignId,period,read));
   const adGroups=campaigns.flatMap(campaign=>campaign.adGroups);
   const totals=campaigns.reduce((sum,campaign)=>({spend:sum.spend+campaign.totals.spend,revenue:sum.revenue+campaign.totals.revenue,orders:sum.orders+campaign.totals.orders,clicks:sum.clicks+campaign.totals.clicks,impressions:sum.impressions+campaign.totals.impressions}),{spend:0,revenue:0,orders:0,clicks:0,impressions:0});
   return {periodLabel:testingPeriodLabels[preset],period,campaigns,adGroups,totals:{...totals,reach:campaigns.length===1?campaigns[0].totals.reach:null,costPerReach:campaigns.length===1?campaigns[0].totals.costPerReach:null}};
+}
+
+/** A fresh result is returned only after every requested Meta resource succeeds. */
+export async function fetchFreshMetaCampaignTest(input:TestingPeriodInput={}):Promise<MetaTestingSnapshot>{
+  await connection();
+  let failure:unknown;
+  const read:MetaGraph=async <T>(path:string,params:Record<string,string>):Promise<T>=>{
+    try{return await graph<T>(path,params,true);}catch(error){failure??=error;throw error;}
+  };
+  const data=await buildMetaCampaignTest(input,read);
+  // Optional creative helpers historically swallow errors; do not publish their
+  // partial result as a successful refresh.
+  if(failure)throw failure;
+  const daily=await buildMetaOverviewDaily(data,read);
+  if(failure)throw failure;
+  return {data,daily};
+}
+
+export async function getMetaCampaignTest(input:TestingPeriodInput={}):Promise<MetaCampaignTest>{
+  await connection();
+  const snapshot=await readTestingDataSnapshot<MetaTestingSnapshot>("meta",input);
+  if(snapshot?.payload?.data && snapshot.payload.daily){
+    snapshotDaily.set(snapshot.payload.data,snapshot.payload.daily);
+    return snapshot.payload.data;
+  }
+  return buildMetaCampaignTest(input,graph);
 }
 
 /** Background-only source data for testing analysis; cached, never page-triggered AI. */
@@ -76,4 +117,29 @@ export async function getMetaTestingReadoutHistory(){
 export async function getMetaTestingCurrency(){
  const campaign=await graph<{account_id:string}>(META_CAMPAIGN_IDS[0],{fields:"account_id"});
  return (await graph<{currency:string}>(`act_${campaign.account_id}`,{fields:"currency"})).currency;
+}
+
+/** Campaign daily totals preserve Overview scope; ad rows supply daily asset counts/CVR. */
+async function buildMetaOverviewDaily(data:MetaCampaignTest,graph:MetaGraph):Promise<OverviewDailySource>{
+ type Daily=MetaInsightRow&{date_start:string};
+ const read=async(id:string,level:'campaign'|'ad')=>{
+  const rows:Daily[]=[];const seen=new Set<string>();let after:string|undefined;
+  do{
+   const page=await graph<{data:Daily[];paging?:{next?:string;cursors?:{after:string}}}>(`${id}/insights`,{time_range:JSON.stringify({since:data.period.start,until:data.period.end}),time_increment:'1',level,fields:`spend,impressions,reach,clicks,actions,action_values${level==='ad'?',ad_id,adset_id,adset_name':''}`,limit:'500',...(after?{after}:{})});
+   rows.push(...page.data);const next=page.paging?.next?page.paging.cursors?.after:undefined;if(page.paging?.next&&(!next||seen.has(next)))throw Error('Incomplete Meta daily report');if(next)seen.add(next);after=next;
+  }while(after);return rows;
+ };
+ const results=await Promise.all(data.campaigns.map(async campaign=>{
+  const [totals,ads]=await Promise.all([read(campaign.campaignId,'campaign'),read(campaign.campaignId,'ad')]);
+  const types=new Map(campaign.adGroups.flatMap(group=>group.activeAds.map(ad=>[ad.adId,ad.mediaType==='Image'?'Picture' as const:'Video' as const])));
+  return {totals,ads:ads.filter(row=>row.ad_id&&types.has(row.ad_id)).map(row=>({date:row.date_start,entityId:row.ad_id!,assetType:types.get(row.ad_id!)!,...performance(row)}))};
+ }));
+ // Financial totals include the complete campaign, just like the existing headline.
+ // Keep campaign totals separate from active-ad rows to avoid counting either twice.
+ return {channel:'Meta',rows:results.flatMap(result=>result.ads),totals:results.flatMap(result=>result.totals.map(row=>({date:row.date_start,...performance(row)}))),reach:results.flatMap(result=>result.totals.map(row=>({date:row.date_start,value:performance(row).reach})))};
+}
+
+export async function getMetaOverviewDaily(data:MetaCampaignTest):Promise<OverviewDailySource>{
+ const daily=snapshotDaily.get(data);
+ return daily??buildMetaOverviewDaily(data,graph);
 }

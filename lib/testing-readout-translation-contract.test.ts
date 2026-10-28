@@ -66,3 +66,14 @@ test("Chinese punctuation can immediately separate a preserved URL and its metri
   assert.throws(() => check("来源 https://example.com/other/：657 次浏览，触达 473 人。"));
   assert.throws(() => check("来源 https://example.com/post/：658 次浏览，触达 473 人。"));
 });
+
+test('channel Markdown splits into bounded pieces and rejoins without changing identity or tables',()=>{
+ const markdown=('| creative-123 | 12.30 |\n').repeat(800);
+ const payload={channel_reports:[{language:'en',report_id:'meta',title:'Review',sections:[{title:'Actions',markdown}]}]};
+ const strings=readoutTranslationStrings(payload);
+ assert.ok(strings.every(text=>text.length<=4000));
+ const translated=applyReadoutTranslation(payload,new Map(strings.map(text=>[text,text.replaceAll('creative','素材')]))) as typeof payload;
+ assert.equal(translated.channel_reports[0].language,'zh-CN');
+ assert.equal(translated.channel_reports[0].report_id,'meta');
+ assert.equal(translated.channel_reports[0].sections[0].markdown,markdown.replaceAll('creative','素材'));
+});

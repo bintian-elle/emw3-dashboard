@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Dashboard Insights at 07:45 UTC
+
+[Timer]
+OnCalendar=*-*-* 07:45:00 UTC
+Persistent=false
+AccuracySec=1min
+Unit=emw3-ai-insights-refresh.service
+
+[Install]
+WantedBy=timers.target

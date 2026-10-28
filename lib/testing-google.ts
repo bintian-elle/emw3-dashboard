@@ -3,7 +3,7 @@ import "server-only";
 import { connection } from "next/server";
 import {resolveTestingPeriod} from "@/lib/testing-period";
 export {resolveTestingPeriod} from "@/lib/testing-period";
-import {readGoogleTestingApiData,apiGoogleSearchReport} from "@/lib/google-testing-api";
+import {readGoogleTestingApiData,apiGoogleSearchReport,readGoogleSearchSharedSnapshot} from "@/lib/google-testing-api";
 import {googleContentTestingInventory,GOOGLE_CONTENT_CAMPAIGNS} from "@/lib/google-content-testing-scope";
 import { db } from "@/lib/db";
 
@@ -40,6 +40,7 @@ export type GoogleTestGroup = {
 };
 
 export type GoogleSearchTest = {
+  channel?: "search" | "pmax" | "demand-gen";
   creativeType?:"Message"|"Picture"|"Video"|"Mixed";
   campaignName: string;
   adCount?:number;
@@ -153,12 +154,13 @@ export async function getGoogleSearchTest(input:TestingPeriodInput={},campaignNa
 
 export async function getGoogleContentTests(input:TestingPeriodInput={}) {
  await connection();
- const inventory=await googleContentTestingInventory();
+ const shared=await readGoogleSearchSharedSnapshot();
+ const inventory=shared?.inventory??await googleContentTestingInventory();
  const period=resolveTestingPeriod(new Date(Date.now()-86400000).toISOString().slice(0,10),input);
  const periodLabel=testingPeriodLabels[input.preset??"lastWeek"];
  const ids=inventory.ads.map(row=>row.adGroupAd.ad.id),allowed=new Set(ids);
  type ScopedRow={ad_group_id:string;testing_start_date:string;latest_date:string;spend:string;revenue:string;orders:string;impressions:string;clicks:string};
- const result=ids.length?await readGoogleTestingDatabase(()=>db.query<ScopedRow>(`SELECT ad_group_id,MIN(date)::text testing_start_date,MAX(date)::text latest_date,
+ const result=!shared&&ids.length?await readGoogleTestingDatabase(()=>db.query<ScopedRow>(`SELECT ad_group_id,MIN(date)::text testing_start_date,MAX(date)::text latest_date,
  COALESCE(SUM(spend) FILTER(WHERE date BETWEEN $2::date AND $3::date),0) spend,
  COALESCE(SUM(conversions_value) FILTER(WHERE date BETWEEN $2::date AND $3::date),0) revenue,
  COALESCE(SUM(conversions) FILTER(WHERE date BETWEEN $2::date AND $3::date),0) orders,
@@ -167,7 +169,7 @@ export async function getGoogleContentTests(input:TestingPeriodInput={}) {
  FROM v_ad_performance_daily WHERE ad_id=ANY($1::text[]) AND date<CURRENT_DATE GROUP BY ad_group_id`,[ids,period.start,period.end])):{rows:[]};
  const groupIds=[...new Set(inventory.ads.map(row=>row.adGroup.id))];
  const needsApi=result===null||groupIds.some(id=>!result.rows.some(row=>row.ad_group_id===id&&row.latest_date>=period.end));
- const api=needsApi?await readGoogleTestingApiData():null;
+ const api=shared?.performance??(needsApi?await readGoogleTestingApiData():null);
  return googleContentTestingCampaigns.map(campaignName=>{
   const ads=inventory.ads.filter(row=>row.campaign.name===campaignName);
   const groups=[...new Map(ads.map(row=>[row.adGroup.id,{id:row.adGroup.id,name:row.adGroup.name}])).values()];

@@ -1,19 +1,20 @@
+import {safeTestingReturnTo,testingCampaignHref} from "@/lib/testing-navigation";
 import { redditPeriodInput, type RedditSearchParams } from "@/lib/reddit-testing-period";
 import { notFound } from "next/navigation";
 import { TestingPageHeader } from "../../testing-page-header";
-import { TestingBackNavigation } from "../../testing-back-navigation";
 import { RedditContentPerformance } from "../../reddit-content-performance";
 import { getRedditContentTestingData } from "@/lib/testing-reddit";
 import {TestReadout} from "../../test-readout";
 
-export default async function RedditGroupPage({params,searchParams}:{params:Promise<{group:string}>;searchParams:Promise<RedditSearchParams>}) {
+export default async function RedditGroupPage({params,searchParams}:{params:Promise<{group:string}>;searchParams:Promise<RedditSearchParams & {returnTo?:string|string[]}>}) {
   const {group:groupId}=await params;
   const query=await searchParams;
   const data=await getRedditContentTestingData(redditPeriodInput(query));
-  const backQuery=new URLSearchParams();
-  for(const [key,raw] of Object.entries(query)){const value=Array.isArray(raw)?raw[0]:raw;if(value)backQuery.set(key,value);}
+  const rawReturn=Array.isArray(query.returnTo)?query.returnTo[0]:query.returnTo;
+  const returnTo=safeTestingReturnTo(rawReturn,"/bluevua/testing/reddit");
   const campaign=data.campaigns.find(campaign=>campaign.groups.some(group=>group.adGroupId===groupId));
   const group=campaign?.groups.find(group=>group.adGroupId===groupId);
   if(!campaign||!group)notFound();
-  return <><TestingPageHeader section="Reddit" title={group.name} description={campaign.name} redditDateFilter/><TestingBackNavigation platform="Reddit" platformHref="/bluevua/testing/reddit" query={backQuery.toString()}/><p className="mb-4 text-body-regular text-text-secondary">{data.periodLabel} · {data.period.start} – {data.period.end}</p><TestReadout standalone channel={campaign.kind==="Awareness"?"reddit-awareness":"reddit-conversion"} testIdentity={campaign.name} period={{label:data.periodLabel,...data.period}}><RedditContentPerformance campaign={{...campaign,groups:[group]}}/></TestReadout></>;
+  const backHref=testingCampaignHref(returnTo,"reddit",campaign.name,query);
+  return <><TestingPageHeader section="Reddit" title={group.name} description={campaign.name} redditDateFilter backHref={backHref}/><p className="mb-4 text-body-regular text-text-secondary">{data.periodLabel} · {data.period.start} – {data.period.end}</p><TestReadout standalone channel={campaign.kind==="Awareness"?"reddit-awareness":"reddit-conversion"} testIdentity={campaign.name} period={{label:data.periodLabel,...data.period}}><RedditContentPerformance campaign={{...campaign,groups:[group]}}/></TestReadout></>;
 }

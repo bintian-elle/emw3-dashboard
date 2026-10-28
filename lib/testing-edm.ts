@@ -1,18 +1,14 @@
 import "server-only";
-import {edmEventPerformance} from "@/lib/edm-event-performance";
+import {edmContentTestCampaignIds,edmModulePatterns} from "@/lib/edm-content-testing-scope";
+import {edmEventPerformance,registerEdmDailySnapshot} from "@/lib/edm-event-performance";
+import {readTestingDataSnapshot} from "@/lib/testing-data-cache";
+import type {EdmTestingSnapshot} from "@/lib/edm-live-refresh";
+export {fetchFreshEdmTestingSnapshot} from "@/lib/edm-live-refresh";
 import {edmUniqueRecipients} from "@/lib/edm-unique-recipients";
 import { Pool } from "pg";
 import { connection } from "next/server";
 import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } from "@/lib/testing-google";
 
-// Confirmed EDM content test: sent September 18, 2026.
-const EDM_CONTENT_TEST_CAMPAIGN_IDS = ["01M2RCYC6M4WQKYVZWZJGZHV29"];
-
-// Module-two mapping is confirmed only for these historical tests.
-const MODULE_PATTERNS:Record<string,RegExp>={
- "01M2RCYC6M4WQKYVZWZJGZHV29":/\/collections\/shop-all(?:[?#]|$)/i,
- "01M32R5G4AH5ZCDSA64EVQNTA7":/\/collections\/shop-all(?:[?#]|$)/i,
-};
 
 type MessageRow={
   campaign_id:string;campaign_name:string;campaign_status:string;campaign_message_id:string;
@@ -76,14 +72,16 @@ async function campaignTest(campaignId:string,modulePattern:RegExp|undefined,per
 
 export async function getEdmTestingData(input:TestingPeriodInput={}):Promise<EdmTestingData>{
   await connection();
+  const snapshot=await readTestingDataSnapshot<EdmTestingSnapshot>("edm",input);
+  if(snapshot?.payload?.data&&snapshot.payload.daily){registerEdmDailySnapshot(snapshot.payload.data,snapshot.payload.daily);return snapshot.payload.data;}
   const latest=iso(new Date(Date.now()-86_400_000)),preset=input.preset??"lastWeek",period=resolveTestingPeriod(latest,input);
   const selected=await database().query<{campaign_id:string}>(`
     select c.campaign_id from dim_campaign c
     where c.channel='email' and c.send_strategy='ab_test_campaign'
       and c.campaign_id=any($1::text[])
       and (select count(*) from dim_campaign_message m where m.campaign_id=c.campaign_id)>=2
-    order by coalesce(c.send_time,c.scheduled_at) desc nulls last,c.campaign_id`,[EDM_CONTENT_TEST_CAMPAIGN_IDS]);
-  const campaigns=(await Promise.all(selected.rows.map(campaign=>campaignTest(campaign.campaign_id,MODULE_PATTERNS[campaign.campaign_id],period)))).filter((campaign):campaign is EdmTestCampaign=>Boolean(campaign));
+    order by coalesce(c.send_time,c.scheduled_at) desc nulls last,c.campaign_id`,[edmContentTestCampaignIds]);
+  const campaigns=(await Promise.all(selected.rows.map(campaign=>campaignTest(campaign.campaign_id,edmModulePatterns[campaign.campaign_id],period)))).filter((campaign):campaign is EdmTestCampaign=>Boolean(campaign));
   const uniqueRecipients=await edmUniqueRecipients(period,campaigns.filter(campaign=>campaign.hasData).map(campaign=>campaign.campaignId));
   return{uniqueRecipients,period,periodLabel:testingPeriodLabels[preset],campaigns,tests:campaigns.flatMap(campaign=>campaign.tests).filter(test=>test.hasData)};
 }

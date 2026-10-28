@@ -1,6 +1,6 @@
 [Unit]
 Description=Generate and publish shared Content Testing AI readouts
-After=network-online.target emw3-ai-queue.service
+After=network-online.target emw3-ai-queue.service emw3-testing-social-refresh.service
 Wants=network-online.target emw3-ai-queue.service
 
 [Service]
@@ -8,6 +8,9 @@ Type=oneshot
 User=ubuntu
 WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
 Environment=NODE_ENV=production
-ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/refresh-testing-readouts.mjs
-TimeoutStartSec=95min
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/content-testing/daily.mjs
+TimeoutStartSec=20h
+Environment=PYTHONPATH=/home/ubuntu/work/anc-slack-bridge/src
+Environment=CONTENT_TESTING_PYTHON=/home/ubuntu/work/anc-slack-bridge/.venv/bin/python
+Nice=10
 UMask=0077

@@ -10,6 +10,7 @@ WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
 ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/ai-queue-worker.mjs
 Restart=always
 RestartSec=10
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

@@ -1,0 +1,20 @@
+--- a/src/anc_bridge/sdk.py
++++ b/src/anc_bridge/sdk.py
+@@ -116,6 +116,7 @@
+ 
+     async def dashboard_thread(self, cwd, instructions, thread_id=None, title=None):
+         """Use native project tools/configuration; no Dashboard capability overrides."""
++        from .dashboard.thread_project import DASHBOARD_PROJECT_ID
+         await self._ensure_initialized()
+         params = {'cwd': str(cwd), 'developerInstructions': instructions}
+         if thread_id:
+@@ -180,7 +181,8 @@
+                 **params, 'threadId': thread_id, 'excludeTurns': True})
+         else:
+             result = await self._client.thread_start({
+-                **params, 'ephemeral': not bool(title), 'threadSource': 'agent_created_thread'})
++                **params, **({'projectId': DASHBOARD_PROJECT_ID} if title else {}),
++                'ephemeral': not bool(title), 'threadSource': 'agent_created_thread'})
+         if title:
+             await self._client.thread_set_name(result.thread.id, title)
+         return AsyncThread(self, result.thread.id)

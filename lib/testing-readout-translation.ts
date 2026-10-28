@@ -1,3 +1,4 @@
+import {testingReadoutContent} from "@/lib/testing-readout-content";
 import "server-only";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -13,6 +14,7 @@ async function savedTranslation(key: string, hash: string) {
   return saved.rows[0]?.payload;
 }
 async function publishTranslation(record: TestingReadoutCacheRecord, enqueue: boolean) {
+  record={...record,payload:testingReadoutContent(record.cache_key,record.payload)};
   const hash = readoutSourceHash(record.payload), saved = await savedTranslation(record.cache_key, hash);
   if (saved) return { payload: saved, pending: false };
   const chunks = translationChunks(readoutTranslationStrings(record.payload));
@@ -36,15 +38,15 @@ async function publishTranslation(record: TestingReadoutCacheRecord, enqueue: bo
   const payload = applyReadoutTranslation(record.payload, translated);
   // Do not publish an old translation after its English source has been replaced.
   const current = (await readTestingReadoutCache([record.cache_key]))[0];
-  if (!current || readoutSourceHash(current.payload) !== hash) return { payload: null, pending: true };
+  if (!current || readoutSourceHash(testingReadoutContent(current.cache_key,current.payload)) !== hash) return { payload: null, pending: true };
   await pool.query(`insert into testing_ai_readout_translations(cache_key,language,source_hash,payload) values($1,'zh',$2,$3::jsonb) on conflict(cache_key,language) do update set source_hash=excluded.source_hash,payload=excluded.payload,generated_at=now()`, [record.cache_key, hash, JSON.stringify(payload)]);
   return { payload, pending: false };
 }
-export async function translatedTestingReadouts(records: TestingReadoutCacheRecord[]) {
+export async function translatedTestingReadouts(records: TestingReadoutCacheRecord[], readOnly=false) {
   const output: TestingReadoutCacheRecord[] = [];
   for (const record of records) {
     try {
-      const result = await publishTranslation(record, false);
+      const result = readOnly ? {payload:await savedTranslation(record.cache_key,readoutSourceHash(testingReadoutContent(record.cache_key,record.payload)))} : await publishTranslation(record, false);
       output.push({ ...record, payload: result.payload ?? { ...(record.payload as Record<string, unknown>), _translation_pending: true } });
     } catch {
       // A failed translation must not hide or break the saved English analysis.
@@ -54,7 +56,7 @@ export async function translatedTestingReadouts(records: TestingReadoutCacheReco
   return output;
 }
 export async function refreshTestingTranslations() {
-  const keys = await pool.query<{ cache_key: string }>("select cache_key from testing_ai_readout_cache where cache_key in ('framework:v1','period:social-lifetime','period:reddit-lifetime') or cache_key like 'period:concluded:%' or generated_at >= now()-interval '2 days' order by cache_key");
+  const keys = await pool.query<{ cache_key: string }>("select cache_key from testing_ai_readout_cache where cache_key like 'period:%' and (cache_key in ('period:social-lifetime','period:reddit-lifetime') or cache_key like 'period:concluded:%' or generated_at >= now()-interval '2 days') order by cache_key");
   const records = (await readTestingReadoutCache(keys.rows.map(row => row.cache_key))).sort((a,b) => a.cache_key.localeCompare(b.cache_key));
   let pending = false;
   const errors: string[] = [];

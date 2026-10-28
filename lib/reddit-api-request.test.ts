@@ -33,3 +33,10 @@ test("does not retry authorization errors",async()=>{
 
 test("reuses successful reports without repeated API reads",async()=>{let calls=0;const request=createRedditRequester({fetcher:async()=>{calls++;return Response.json({value:1});}});await request("/reports");await request("/reports");assert.equal(calls,1);});
 test("retries network timeouts and recovers",async()=>{let calls=0;const request=createRedditRequester({fetcher:async()=>{if(++calls===1)throw Error("timeout");return Response.json({value:1});},pause:async()=>{}});assert.deepEqual(await request("/reports"),{value:1});assert.equal(calls,2);});
+
+test("preserves an OAuth rate limit so callers can advise trying later",async()=>{
+ let calls=0;
+ const request=createRedditRequester({fetcher:async()=>{calls++;throw Error("Reddit OAuth failed (HTTP 429)");},pause:async()=>{}});
+ await assert.rejects(request("/reports"),/HTTP 429/);
+ assert.equal(calls,1);
+});

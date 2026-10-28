@@ -1,9 +1,15 @@
 // Translate human-readable leaves only. Identifiers, dates, metrics and schema stay intact.
-const proseFields = new Set(["executive_summary", "key_findings", "recommended_actions", "data_gaps", "summary", "recommended_action", "asset_insights", "evidence", "test_goal", "text", "comparison_label", "interpretation"]);
+const proseFields = new Set(["title", "markdown", "detail_markdown", "executive_summary", "key_findings", "recommended_actions", "data_gaps", "summary", "recommended_action", "asset_insights", "evidence", "test_goal", "text", "comparison_label", "interpretation"]);
+export function translationPieces(text:string,maximum=4000):string[]{
+ if(text.length<=maximum)return [text];
+ const pieces:string[]=[];let rest=text;
+ while(rest.length>maximum){let end=rest.lastIndexOf('\n',maximum);if(end<maximum/2)end=rest.lastIndexOf(' ',maximum);if(end<maximum/2)end=maximum;else end++;pieces.push(rest.slice(0,end));rest=rest.slice(end);}
+ if(rest)pieces.push(rest);return pieces;
+}
 export function readoutTranslationStrings(payload: unknown): string[] {
   const values = new Set<string>();
   function visit(value: unknown, field = "") {
-    if (typeof value === "string") { if (proseFields.has(field) && value.trim() && !value.startsWith("[FRAMEWORK] ")) values.add(value); }
+    if (typeof value === "string") { if (proseFields.has(field) && value.trim() && !value.startsWith("[FRAMEWORK] ")) translationPieces(value).forEach(piece=>{if(piece.trim())values.add(piece);}); }
     else if (Array.isArray(value)) value.forEach(item => visit(item, field));
     else if (value && typeof value === "object") Object.entries(value).forEach(([key, item]) => visit(item, key));
   }
@@ -11,7 +17,8 @@ export function readoutTranslationStrings(payload: unknown): string[] {
 }
 export function applyReadoutTranslation(payload: unknown, translations: Map<string, string>): unknown {
   function visit(value: unknown, field = ""): unknown {
-    if (typeof value === "string") return proseFields.has(field) ? translations.get(value) ?? value : value;
+    if (field === "language" && value === "en") return "zh-CN";
+    if (typeof value === "string") return proseFields.has(field) ? translations.get(value) ?? translationPieces(value).map(piece=>translations.get(piece)??piece).join("") : value;
     if (Array.isArray(value)) return value.map(item => visit(item, field));
     if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, visit(item, key)]));
     return value;

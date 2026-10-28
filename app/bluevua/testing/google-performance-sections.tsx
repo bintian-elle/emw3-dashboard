@@ -4,5 +4,9 @@ import {GoogleTestSection} from "./google-test-section";
 
 type Performance=Awaited<ReturnType<typeof getGoogleTestingPerformance>>;
 export function GooglePerformanceSections({data,returnTo}:{data:Performance;returnTo:string}) {
- return <div className="grid gap-6">{data.activeCards.map(test=><GoogleTestSection key={test.campaignName} test={test} creativeLinks={Object.fromEntries(test.groups.map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/search/${group.adGroupId}`,returnTo)]))} compact description=""/>)}{data.concluded.map(({definition,report,concludedOn})=><GoogleTestSection key={definition.id} compact test={report} creativeLinks={Object.fromEntries(report.groups.map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/concluded/${definition.id}/${group.label==="Group A"?"treatment":"control"}`,returnTo)]))} description={definition.name} concludedOn={concludedOn} resourcesHref={definition.resourcesHref}/>)}</div>;
+ const parent=new URL(returnTo,"https://dashboard.local");
+ const periodQuery=new URLSearchParams();
+ for(const key of ["period","start","end"]){const value=parent.searchParams.get(key);if(value)periodQuery.set(key,value);}
+ const periodSuffix=periodQuery.size?`?${periodQuery.toString()}`:"";
+ return <div className="grid gap-6">{data.activeCards.map(test=><GoogleTestSection key={test.campaignName} test={test} creativeLinks={Object.fromEntries(test.groups.map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/search/${group.adGroupId}${periodSuffix}`,returnTo)]))} compact description=""/>)}{data.concluded.map(({definition,report,concludedOn})=><GoogleTestSection key={definition.id} compact test={report} creativeLinks={Object.fromEntries(report.groups.map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/concluded/${definition.id}/${group.label==="Group A"?"treatment":"control"}`,returnTo)]))} description={definition.name} concludedOn={concludedOn} resourcesHref={definition.resourcesHref}/>)}</div>;
 }
