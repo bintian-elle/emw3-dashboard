@@ -1,7 +1,7 @@
 import {NextRequest} from 'next/server';
 import {dashboardOwner,requireSameOrigin} from '@/lib/ai-dashboard-access';
 import {testingDataChannels,type TestingDataChannel,type TestingDataInput} from '@/lib/testing-data-cache-contract';
-import {isTestingDataRefreshRunning,publishGoogleTestingSnapshots,publishTestingDataSnapshot,readRequiredTestingDataSnapshot,TestingDataRefreshBusy,TestingDataRefreshRateLimit} from '@/lib/testing-data-cache';
+import {isTestingDataRefreshRunning,publishGoogleTestingSnapshots,publishTestingDataSnapshot,readTestingDataSnapshotStatus,TestingDataRefreshBusy,TestingDataRefreshRateLimit} from '@/lib/testing-data-cache';
 import {testingPeriodInput} from '@/lib/testing-google';
 import {redditPeriodInput} from '@/lib/reddit-testing-period';
 import {isSocialSnapshot,socialDisplayTimestamp} from '@/lib/testing-social-snapshot';
@@ -35,8 +35,8 @@ export async function GET(request:NextRequest){
  if(!channel||!supported.has(channel))return Response.json({updatedAt:null,refreshing:false,available:false,message:params.get('channel')==='concluded'?'Completed tests use fixed historical snapshots.':'Refresh is not available for this data source yet.'},{headers});
  const input=inputFor(channel,{period:params.get('period')??undefined,start:params.get('start')??undefined,end:params.get('end')??undefined});
  try{
-  const [snapshot,refreshing]=await Promise.all([readRequiredTestingDataSnapshot(channel,input),isTestingDataRefreshRunning(channel,input)]);
-  const updatedAt=channel==='social'?await socialUpdatedAt(snapshot):snapshot?.updatedAt??null;
+  const [snapshot,refreshing]=await Promise.all([readTestingDataSnapshotStatus(channel,input),isTestingDataRefreshRunning(channel,input)]);
+  const updatedAt=channel==='social'?(snapshot?.sourceUpdatedAt??snapshot?.updatedAt??await socialUpdatedAt(null)):snapshot?.updatedAt??null;
   return Response.json({updatedAt,refreshing,available:true},{headers});
  }catch(error){const setup=(error as {code?:string})?.code==='42P01';const updatedAt=channel==='social'?await socialUpdatedAt(null).catch(()=>null):null;return Response.json({updatedAt,refreshing:false,available:false,message:setup?'Shared cache setup is required.':'Shared data cache is unavailable. Please try again later.',messageCode:setup?'cache_setup_required':'cache_unavailable'},{headers});}
 }
