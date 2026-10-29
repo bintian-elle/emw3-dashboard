@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const input = await request.json().catch(() => ({}));
     if(input.snapshotOnly===true){const presets=(input.presets??['wtd','mtd']).filter((value:unknown)=>['lastWeek','wtd','mtd'].includes(String(value)));if(!presets.length)return Response.json({error:'No supported periods.'},{status:400});return Response.json(await captureTestingChannelInputs(presets),{headers:{'Cache-Control':'no-store'}});}
     const analysis = input.translationsOnly === true ? null : input.concludedOnly === true ? await refreshConcludedTestingReadouts() : await refreshTestingReadouts();
-    const result = analysis?.pending ? analysis : { ...analysis, ...await refreshTestingTranslations() };
+    const result = analysis && (analysis.pending || input.analysisOnly === true) ? analysis : { ...analysis, ...await refreshTestingTranslations() };
     return Response.json(result, { status: result.pending ? 202 : 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Testing readout refresh failed." }, { status: 500 });

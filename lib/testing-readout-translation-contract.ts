@@ -48,9 +48,15 @@ export function decodeReadoutTranslation(result: unknown, source: string[]): Map
     if (typeof translated !== "string" || !translated.trim()) throw new Error("Missing translated text.");
     // URLs and every numeric token must survive unchanged; compare as multisets,
     // allowing Chinese sentence order to differ from English.
-    const months: Record<string, string> = { January:"1",February:"2",March:"3",April:"4",May:"5",June:"6",July:"7",August:"8",September:"9",October:"10",November:"11",December:"12" };
+    const months: Record<string, string> = { January:"1",Jan:"1",February:"2",Feb:"2",March:"3",Mar:"3",April:"4",Apr:"4",May:"5",June:"6",Jun:"6",July:"7",Jul:"7",August:"8",Aug:"8",September:"9",Sep:"9",Sept:"9",October:"10",Oct:"10",November:"11",Nov:"11",December:"12",Dec:"12" };
     const chineseMonths: Record<string,string> = {一月:"1",二月:"2",三月:"3",四月:"4",五月:"5",六月:"6",七月:"7",八月:"8",九月:"9",十月:"10",十一月:"11",十二月:"12"};
-    const tokens = (value: string) => (value.replace(/(?<![前后每一二三四五六七八九十])[一二三四五六七八九十]+月/g, month => chineseMonths[month] ?? month).replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/g, month => months[month]).match(/https?:\/\/[^\s)\]>，。；：！？、（）「」《》]+|\d+(?:,\d{3})*(?:\.\d+)?/g) ?? []).map(token => token.startsWith("http") ? token.replace(/[.,;:，。；：]+$/, "") : token).sort();
+    // Treat URLs as opaque identities; calendar normalization applies only to prose.
+    const tokens = (value:string) => value.split(/(https?:\/\/[^\s)\]>，。；：！？、（）「」《》]+)/g).flatMap((part,index)=>{
+      if(index%2)return [part.replace(/[.,;:，。；：]+$/, "")];
+      return part.replace(/(?<![前后每一二三四五六七八九十])[一二三四五六七八九十]+月/g,month=>chineseMonths[month]??month)
+        .replace(/\b(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)\b\.?/g,month=>months[month.replace(/\.$/, "")])
+        .match(/\d+(?:,\d{3})*(?:\.\d+)?/g)??[];
+    }).sort();
     const remaining = tokens(translated);
     for (const token of tokens(text)) {
       const index = remaining.indexOf(token);

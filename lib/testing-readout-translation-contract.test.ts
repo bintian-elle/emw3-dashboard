@@ -77,3 +77,17 @@ test('channel Markdown splits into bounded pieces and rejoins without changing i
  assert.equal(translated.channel_reports[0].report_id,'meta');
  assert.equal(translated.channel_reports[0].sections[0].markdown,markdown.replaceAll('creative','素材'));
 });
+
+test('abbreviated English months retain date equivalence in Chinese without relaxing metric validation',()=>{
+ const check=(source:string,translated:string)=>decodeReadoutTranslation({answer_markdown:`<translation-json>${JSON.stringify({s0:translated})}</translation-json>`},[source]);
+ assert.doesNotThrow(()=>check('Sep 24–Oct 29, 2026; spend $905.13.','2026 年 9 月 24 日–10 月 29 日；花费 $905.13。'));
+ assert.doesNotThrow(()=>check('Oct. 27–28: 653 impressions.','10月 27–28日：653 次展示。'));
+ assert.throws(()=>check('Sep 24–Oct 29, 2026; spend $905.13.','2026 年 9 月 24 日–10 月 29 日；花费 $906.13。'));
+ assert.throws(()=>check('Sep 24–Oct 29, 2026','2026 年 9 月 24 日–11 月 29 日'));
+});
+
+test('calendar normalization never rewrites month names inside source URLs',()=>{
+ const decode=(translated:string)=>decodeReadoutTranslation({answer_markdown:`<translation-json>${JSON.stringify({s0:translated})}</translation-json>`},['Oct 29 source https://example.com/Oct/report']);
+ assert.doesNotThrow(()=>decode('10 月 29 日，来源 https://example.com/Oct/report'));
+ assert.throws(()=>decode('10 月 29 日，来源 https://example.com/10/report'));
+});

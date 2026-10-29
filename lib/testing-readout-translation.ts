@@ -5,7 +5,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Pool } from "pg";
 import { enqueueAiJob, readAiJob, readTestingReadoutCache, type TestingReadoutCacheRecord } from "@/lib/ai-job-queue";
-import { applyReadoutTranslation, decodeReadoutTranslation, readoutTranslationStrings, translationChunks } from "@/lib/testing-readout-translation-contract";
+import { applyReadoutTranslation, readoutTranslationStrings, translationChunks } from "@/lib/testing-readout-translation-contract";
+import {resolveTranslationChunk} from "@/lib/testing-readout-translation-retry";
 const pool = new Pool({ connectionString: process.env.KLAVIYO_DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 10000 });
 export function readoutSourceHash(payload: unknown) { return createHash("sha256").update(JSON.stringify(payload)).digest("hex"); }
 function jobId(hash: string, index: number) { return `testing-translation:v1:${hash}:${index}`; }
@@ -23,16 +24,17 @@ async function publishTranslation(record: TestingReadoutCacheRecord, enqueue: bo
   const prompt = enqueue ? await readFile(path.join(process.cwd(), "prompts/insights/content-testing-translation.md"), "utf8") : "";
   for (let index = 0; index < chunks.length; index++) {
     const id = jobId(hash, index), source = chunks[index];
-    const existing = await readAiJob(id).catch(error => { if (error instanceof Error && error.message === "AI task not found.") return null; throw error; });
-    const job = existing ?? (enqueue ? await enqueueAiJob(id, {
-      mode: "question", language: "zh-CN", dashboard_id: "bluevua-testing-translation",
-      period: { start: record.period_start ?? "2026-01-01", end: record.period_end ?? "2026-01-01" }, comparison: null,
-      preset_label: "Translation only", comparison_label: "Not applicable", question: prompt,
-      analysis_payload: { translation_only: true, source_hash: hash, cache_key: record.cache_key, strings: Object.fromEntries(source.map((text, i) => [`s${i}`, text])) },
-    }) : null);
-    if (job?.status === "failed") throw new Error(`Translation task failed: ${id}`);
-    if (!job || job.status !== "completed") { pending = true; continue; }
-    for (const [text, value] of decodeReadoutTranslation(job.result, source)) translated.set(text, value);
+    const values=await resolveTranslationChunk(id,source,enqueue,
+      attemptId=>readAiJob(attemptId).catch(error=>{if(error instanceof Error&&error.message==="AI task not found.")return null;throw error;}),
+      (attemptId,reason)=>enqueueAiJob(attemptId,{
+        mode:"question",language:"zh-CN",dashboard_id:"bluevua-testing-translation",
+        period:{start:record.period_start??"2026-01-01",end:record.period_end??"2026-01-01"},comparison:null,
+        preset_label:"Translation only",comparison_label:"Not applicable",
+        question:prompt+(reason?`\nPrevious attempt did not pass validation: ${reason} Preserve numeric values and URLs, use equivalent calendar months, and include every source key.`:""),
+        analysis_payload:{translation_only:true,source_hash:hash,cache_key:record.cache_key,strings:Object.fromEntries(source.map((text,i)=>[`s${i}`,text]))},
+      }));
+    if(!values){pending=true;continue;}
+    for(const [text,value] of values)translated.set(text,value);
   }
   if (pending) return { payload: null, pending: true };
   const payload = applyReadoutTranslation(record.payload, translated);

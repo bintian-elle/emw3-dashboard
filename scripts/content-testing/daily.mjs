@@ -4,7 +4,10 @@ import path from 'node:path';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
 import {dailyPresets} from './daily-policy.mjs';
-import {publishReports} from './publish-reports.mjs';
+import {publishReports,loadReports} from './publish-reports.mjs';
+import {runDailyStages} from './daily-stages.mjs';
+import {isDeepStrictEqual} from 'node:util';
+import {testingReadoutContent} from '../../lib/testing-readout-content.ts';
 nextEnv.loadEnvConfig(process.cwd());
 const db=new pg.Client({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},connectionTimeoutMillis:15000});
 const run=(cmd,args)=>new Promise((resolve,reject)=>{const child=spawn(cmd,args,{stdio:'inherit',env:process.env});child.once('error',reject);child.once('exit',code=>code===0?resolve():reject(Error(`Controller failed: ${cmd} (${code})`)));});
@@ -30,15 +33,20 @@ try{
  }
  const python=process.env.CONTENT_TESTING_PYTHON||'/home/ubuntu/work/anc-slack-bridge/.venv/bin/python';
  let first;
- for(const preset of presets){
+ const stages=await runDailyStages({presets,onError:failure=>console.error(JSON.stringify(failure)),generate:async preset=>{
   const folder=path.join(root,`${today}-${preset.toLowerCase()}`),label={lastWeek:'Last Week (Tue–Mon)',wtd:'Week-to-date',mtd:'Month-to-date'}[preset];
   await run(python,['scripts/content-testing/prepare-daily.py','--root',folder,'--snapshot',snapshot,'--period',label,'--prompts',path.resolve('prompts/content-testing'),...(first?['--reuse',first]:[])]);
   await run(python,['scripts/content-testing/run-preview.py','--root',folder]);
   await run(process.execPath,['--experimental-strip-types','scripts/content-testing/polish-preview.mjs',path.join(folder,'results')]);
-  const result=await publishReports({english:folder,includeLifetimes:!first,backupDir:path.join(root,`backup-${preset}`)});console.log(JSON.stringify(result));first??=folder;
-  // English is available immediately. Translation uses independent low-reasoning queue sessions.
-  await run(process.execPath,['scripts/refresh-testing-readouts.mjs','--translations-only']);
- }
- // Retain one-time analysis discovery for newly finalized concluded tests.
- await run(process.execPath,['scripts/refresh-testing-readouts.mjs','--concluded-only']);
+  // Resume completed output without deleting its saved translation or rerunning inference.
+  const rows=(await loadReports(folder)).filter(row=>!first||!['period:reddit-lifetime','period:social-lifetime'].includes(row.cache_key));
+  const existing=await db.query('select cache_key,payload from testing_ai_readout_cache where cache_key=any($1::text[])',[rows.map(row=>row.cache_key)]);
+  const alreadyPublished=rows.every(row=>isDeepStrictEqual(existing.rows.find(saved=>saved.cache_key===row.cache_key)?.payload,testingReadoutContent(row.cache_key,row.payload)));
+  if(!alreadyPublished){const result=await publishReports({english:folder,includeLifetimes:!first,backupDir:path.join(root,`backup-${preset}`)});console.log(JSON.stringify(result));}
+  else console.log(JSON.stringify({status:'already_published',preset}));
+  first??=folder;
+ },concluded:()=>run(process.execPath,['scripts/refresh-testing-readouts.mjs','--concluded-only','--analysis-only']),
+ translate:()=>run(process.execPath,['scripts/refresh-testing-readouts.mjs','--translations-only'])});
+ await writeFile(path.join(root,'completion.json'),JSON.stringify({completedAt:new Date().toISOString(),...stages},null,2),{mode:0o600});
+ if(stages.errors.length)throw Error(stages.errors.map(item=>`${item.stage}: ${item.error}`).join('; '));
 }finally{await db.end();}

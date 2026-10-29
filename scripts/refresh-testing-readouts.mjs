@@ -11,7 +11,7 @@ let lastStatus, transportFailures = 0;
 while (Date.now() < deadline) {
   let response, payload;
   try {
-    response = await fetch(endpoint, { method: 'POST', headers: { authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ translationsOnly: process.argv.includes('--translations-only'), concludedOnly: process.argv.includes('--concluded-only') }), signal: AbortSignal.timeout(240000) });
+    response = await fetch(endpoint, { method: 'POST', headers: { authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ translationsOnly: process.argv.includes('--translations-only'), concludedOnly: process.argv.includes('--concluded-only'), analysisOnly: process.argv.includes('--analysis-only') }), signal: AbortSignal.timeout(240000) });
     const text = await response.text();
     try { payload = JSON.parse(text); } catch { throw new Error(`Testing refresh returned a non-JSON response (HTTP ${response.status}).`); }
   } catch (error) {
@@ -22,7 +22,7 @@ while (Date.now() < deadline) {
   }
   transportFailures = 0;
   if (!response.ok) throw new Error(payload.error || `Testing refresh HTTP ${response.status}`);
-  if (!payload.pending) { if (payload.errors?.length) throw new Error('Some translated readouts failed validation; English analysis remains available.'); await normalizeTestingReadoutNames(payload.jobId); console.log(JSON.stringify(payload)); process.exit(0); }
+  if (!payload.pending) { if (payload.errors?.length) throw new Error(`Translation failures (English analysis remains available): ${payload.errors.join('; ')}`); await normalizeTestingReadoutNames(payload.jobId); console.log(JSON.stringify(payload)); process.exit(0); }
   if (payload.status !== lastStatus) console.log(JSON.stringify({ status: payload.status, jobId: payload.jobId }));
   lastStatus = payload.status;
   await pause(30000);
