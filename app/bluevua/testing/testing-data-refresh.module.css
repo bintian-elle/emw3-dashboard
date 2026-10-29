@@ -1,0 +1,8 @@
+.refresh { flex:none; margin-top:auto; padding:20px 4px 0; color:var(--nova-muted,#68717e); font-size:11px; line-height:1.5; }
+.time { border-top:1px solid var(--nova-border,#e1e4e8); padding:14px 6px 0; overflow-wrap:anywhere; }
+.time strong { font-weight:600; }
+.error { margin:4px 6px 0; color:#b42318; overflow-wrap:anywhere; }
+.refresh .action { margin-top:4px; color:inherit; font-size:11px; }
+.spinning { animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .spinning { animation:none; } }

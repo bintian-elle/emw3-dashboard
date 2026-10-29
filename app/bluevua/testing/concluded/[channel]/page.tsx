@@ -1,6 +1,6 @@
-import { TestingAskButton } from "../../testing-ai";
+import {TestingPageHeader} from "../../testing-page-header";
+import styles from "../../channel-content.module.css";
 import {withTestingReturnTo} from "@/lib/testing-navigation";
-import Link from "next/link";
 import { connection } from "next/server";
 import { GoogleTestSection } from "../../google-test-section";
 import { readConcludedSnapshot } from "@/lib/concluded-test-snapshot";
@@ -15,7 +15,7 @@ export default async function ConcludedChannelPage({params}: {params: Promise<{c
   const tests = concludedTestsForChannel(channel);
   const cards = await Promise.all(tests.map(async test => {
     const snapshot = await readConcludedSnapshot(test.id);
-    return <div key={test.id} className="min-w-0"><GoogleTestSection compact concludedTestId={test.id} test={snapshot?.report ?? {campaignName:test.campaignName,campaignStatus:"Concluded",periodLabel:"Test lifetime",period:test.lifetime,groups:[]}} creativeLinks={Object.fromEntries((snapshot?.report.groups??[]).map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/concluded/${test.id}/${group.label==="Group A"?"treatment":"control"}`,`/bluevua/testing/concluded/${slug}`)]))} concludedOn={snapshot?.report.period?.end ?? test.lifetime?.end} description={test.name} resourcesHref={test.resourcesHref} emptyMessage="Final snapshot pending. Results are saved once, after the 10-day attribution window."/></div>;
+    return <div key={test.id} ><GoogleTestSection compact concludedTestId={test.id} test={snapshot?.report ?? {campaignName:test.campaignName,campaignStatus:"Concluded",periodLabel:"Test lifetime",period:test.lifetime,groups:[]}} creativeLinks={Object.fromEntries((snapshot?.report.groups??[]).map(group=>[group.adGroupId,withTestingReturnTo(`/bluevua/testing/google/concluded/${test.id}/${group.label==="Group A"?"treatment":"control"}`,`/bluevua/testing/concluded/${slug}`)]))} concludedOn={snapshot?.report.period?.end ?? test.lifetime?.end} description={test.name} resourcesHref={test.resourcesHref} emptyMessage="Final snapshot pending. Results are saved once, after the 10-day attribution window."/></div>;
   }));
-  return <><header className="mb-6"><div className="float-right"><TestingAskButton/></div><Link href="/bluevua/testing/concluded" className="text-body-medium text-text-secondary hover:text-text-primary">Concluded Test · Overview</Link><h1 className="mt-2 text-title-1-semibold text-text-primary">{channel} · Concluded Tests</h1></header><section aria-label={`${channel} concluded tests`} className="grid grid-cols-1 gap-4">{tests.length ? cards : <p className="rounded-3xl border border-border-button-default bg-background-primary-default p-6 text-body-regular text-text-secondary">No confirmed concluded tests have been added for {channel}.</p>}</section></>;
+  return <><TestingPageHeader section="Concluded Test" title={`${channel} · Concluded Tests`} backHref="/bluevua/testing/concluded" backLabel="Back to concluded tests" showReportingPeriod={false}/><section aria-label={`${channel} concluded tests`} className={styles.list}>{tests.length ? cards : <p className={`${styles.card} ${styles.empty}`}>No confirmed concluded tests have been added for {channel}.</p>}</section></>;
 }

@@ -1,13 +1,24 @@
 import { currentSiteUser } from "@/lib/current-site-user";
 import { createHash } from "node:crypto";
 import { TestingAiProvider } from "./testing-ai";
-import { CampaignNavigator } from "./campaign-navigator";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
-import { TestingSidebar } from "./testing-sidebar";
+import { TestingDesignPreview } from "./testing-design-preview";
+import { ResetPeriodOnReload } from "./reset-period-on-reload";
+import { getTestingInventory, type TestingInventoryChannel } from "@/lib/testing-inventory";
+import { TestingInventoryProvider } from "./testing-inventory-context";
+import {readRememberedSnapshotVersionEntries,readRememberedSnapshotVersions} from "@/lib/testing-data-cache";
+import {testingSnapshotScopes,testingSnapshotWatchKey} from "@/lib/testing-snapshot-watch";
+import {TestingScopedSnapshotProvider,TestingSnapshotBaseline} from "./testing-snapshot-baseline";
 
 export default async function TestingLayout({children}:{children:ReactNode}) {
   const user=await currentSiteUser();
   const owner=createHash("sha256").update(user?.sub??"anonymous").digest("hex");
-  return <Suspense><TestingAiProvider key={owner} owner={owner}><div className="min-h-screen bg-background-secondary-default lg:flex"><Suspense><TestingSidebar /></Suspense><main data-testing-content className="min-w-0 flex-1 p-4 pb-32 sm:p-6 sm:pb-32 lg:p-8 lg:pb-32 [&_tr>th:last-child]:pr-6 [&_tr>td:last-child]:pr-6"><div className="mx-auto min-w-0 max-w-[1500px]">{children}</div></main><Suspense><CampaignNavigator/></Suspense></div></TestingAiProvider></Suspense>;
+  const account=user?{name:user.name,email:user.email,...(user.picture?{picture:user.picture}:{})}:null;
+  // Start a cache-only read once for this layout. Suspended badges stream independently
+  // of the page, and the inventory page shares the same request-local React cache.
+  const inventoryBaseline=readRememberedSnapshotVersions(testingSnapshotScopes('inventory'));
+  const scopedBaseline=readRememberedSnapshotVersionEntries();
+  const inventory=getTestingInventory().catch(()=>({items:[],unavailable:["google-search","google-pmax","google-demand-gen","meta","reddit","edm"] as TestingInventoryChannel[]}));
+  return <Suspense><ResetPeriodOnReload/><TestingSnapshotBaseline cacheKey={testingSnapshotWatchKey('inventory')} versions={inventoryBaseline}/><TestingAiProvider key={owner} owner={owner}><TestingScopedSnapshotProvider entries={scopedBaseline}><TestingInventoryProvider inventory={inventory}><TestingDesignPreview account={account} inventory={inventory}>{children}</TestingDesignPreview></TestingInventoryProvider></TestingScopedSnapshotProvider></TestingAiProvider></Suspense>;
 }

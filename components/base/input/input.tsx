@@ -19,11 +19,10 @@ import type {
 import { Label } from "./label";
 import { HintText } from "./hint-text";
 import { cx, sortCx } from "@/utils/cx";
+import novaInput from "./nova-input.module.css";
 
 /**
- * Figma source: Board UI → Input (node 3665:1849).
- *
- * Architecture (mirrors the Untitled UI / React Aria pattern):
+ * Accessible input composition using React Aria:
  *
  *   InputBase   — the styled field shell. Renders <AriaGroup> + adornments
  *                 + <AriaInput>. State (hover / focus / disabled / invalid)
@@ -42,7 +41,7 @@ import { cx, sortCx } from "@/utils/cx";
  *   - Render-prop state surfaces `isFocusWithin`, `isHovered`, `isDisabled`,
  *     `isInvalid`, `isRequired` — no CSS pseudo gymnastics
  *
- * Visuals stay 1:1 with Figma — see `styles/theme.css` for the tokens.
+ * Visuals follow the source-owned Nova design system.
  */
 
 type InputSize = "medium" | "small";
@@ -124,35 +123,25 @@ export interface InputBaseProps extends Omit<AriaInputProps, "size" | "className
 
 const inputStyles = sortCx({
   field: [
-    "relative flex w-full items-center",
-    "rounded-2lg",
-    "bg-background-tertiary-default text-foreground-icon-tertiary",
-    "ring-2 ring-inset ring-transparent",
-    "transition-[background-color,box-shadow,color] duration-[var(--input-transition-ms)] ease",
+    novaInput.field,
   ].join(" "),
 
   fieldSize: {
-    medium: "p-2",                // 8px all sides → h auto = 36
-    small:  "h-8 px-1.5 py-2",    // 32 / 6 / 8
+    medium: novaInput.medium,
+    small: novaInput.small,
   },
 
   // When a leadingAddon is present (Phone basic): tighten left padding.
   fieldWithAddonSize: {
-    medium: "h-9 pl-1 pr-2 py-2", // 36 / 4 / 8 / 8
-    small:  "h-8 pl-1 pr-1.5 py-2",
+    medium: novaInput.medium,
+    small: novaInput.small,
   },
 
   content: "flex w-full items-center gap-2 min-w-0",
   leftSection: "flex flex-1 items-center gap-0.5 min-w-0",
 
   input: [
-    "min-w-0 flex-1 bg-transparent border-0 outline-none p-0 m-0",
-    "font-sans text-body-regular text-text-primary pl-1",
-    "placeholder:text-text-tertiary",
-    "focus:placeholder:text-text-primary",
-    "disabled:text-input-disabled-text disabled:placeholder:text-input-disabled-text",
-    "disabled:cursor-not-allowed",
-    "aria-invalid:placeholder:text-text-error-placeholder",
+    novaInput.input,
   ].join(" "),
 
   icon: "size-5 shrink-0",
@@ -188,17 +177,17 @@ export function InputBase({
             !isFocusWithin &&
             !isDisabled &&
             !isInvalid &&
-            "ring-border-button-hover",
+            novaInput.hover,
           // Focus wins over hover
           isFocusWithin &&
             !isDisabled &&
             !isInvalid &&
-            "ring-border-button-active",
+            novaInput.focus,
           // Disabled
           isDisabled &&
-            "bg-input-disabled-background text-input-disabled-foreground",
+            novaInput.disabled,
           // Invalid
-          isInvalid && "bg-background-tertiary-error text-foreground-icon-error",
+          isInvalid && novaInput.invalid,
           ctx.fieldClassName,
           fieldClassName,
         )

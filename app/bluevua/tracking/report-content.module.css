@@ -1,0 +1,26 @@
+/* The report keeps its existing data and controls while sharing the Nova
+   surface proportions used by the testing workspace. */
+.report { position:relative; }
+.report :global([data-slot="card"]) {
+  border-radius:.625rem;
+  box-shadow:none;
+}
+.report :global([data-slot="card-title"]) {
+  font-size:1rem;
+  font-weight:600;
+  line-height:1.35;
+  letter-spacing:-.015em;
+}
+.report :global([data-slot="card-header"]) { padding:1.25rem 1.25rem 0; }
+.report :global([data-slot="card-content"]) { padding-inline:1.25rem; padding-bottom:1.25rem; }
+.report :global(.bui-table th) {
+  height:2.5rem;
+  padding:.5rem .75rem;
+  border-top:0;
+  background:transparent;
+  font-size:.8rem;
+  font-weight:500;
+}
+.report :global(.bui-table td) { padding:.75rem; font-size:.8rem; font-weight:400; }
+.report :global(.bui-table tbody tr:hover) { background:var(--color-background-secondary-default); }
+.report :global(.bui-table tbody tr:last-child) { border-bottom:0; }

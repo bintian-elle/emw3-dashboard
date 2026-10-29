@@ -3,6 +3,7 @@ import "server-only";
 import {googleCampaignReach} from "@/lib/google-campaign-reach";
 import {getGoogleContentTests,type TestingPeriodInput} from "@/lib/testing-google";
 import {getConcludedGooglePerformance} from "@/lib/concluded-google-performance";
+import {resolveTestingPeriod,testingLatestCompleteDate} from "@/lib/testing-period";
 
 /** One campaign scope, ordering and concluded-period filter for both page views. */
 export async function getGoogleTestingPerformance(input:TestingPeriodInput={}) {
@@ -12,5 +13,8 @@ export async function getGoogleTestingPerformance(input:TestingPeriodInput={}) {
  const activeCards=[...searches].sort((a,b)=>compareCampaignNamesNewestFirst(a.campaignName,b.campaignName));
  // Campaign-wide unique_users includes non-testing ads and cannot represent this ad-label scope.
  await Promise.all(concluded.map(async item=>{const lifetime=item.definition.lifetime;if(item.report.period&&lifetime){const period={start:item.report.period.start>lifetime.start?item.report.period.start:lifetime.start,end:item.report.period.end<lifetime.end?item.report.period.end:lifetime.end};const reach=await googleCampaignReach(period);const names=[item.report.campaignName,`${item.report.campaignName} Brand_AbsTopPageTest_2026/07`];item.report.reach=names.every(name=>reach[name]!=null)?names.reduce((sum,name)=>sum+reach[name]!,0):null;}}));
- return {activeCards,concluded};
+ // Keep the page-wide reporting range separate from concluded cards, which
+ // can have a shorter range clipped to their individual test lifetimes.
+ const period=selectedPeriod??resolveTestingPeriod(testingLatestCompleteDate(),input);
+ return {activeCards,concluded,period};
 }

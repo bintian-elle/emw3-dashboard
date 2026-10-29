@@ -37,7 +37,7 @@ export async function GET(request:NextRequest){
  try{
   const [snapshot,refreshing]=await Promise.all([readTestingDataSnapshotStatus(channel,input),isTestingDataRefreshRunning(channel,input)]);
   const updatedAt=channel==='social'?(snapshot?.sourceUpdatedAt??snapshot?.updatedAt??await socialUpdatedAt(null)):snapshot?.updatedAt??null;
-  return Response.json({updatedAt,refreshing,available:true},{headers});
+  return Response.json({updatedAt,version:snapshot?.updatedAt??null,refreshing,available:true},{headers});
  }catch(error){const setup=(error as {code?:string})?.code==='42P01';const updatedAt=channel==='social'?await socialUpdatedAt(null).catch(()=>null):null;return Response.json({updatedAt,refreshing:false,available:false,message:setup?'Shared cache setup is required.':'Shared data cache is unavailable. Please try again later.',messageCode:setup?'cache_setup_required':'cache_unavailable'},{headers});}
 }
 export async function POST(request:NextRequest){
@@ -55,7 +55,7 @@ export async function POST(request:NextRequest){
   const result=channel.startsWith('google-')?await publishGoogleTestingSnapshots(googleChannel=>source(googleChannel,{})):await publishTestingDataSnapshot(channel,input,()=>source(channel,input),internal&&body.scheduled&&body.weekly?{reuseExisting:true}:undefined);
   // Publishing has committed; a transient revalidation error must not be reported as a failed refresh.
   try{revalidatePath('/bluevua/testing','layout');}catch{/* Clients still refresh and read the committed shared snapshot. */}
-  return Response.json({updatedAt:result.updatedAt,refreshing:false,available:true},{headers});
+  return Response.json({updatedAt:result.updatedAt,version:result.updatedAt,refreshing:false,available:true},{headers});
  }catch(error){
   const message=error instanceof Error?error.message:'';
   const rateLimited=error instanceof TestingDataRefreshBusy||error instanceof TestingDataRefreshRateLimit||/\b429\b|rate.?limit|too many requests/i.test(message);

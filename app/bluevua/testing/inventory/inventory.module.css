@@ -1,0 +1,44 @@
+.page { min-width:0; color:var(--nova-foreground,#1a1d22); }
+.tabs { display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; padding-bottom:.65rem; border-bottom:1px solid var(--nova-border,#e1e4e8); }
+.tabs a { position:relative; display:inline-flex; align-items:center; gap:.4rem; min-height:2rem; padding-inline:.15rem; color:var(--nova-muted,#68717e); font-size:.75rem; text-decoration:none; }
+.tabs a[aria-current="page"] { color:var(--nova-foreground,#1a1d22); font-weight:600; }
+.tabs a[aria-current="page"]::after { position:absolute; inset-inline:0; bottom:-5px; height:2px; background:var(--nova-foreground,#1a1d22); content:""; }
+.tabs a:focus-visible { outline:2px solid var(--nova-ring,#76808b); outline-offset:2px; }
+.tabs svg { width:.875rem; height:.875rem; }
+.tabs a > span { display:inline-flex; justify-content:center; min-width:1rem; height:1rem; padding-inline:.3rem; border-radius:999px; background:var(--nova-soft,#f0f2f4); font-size:.6rem; }
+.card { padding:1.25rem; }
+.toolbar { display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; gap:1rem; }
+.toolbar h2 { margin:0; font-size:1rem; font-weight:600; }
+.toolbar p { margin:.35rem 0 0; color:var(--nova-muted,#68717e); font-size:.7rem; }
+.search { position:relative; width:100%; min-width:0; }
+.search > svg { position:absolute; left:.625rem; top:.55rem; width:.85rem; height:.85rem; color:var(--nova-muted,#68717e); pointer-events:none; }
+.search input { width:100%; height:2rem; padding-left:1.9rem; font-size:.7rem; background:var(--nova-page,#f7f8fa); }
+.unavailable { margin:1rem 0 0; color:var(--nova-muted,#68717e); font-size:.75rem; line-height:1.5; }
+.loading { display:flex; align-items:center; justify-content:center; gap:.4rem; min-height:4rem; margin:0; color:var(--nova-muted,#68717e); font-size:.75rem; }
+.loading svg { width:.875rem; height:.875rem; animation:inventory-spin 1s linear infinite; }
+@keyframes inventory-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .loading svg { animation:none; } }
+.list { display:flex; flex-direction:column; margin-top:1rem; }
+.item { width:100%; height:auto!important; min-height:4.25rem; justify-content:flex-start; gap:.75rem; padding:.75rem .5rem!important; text-align:left; text-decoration:none; white-space:normal; color:inherit; }
+.item + .item { border-top:1px solid var(--nova-border,#e1e4e8); border-radius:0; }
+.symbol { display:grid; width:2rem; height:2rem; flex:none; place-items:center; }
+.symbol > span { width:1.15rem; height:1.15rem; }
+.identity { display:flex; min-width:0; flex:1; flex-direction:column; gap:.3rem; }
+.identity strong { font-size:.75rem; font-weight:550; overflow-wrap:anywhere; }
+.identity > span { color:var(--nova-muted,#68717e); font-size:.65rem; font-weight:400; }
+.separator { padding-inline:.2rem; opacity:.65; }
+.statusBadge { display:inline-flex; align-items:center; gap:.3rem; padding:.12rem .4rem; border-radius:999px; font-size:.625rem; font-weight:500; line-height:1.25; vertical-align:middle; color:#555f6f; background:#edf0f4; }
+.statusDot { width:.3rem; height:.3rem; flex:none; border-radius:50%; background:currentColor; }
+.statusBadge[data-tone="active"] { color:#14663d; background:#e5f5eb; }
+.statusBadge[data-tone="paused"] { color:#855808; background:#fcf1d3; }
+.statusBadge[data-tone="sent"] { color:#175a96; background:#e8f2ff; }
+.statusBadge[data-tone="ended"] { color:#6741a2; background:#f1ecfc; }
+:global(.dark) .statusBadge { color:#d1d7df; background:#353941; }
+:global(.dark) .statusBadge[data-tone="active"] { color:#a4ebbe; background:#123a27; }
+:global(.dark) .statusBadge[data-tone="paused"] { color:#f4d17c; background:#493917; }
+:global(.dark) .statusBadge[data-tone="sent"] { color:#b5d7ff; background:#1a3555; }
+:global(.dark) .statusBadge[data-tone="ended"] { color:#d4beff; background:#3c2b57; }
+.item > svg { width:1rem; height:1rem; flex:none; }
+.empty { display:flex; align-items:flex-start; flex-direction:column; gap:.5rem; padding:1.5rem .5rem; }
+.empty strong { font-size:.875rem; }
+.empty p { margin:0; color:var(--nova-muted,#68717e); font-size:.75rem; }

@@ -1,0 +1,11 @@
+.link { display:inline-flex; align-items:center; justify-content:center; flex:none; position:relative; overflow:hidden; width:9rem; height:2.25rem; padding:0; border-radius:.375rem; background:#fff; text-decoration:none; }
+.link:focus-visible { outline:2px solid var(--nova-ring,#76808b); outline-offset:2px; }
+.image { position:absolute; left:0; top:50%; display:block; width:23rem; max-width:none; height:auto; transform:translateY(-50%); }
+.static { display:none; color:#315ad1; font-size:.875rem; font-weight:650; letter-spacing:-.03em; }
+:global(.dark) .link { background:transparent; }
+:global(.dark) .image { filter:invert(1) hue-rotate(180deg); mix-blend-mode:screen; }
+:global(.dark) .static { color:#a8bfff; }
+@media (max-width:767px) { .link { width:7rem; } .image { width:18rem; } }
+@media (max-width:400px) { .link { width:5.75rem; } .image { width:14rem; } }
+@container nova-workspace (max-width:480px) { .link { width:5.75rem; } .image { width:14rem; } }
+@media (prefers-reduced-motion:reduce) { .image { display:none; } .static { display:block; } }

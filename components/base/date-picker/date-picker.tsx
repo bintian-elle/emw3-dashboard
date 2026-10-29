@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { Calendar, Dialog, I18nProvider, Popover } from "react-aria-components";
 import type { CalendarDate } from "@internationalized/date";
-import { RiCalendarLine } from "@remixicon/react";
+import { CalendarDays } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/base/buttons/button";
 import {
@@ -17,29 +17,7 @@ import {
 import { cx } from "@/utils/cx";
 import { useDismissOnOutsidePress } from "@/utils/use-dismiss-on-outside-press";
 
-/**
- * Figma source: Board UI → "Calendar_single" (node 3879:6708).
- *
- * A single-date picker: trigger button opens a popover with one month
- * (react-aria's plain `Calendar`, so both nav chevrons are fully functional —
- * unlike `DateRangePicker`'s dual view, there's only one month to navigate)
- * and a footer with an editable "DD/MM/YYYY" chip plus Cancel/Apply. No
- * quick-select sidebar in this Figma frame.
- *
- * Reuses the exact chevrons, day-cell rendering, month-panel chrome, editable
- * date chip, and trigger/popover surfaces built for `DateRangePicker` — see
- * `./shared`. A plain `Calendar`'s `CalendarCellRenderProps` always reports
- * `isSelectionStart === isSelectionEnd === isSelected` for the one chosen
- * day, so the shared `DayCell` renders it as a single fully-rounded pill
- * with no connecting range background, matching Figma without any
- * single-vs-range branching in the cell itself.
- *
- * Standalone `Popover` + `triggerRef` (like `MeetingScheduler`), not
- * `DialogTrigger`, so an external trigger can be swapped in: pass
- * `triggerRef`/`isOpen`/`onOpenChange` to anchor the popover to your own
- * element (e.g. the calendar template's month-switcher label) instead of
- * DatePicker's own button, which is hidden in that case.
- */
+/** Single-date selection with pending changes committed on Apply. */
 
 export interface DatePickerProps {
   value?: CalendarDate | null;
@@ -124,7 +102,7 @@ export function DatePicker({
           onClick={() => openChange(!isOpen)}
           className={cx(triggerButtonClassName, className)}
         >
-          <RiCalendarLine className="size-5 shrink-0 text-foreground-icon-primary" aria-hidden />
+          <CalendarDays className="size-4 shrink-0 text-foreground-icon-primary" aria-hidden="true" />
           <span className="flex items-center justify-center whitespace-nowrap px-1 text-body-medium text-text-primary">
             {committedValue ? formatTriggerDate(committedValue) : "Select date"}
           </span>

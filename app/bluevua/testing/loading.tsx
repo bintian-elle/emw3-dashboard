@@ -1,5 +1,5 @@
-import { TestingDataLoading } from "./testing-data-loading";
+import {TestingRouteLoading} from "./testing-route-loading";
 
 export default function TestingLoading() {
-  return <TestingDataLoading/>;
+ return <TestingRouteLoading/>;
 }

@@ -18,7 +18,7 @@ import { cx } from "@/utils/cx";
 import { useDismissOnOutsidePress, useTriggerToggle } from "@/utils/use-dismiss-on-outside-press";
 
 /**
- * Dropdown — the BoardUI popover-menu recipe as composable primitives, built
+ * Dropdown — the shared Nova popover-menu recipe as composable primitives, built
  * on React Aria's DialogTrigger/Popover. Unlike Select (which picks a value
  * into a trigger), Dropdown is a free-form menu surface: grouped rows of
  * actions, headers, footers, whatever the panel needs.
@@ -26,9 +26,9 @@ import { useDismissOnOutsidePress, useTriggerToggle } from "@/utils/use-dismiss-
  * The same recipe powers the dashboard sidebar's team/account menus and the
  * AI chat template's add/model/folder menus:
  *
- * - Panel: white, 1px border/button/default, radius 16, p 10, shadow/dropdown.
+ * - Panel: 1px border, rounded-lg corners, compact padding and a soft shadow.
  * - Appear animation: 150ms fade + scale-95 + 2px blur in and out.
- * - Rows: rounded-2lg, background/secondary/hover on hover and on the selected
+ * - Rows: rounded-md, background/secondary on hover and on the selected
  *   row, body-medium labels, 4px apart (the panel's flex column carries a
  *   gap-1, the same rhythm as the Select listbox).
  *
@@ -184,7 +184,7 @@ export interface DropdownItemProps {
   /** Highlights the row like the hover state (current selection). */
   selected?: boolean;
   onSelect?: () => void;
-  /** Row padding defaults to p-2 — override for denser rows (px-2 py-1.5). */
+  /** Row padding defaults to px-2 py-1.5; override when needed. */
   className?: string;
   children: ReactNode;
 }
@@ -210,8 +210,8 @@ export function DropdownItem({ selected, onSelect, className, children }: Dropdo
   );
 }
 
-/** Full-bleed 1px divider between groups (bleeds through the panel's p-2.5).
+/** Full-bleed 1px divider between groups (bleeds through the panel padding).
  *  my-1.5 + the dialog's gap-1 on both sides = the original 10px breathing room. */
 export function DropdownDivider({ className }: { className?: string }) {
-  return <div className={cx("-mx-2.5 my-1.5 h-px shrink-0 bg-border-button-default", className)} />;
+  return <div className={cx("-mx-1 my-1.5 h-px shrink-0 bg-border-button-default", className)} />;
 }

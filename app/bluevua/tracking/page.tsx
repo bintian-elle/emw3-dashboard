@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import {Suspense} from 'react';
 import {DeviceBreakdown} from './device-breakdown';
 import {TrackingDisclosure} from './tracking-disclosure';
@@ -13,10 +12,11 @@ import {TrackingFilters} from './tracking-filters';
 import {PageEffects,AllSiteEvents} from './page-effects';
 import {SiteOutcomes} from './site-outcomes';
 import {TrackingReportTable} from './tracking-report';
+import {LocalizedText} from '@/components/application/dashboard/localized-text';
 export const metadata={title:'Website Tracking · Bluevua'};
 const empty:TrackingReport={rows:[],warnings:[],error:'Loading report…'};
 export default function TrackingPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
- return <Suspense fallback={<div className="p-8 text-body-regular text-text-secondary">Loading website tracking…</div>}><TrackingContent searchParams={searchParams}/></Suspense>;
+ return <Suspense fallback={<div className="p-8 text-body-regular text-text-secondary"><LocalizedText en="Loading website tracking…" zh="正在加载网站追踪…"/></div>}><TrackingContent searchParams={searchParams}/></Suspense>;
 }
 async function TrackingContent({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
  const query=await searchParams,value=(key:string)=>typeof query[key]==='string'?query[key] as string:undefined;
@@ -31,11 +31,11 @@ async function TrackingContent({searchParams}:{searchParams:Promise<Record<strin
  const paths=(pageData?.paths.rows??[]).map(row=>row.dimensions[0]).filter(path=>{try{return !!trackingPageScope(scope.page,path);}catch{return false;}});
  const fetchedAt=pageData?.fetchedAt??data?.fetchedAt;
  return <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8"><div className="mx-auto flex max-w-7xl flex-col gap-6">
- <header id="overview"><p className="text-caption-1-semibold text-text-tertiary"><Link href="/bluevua">Bluevua</Link> / Website tracking</p><h1 className="mt-2 text-title-1-semibold text-text-primary">Website Tracking</h1><p className="mt-2 text-body-regular text-text-secondary">See what visitors do on each page.</p><p className="mt-3 text-body-2-regular text-text-secondary">Tracked website: <a href="https://bluevua.com/" target="_blank" rel="noopener noreferrer" className="rounded-sm text-body-2-medium text-text-primary underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring">bluevua.com</a> · Includes www.bluevua.com</p><div className="mt-5"><TrackingFilters period={period} device={device} scope={scope} paths={paths}/></div><p className="mt-3 text-caption-1-regular text-text-tertiary">{period.start} – {period.end} · {pageData?.timeZone??data?.timeZone??'America/Juneau'}{fetchedAt?` · Retrieved ${new Date(fetchedAt).toLocaleString('en-US',{timeZone:'America/Chicago'})} CT`:''}</p></header>
+ <header id="overview"><h1 className="pl-10 text-[2.05rem] font-semibold leading-[1.2] tracking-[-.075rem] text-text-primary lg:pl-0"><LocalizedText en="Website Tracking" zh="网站追踪"/></h1><p className="mt-2 text-body-regular text-text-secondary"><LocalizedText en="See what visitors do on each page." zh="查看访客在各页面上的行为。"/></p><p className="mt-3 text-body-2-regular text-text-secondary"><LocalizedText en="Tracked website:" zh="追踪网站："/> <a href="https://bluevua.com/" target="_blank" rel="noopener noreferrer" className="rounded-sm text-body-2-medium text-text-primary underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring">bluevua.com</a> · <LocalizedText en="Includes www.bluevua.com" zh="包含 www.bluevua.com"/></p><div className="mt-5"><TrackingFilters period={period} device={device} scope={scope} paths={paths}/></div><p className="mt-3 text-caption-1-regular text-text-tertiary">{period.start} – {period.end} · {pageData?.timeZone??data?.timeZone??'America/Juneau'}{fetchedAt&&<> · <LocalizedText en="Retrieved" zh="获取于"/> {new Date(fetchedAt).toLocaleString('en-US',{timeZone:'America/Chicago'})} CT</>}</p></header>
  {!validation&&<TrackingCacheStatus key={`${period.start}:${period.end}:${device}:${scope.page}:${scope.path}`} refreshing={!!(general?.refreshing||page?.refreshing)} capturedAt={pageData?.fetchedAt} error={connectionError??page?.error}/>}
- {(validation||connectionError)&&<Card className="rounded-3xl"><CardHeader><CardTitle>{validation?'Check reporting filters':'Tracking data unavailable'}</CardTitle><CardDescription>{validation??connectionError}</CardDescription></CardHeader></Card>}
+ {(validation||connectionError)&&<Card className="rounded-[10px]"><CardHeader><CardTitle>{validation?'Check reporting filters':'Tracking data unavailable'}</CardTitle><CardDescription>{validation??connectionError}</CardDescription></CardHeader></Card>}
  <PageEffects scope={scope} data={pageData} period={period} deviceLabel={scopeLabel}/>
- <section id="site-overview" aria-label="Overall activity" className="scroll-mt-6 space-y-4 border-t border-separator-border pt-6"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-title-2-medium text-text-primary">Website totals</h2><p className="mt-1 text-body-2-regular text-text-secondary">All page types · {scopeLabel}</p></div></div><TrackingStats kind="overall" values={values}/></section>
+ <section id="site-overview" aria-label="Overall activity" className="scroll-mt-6 space-y-4 border-t border-separator-border pt-6"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-title-2-medium text-text-primary"><LocalizedText en="Website totals" zh="网站汇总"/></h2><p className="mt-1 text-body-2-regular text-text-secondary"><LocalizedText en="All page types" zh="全部页面类型"/> · {scopeLabel}</p></div></div><TrackingStats kind="overall" values={values}/></section>
  {device==='all'&&<DeviceBreakdown report={data?.devices??empty}/>}
  <SiteOutcomes data={data} visitors={siteVisitors}/>
  <AllSiteEvents report={data?.events} visitors={siteVisitors}/>

@@ -1,0 +1,31 @@
+'use client';
+
+import {useMemo,useState,type ReactNode} from 'react';
+import {ArrowDown,ArrowUp,ArrowUpDown,ExternalLink} from 'lucide-react';
+import {flexRender,getCoreRowModel,getSortedRowModel,useReactTable,type ColumnDef,type SortingState} from '@tanstack/react-table';
+import type {GoogleSearchTest,GoogleTestGroup} from '@/lib/testing-google';
+import {orderTestingMetrics} from '@/lib/testing-metric-order';
+import {testingCampaignAnchor} from '@/lib/testing-navigation';
+import TestingLink from './testing-link';
+import {TestingChannelBrand} from './testing-channel-brand';
+import {TestReadout} from './test-readout';
+import {NovaButton,NovaCard,NovaTable,NovaTableBody,NovaTableCell,NovaTableHead,NovaTableHeader,NovaTableRow} from './nova-preview-ui';
+import styles from './nova-google-expanded.module.css';
+
+type Props={test:GoogleSearchTest;description:string;resourcesHref?:string;concludedOn?:string;creativeLinks?:Record<string,string>;concludedTestId?:string;emptyMessage:string};
+const columns=orderTestingMetrics([{label:'Spend',key:'spend',format:'currency'},{label:'Revenue',key:'revenue',format:'currency'},{label:'ROAS',key:'roas',format:'roas'},{label:'#Purchase',key:'orders',format:'decimal'},{label:'CVR',key:'cvr',format:'percent'},{label:'Impressions',key:'impressions',format:'decimal'},{label:'Clicks',key:'clicks',format:'decimal'},{label:'CTR',key:'ctr',format:'percent'},{label:'CPA',key:'cpa',format:'currency'},{label:'AOV',key:'aov',format:'currency'}] as const);
+const displayDate=(value:string)=>new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}).format(new Date(`${value}T00:00:00Z`));
+function getMetric(group:GoogleTestGroup,key:string){return key==='aov'?(group.orders>0?group.revenue/group.orders:null):group[key as keyof GoogleTestGroup] as number|null;}
+function format(value:number|null,kind:'currency'|'decimal'|'percent'|'roas'){if(value==null||!Number.isFinite(value))return '—';if(kind==='roas')return value.toFixed(2);return new Intl.NumberFormat('en-US',kind==='percent'?{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}:kind==='currency'?{style:'currency',currency:'USD',maximumFractionDigits:0}:{maximumFractionDigits:2}).format(value);}
+export function NovaSearchSectionGate(props:Props&{children:ReactNode}){return <NovaSearchSection {...props}/>;}
+function Rows({test,creativeLinks}:{test:GoogleSearchTest;creativeLinks?:Record<string,string>}){
+ const [sorting,setSorting]=useState<SortingState>([]);
+ const defs=useMemo<ColumnDef<GoogleTestGroup>[]>(()=>[{id:'group',header:'Ad group',enableSorting:false,cell:({row})=>{const group=row.original,label=group.label?`${group.label} · ${group.name}`:group.name;return <div className={styles.assetName}>{creativeLinks?.[group.adGroupId]?<TestingLink href={creativeLinks[group.adGroupId]}>{label}</TestingLink>:<span>{label}</span>}{group.label&&<small>{group.label==='Group A'?'Test':'Control'}</small>}</div>;}},
+ ...columns.map(column=>({id:column.key,accessorFn:(row:GoogleTestGroup)=>getMetric(row,column.key)??undefined,header:column.label,sortUndefined:'last' as const,cell:({row}:{row:{original:GoogleTestGroup}})=>format(getMetric(row.original,column.key),column.format)}))],[creativeLinks]);
+ const table=useReactTable({data:test.groups,columns:defs,state:{sorting},onSortingChange:setSorting,getCoreRowModel:getCoreRowModel(),getSortedRowModel:getSortedRowModel(),enableSortingRemoval:true});
+ return <NovaTable aria-label="Ad group performance"><NovaTableHeader>{table.getHeaderGroups().map(group=><NovaTableRow key={group.id}>{group.headers.map((header,index)=>{const direction=header.column.getIsSorted(),Icon=direction==='asc'?ArrowUp:direction==='desc'?ArrowDown:ArrowUpDown;return <NovaTableHead scope="col" key={header.id} className={index?styles.numeric:undefined} aria-sort={direction==='asc'?'ascending':direction==='desc'?'descending':'none'}>{header.column.getCanSort()?<NovaButton variant="ghost" size="sm" className={styles.sort} onClick={header.column.getToggleSortingHandler()} aria-label={`${header.column.columnDef.header}: sort`}>{flexRender(header.column.columnDef.header,header.getContext())}<Icon aria-hidden="true"/></NovaButton>:flexRender(header.column.columnDef.header,header.getContext())}</NovaTableHead>;})}</NovaTableRow>)}</NovaTableHeader><NovaTableBody>{table.getRowModel().rows.map(row=><NovaTableRow key={row.id}>{row.getVisibleCells().map((cell,index)=><NovaTableCell key={cell.id} className={index?styles.numeric:undefined}>{flexRender(cell.column.columnDef.cell,cell.getContext())}</NovaTableCell>)}</NovaTableRow>)}</NovaTableBody></NovaTable>;
+}
+function NovaSearchSection({test,resourcesHref,concludedOn,creativeLinks,concludedTestId,emptyMessage}:Props){
+ const documented=test.campaignName.startsWith('EM-Search-Nonbrand-');
+ return <NovaCard id={testingCampaignAnchor('google-search',test.campaignName)} className={styles.campaign}><header className={styles.campaignHeader}><div className={styles.campaignIdentity}><span className={styles.brand}><TestingChannelBrand name="Google Search"/></span><div><div className={styles.eyebrow}>GOOGLE · SEARCH · CAMPAIGN <span className={styles.status} data-enabled={test.campaignStatus==='ENABLED'}>{test.campaignStatus}</span></div><h2>{test.campaignName}</h2>{test.reach!=null&&<p className={styles.period}>Unique Reach · {new Intl.NumberFormat('en-US').format(test.reach)}</p>}{resourcesHref&&<NovaButton variant="ghost" asChild><a href={resourcesHref} target="_blank" rel="noreferrer">Test materials <ExternalLink aria-hidden="true"/></a></NovaButton>}</div></div><div className={styles.period}>{test.period?`${test.periodLabel} · ${displayDate(test.period.start)} – ${displayDate(test.period.end)}`:test.periodLabel==='Test lifetime'?'Test lifetime · Dates pending confirmation':null}{concludedOn&&<p>Concluded · <time dateTime={concludedOn}>{displayDate(concludedOn)}</time></p>}</div></header><TestReadout channel={documented||concludedTestId?'google-search':undefined} testIdentity={test.campaignName} period={test.period?{label:test.periodLabel,...test.period,...(concludedTestId?{concludedTestId}:{})}:null}>{test.groups.length?<Rows test={test} creativeLinks={creativeLinks}/>:<p className={styles.empty}>{emptyMessage}</p>}</TestReadout></NovaCard>;
+}

@@ -8,5 +8,5 @@ export default async function ContentTestingPage({searchParams}:{searchParams:Pr
  const data=await getExpandedGoogleTesting("demand-gen",testingPeriodInput(params));
  const query=new URLSearchParams();for(const [key,raw]of Object.entries(params)){const value=Array.isArray(raw)?raw[0]:raw;if(value&&["period","start","end"].includes(key))query.set(key,value);}
  const returnTo=`/bluevua/testing/google/demand-gen${query.size?`?${query}`:""}`;
- return <><TestingPageHeader section="Google Demand Gen" title="Google Demand Gen Testing Performance" description="Content testing creative performance."/><GoogleExpandedContentSection data={data} returnTo={returnTo}/></>;
+ return <><TestingPageHeader section="Google Demand Gen" title="Google Demand Gen Testing Performance" sharePeriod={data.period} description="Content testing creative performance."/><GoogleExpandedContentSection data={data} returnTo={returnTo}/></>;
 }

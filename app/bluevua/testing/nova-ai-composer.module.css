@@ -1,0 +1,8 @@
+.composer { display:flex; align-items:center; gap:.25rem; min-width:0; width:100%; padding:.375rem; border:1px solid var(--nova-border,#e1e4e8); border-radius:.875rem; background:var(--nova-page,var(--nova-soft,#f7f8fa)); }
+.composer:focus-within { outline:2px solid var(--nova-ring,#76808b); outline-offset:2px; }
+.textarea { display:block; flex:1; width:100%; min-width:0; min-height:2rem; max-height:6rem; height:auto; padding:.25rem; border:0; border-radius:0; outline:none; box-shadow:none; resize:none; field-sizing:content; background:transparent; color:var(--nova-foreground,#1a1d22); font:inherit; font-size:.75rem; line-height:1.5rem; }
+.textarea::placeholder { color:var(--nova-muted,#68717e); }
+.textarea:disabled { cursor:not-allowed; opacity:.5; }
+button.attach { flex:none; color:var(--nova-muted,#68717e); }
+button.attach svg { width:1rem; height:1rem; stroke-width:1.7; }
+button.send { flex:none; border-radius:.625rem; }

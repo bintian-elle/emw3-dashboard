@@ -1,0 +1,21 @@
+.card { min-width:0; overflow:hidden; border:1px solid var(--nova-border,#e5e7eb); border-radius:.625rem; background:var(--nova-surface,#fff); color:var(--nova-foreground,#20242a); }
+.heading { padding:1.25rem; border-bottom:1px solid var(--nova-border,#e5e7eb); }
+.heading h2 { margin:0; font-size:1rem; font-weight:600; }
+.heading p { margin:.375rem 0 0; color:var(--nova-muted,#707680); font-size:.875rem; }
+.row { display:grid; gap:1.25rem; padding:1.25rem; border-bottom:1px solid var(--nova-border,#e5e7eb); }
+.row:last-child { border-bottom:0; }
+.row:hover { background:var(--nova-soft,#f4f4f5); }
+.identity { display:flex; min-width:0; align-items:center; gap:.75rem; }
+.identity a { min-width:0; color:inherit; text-decoration:none; }
+.identity a:focus-visible { outline:2px solid var(--nova-ring,#737b87); outline-offset:2px; }
+.identityText { display:flex; min-width:0; flex-direction:column; align-items:flex-start; gap:.25rem; overflow-wrap:anywhere; font-size:.875rem; font-weight:500; }
+.thumbnail { position:relative; isolation:isolate; display:flex; width:5rem; height:5rem; flex:none; align-items:center; justify-content:center; overflow:hidden; border-radius:.5rem; background:var(--nova-soft,#f4f4f5); color:var(--nova-muted,#707680); }
+.thumbnailImage { pointer-events:none; object-fit:cover; }
+.play { position:absolute; display:flex; align-items:center; justify-content:center; width:2rem; height:2rem; border-radius:50%; background:var(--nova-surface,#fff); color:var(--nova-foreground,#20242a); }
+.play svg { width:1rem; height:1rem; }
+.metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; margin:0; }
+.metrics dt { color:var(--nova-muted,#707680); font-size:.75rem; }
+.metrics dd { margin:.25rem 0 0; font-size:.875rem; font-weight:500; font-variant-numeric:tabular-nums; }
+.empty { padding:1.25rem; color:var(--nova-muted,#707680); font-size:.875rem; }
+@media (min-width:40rem) { .metrics { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (min-width:64rem) { .row { grid-template-columns:minmax(220px,1.7fr) minmax(0,5fr); align-items:center; } .metrics { grid-template-columns:repeat(8,minmax(0,1fr)); } }

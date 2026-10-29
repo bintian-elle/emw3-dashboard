@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import { bilingualInsightJobId } from './ai-insight-job';
 import { randomUUID } from 'node:crypto';
 
-const pool=new Pool({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},max:3});
+const pool=new Pool({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},max:3,connectionTimeoutMillis:5000});
 export type QueuedJob={id:string;status:'queued'|'running'|'completed'|'failed';remote_id:string|null;result:unknown;error:string|null;body:Record<string,unknown>;updated_at:string|Date};
 export async function enqueueAiJob(id:string,body:Record<string,unknown>):Promise<QueuedJob>{
  await pool.query(`insert into ai_job_queue(id,request_id,body,priority) values($1,$2,$3::jsonb,$4) on conflict(id) do nothing`,[id,randomUUID(),JSON.stringify(body),body.dashboard_id==='bluevua-testing-translation'?-5:body.mode==='question'?10:0]);
@@ -19,6 +19,19 @@ export async function readTestingReadoutCache(keys:string[]){
  if(!keys.length)return [] as TestingReadoutCacheRecord[];
  const result=await pool.query<TestingReadoutCacheRecord>(`select cache_key,readout_type,period_label,period_start::text,period_end::text,comparison_label,comparison_start::text,comparison_end::text,prompt_version,payload,generated_at,updated_at from testing_ai_readout_cache where cache_key=any($1::text[])`,[keys]);
  return result.rows;
+}
+/** Published readout metadata only; translation versions are scoped to language and source. */
+export async function readTestingReadoutVersions(keys:string[],language:'en'|'zh'){
+ if(!keys.length)return [];
+ const query={text:`
+  select requested.cache_key,readout.updated_at,translation.generated_at as translation_at,translation.source_hash
+  from unnest($1::text[]) with ordinality as requested(cache_key,position)
+  left join testing_ai_readout_cache readout on readout.cache_key=requested.cache_key
+  left join testing_ai_readout_translations translation on translation.cache_key=requested.cache_key and translation.language=$2
+  order by requested.position
+ `,values:[keys,language],query_timeout:5000};
+ const result=await pool.query<{cache_key:string;updated_at:Date|string|null;translation_at:Date|string|null;source_hash:string|null}>(query);
+ return result.rows.map(row=>({key:row.cache_key,updatedAt:row.updated_at?new Date(row.updated_at).toISOString():null,translationAt:row.translation_at?new Date(row.translation_at).toISOString():null,sourceHash:row.source_hash}));
 }
 export async function writeTestingReadoutCache(input:Omit<TestingReadoutCacheRecord,"generated_at"|"updated_at">,sourceGeneratedAt?:string|Date){
  await pool.query(`insert into testing_ai_readout_cache(cache_key,readout_type,period_label,period_start,period_end,comparison_label,comparison_start,comparison_end,prompt_version,payload,generated_at) values($1,$2,$3,$4::date,$5::date,$6,$7::date,$8::date,$9,$10::jsonb,coalesce($11::timestamptz,now())) on conflict(cache_key) do update set readout_type=excluded.readout_type,period_label=excluded.period_label,period_start=excluded.period_start,period_end=excluded.period_end,comparison_label=excluded.comparison_label,comparison_start=excluded.comparison_start,comparison_end=excluded.comparison_end,prompt_version=excluded.prompt_version,payload=excluded.payload,generated_at=excluded.generated_at,updated_at=now() where testing_ai_readout_cache.cache_key not like 'period:concluded:%' and testing_ai_readout_cache.generated_at<=excluded.generated_at`,[input.cache_key,input.readout_type,input.period_label,input.period_start,input.period_end,input.comparison_label,input.comparison_start,input.comparison_end,input.prompt_version,JSON.stringify(input.payload),sourceGeneratedAt??null]);

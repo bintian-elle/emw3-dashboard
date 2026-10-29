@@ -1,11 +1,27 @@
+"use client";
+
 import Link from "next/link";
-import { RiArrowLeftLine, RiArrowRightLine, RiBarChartGroupedLine, RiFlaskLine, RiMailLine, RiCursorLine } from "@remixicon/react";
-import { BluevuaMark, Emw3Logo } from "@/components/brand/emw3-logo";
+import Image from "next/image";
+import { ArrowLeft, ArrowRight, ChartNoAxesCombined, FlaskConical, Mail, MousePointer2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import styles from "../workspace-entry.module.css";
+import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
+
+const dashboards: { href: string; icon: LucideIcon; title: string; zhTitle: string; description: string; zhDescription: string }[] = [
+  { href: "/bluevua/google", icon: ChartNoAxesCombined, title: "Google Ads", zhTitle: "Google 广告", description: "Account performance, search demand, products and creative reporting.", zhDescription: "查看账户表现、搜索需求、产品和素材报告。" },
+  { href: "/bluevua/edm", icon: Mail, title: "EDM", zhTitle: "邮件营销", description: "Email marketing and campaign performance.", zhDescription: "查看邮件营销和活动表现。" },
+  { href: "/bluevua/tracking", icon: MousePointer2, title: "Website Tracking", zhTitle: "网站追踪", description: "Website engagement, actions and purchase sources.", zhDescription: "查看网站互动、用户行为和购买来源。" },
+  { href: "/bluevua/testing", icon: FlaskConical, title: "Content Testing", zhTitle: "内容测试", description: "Monitor creative tests and compare performance across channels.", zhDescription: "跟踪素材测试并比较各渠道的表现。" },
+];
 
 export default function BluevuaProject() {
-  return <main className="min-h-screen bg-background-secondary-default px-5 py-6 sm:px-8 lg:px-12"><div className="mx-auto max-w-7xl"><div className="mb-8 flex items-center justify-between gap-4"><Link href="/" aria-label="Go to homepage"><Emw3Logo priority className="w-44 sm:w-52" /></Link><Link href="/" className="inline-flex items-center gap-2 text-body-medium text-text-secondary hover:text-text-primary"><RiArrowLeftLine className="size-4" aria-hidden /> All projects</Link></div><section className="rounded-3xl border border-border-button-default bg-background-primary-default p-6 shadow-card sm:p-8"><div className="flex items-center gap-4"><Link href="/" aria-label="Go to homepage"><BluevuaMark className="size-16 text-display-4-semibold" /></Link><div><p className="text-caption-1-semibold text-text-tertiary">PROJECT</p><h1 className="text-display-4-semibold text-text-primary">Bluevua</h1><p className="mt-1 text-body-regular text-text-secondary">Marketing performance and website analytics workspace</p></div></div></section><section className="mt-10" aria-labelledby="dashboards-heading"><p className="text-caption-1-semibold text-text-tertiary">ANALYTICS</p><h2 id="dashboards-heading" className="mt-1 text-title-1-semibold text-text-primary">Dashboards</h2><div className="mt-5 grid gap-5"><DashboardLink href="/bluevua/google" icon={RiBarChartGroupedLine} title="Google Ads Dashboard" description="Account overview, channel efficiency, search demand, products, locations and creative performance." /><DashboardLink href="/bluevua/edm" icon={RiMailLine} title="EDM Dashboard" description="Email marketing performance and campaign reporting. The existing dashboard will be migrated into this workspace." /><DashboardLink href="/bluevua/tracking" icon={RiCursorLine} title="Website Tracking Dashboard" description="Feature usage, recommendation activity, Compare interactions, action outcomes and purchase sources." /><DashboardLink href="/bluevua/testing" icon={RiFlaskLine} title="Testing Dashboard" description="Plan cross-channel creative tests, monitor experiment health, and turn results into clear decisions and learnings." /></div></section></div></main>;
-}
-
-function DashboardLink({href,icon:Icon,title,description}:{href:string;icon:typeof RiBarChartGroupedLine;title:string;description:string}) {
-  return <Link href={href} className="group grid gap-6 rounded-3xl border border-border-button-default bg-background-primary-default p-6 shadow-card transition hover:border-border-button-hover md:grid-cols-[1fr_auto] md:items-center"><div className="flex items-start gap-4"><span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-background-secondary-default text-foreground-icon-primary"><Icon className="size-6" aria-hidden /></span><div><h3 className="text-title-2-semibold text-text-primary">{title}</h3><p className="mt-1 max-w-xl text-body-regular text-text-secondary">{description}</p></div></div><span className="flex items-center gap-2 text-body-medium text-button-ghost-foreground">Open dashboard <RiArrowRightLine className="size-5 transition-transform group-hover:translate-x-1" aria-hidden /></span></Link>;
+  const { language } = useSiteLanguage();
+  const t = (en: string, zh: string) => language === "zh" ? zh : en;
+  return <main className={styles.page}><div className={styles.container}>
+    <div className={styles.topline}><p className={styles.eyebrow}>{t("Project", "项目")}</p><Link href="/" className={styles.back}><ArrowLeft size={15}/> {t("All workspaces", "所有工作区")}</Link></div>
+    <div className={styles.projectHeading}><Image src="/brand/bluevua-logo.svg" alt="" width={48} height={48} className={styles.projectLogo} priority/><h1 className={styles.heading}>Bluevua</h1></div><p className={styles.description}>{t("Marketing performance and website analytics.", "营销表现与网站分析。")}</p>
+    <section className={styles.section} aria-labelledby="dashboard-heading"><h2 id="dashboard-heading" className={styles.sectionTitle}>{t("Dashboards", "仪表盘")}</h2><div className={styles.grid}>
+      {dashboards.map(({ href, icon: Icon, title, zhTitle, description, zhDescription }) => <Link href={href} className={styles.card} key={href}><div className={styles.cardTop}><span className={styles.icon}><Icon size={18}/></span><ArrowRight size={16}/></div><h3 className={styles.cardTitle}>{title === "Google Ads" || title === "EDM" ? title : t(title, zhTitle)}</h3><p className={styles.cardText}>{t(description, zhDescription)}</p><span className={styles.cardLink}>{t("Open dashboard", "打开仪表盘")} <ArrowRight size={14}/></span></Link>)}
+    </div></section>
+  </div></main>;
 }

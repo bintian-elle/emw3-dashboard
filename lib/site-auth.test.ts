@@ -8,6 +8,23 @@ test("only verified company Workspace users are admitted", () => {
   assert.equal(allowedGoogleUser(user)?.email,"member@elle-media.com");
   for(const bad of [{email:"member@gmail.com"},{email:"member@elle-media.com.evil.test"},{hd:"evil.test"},{hd:undefined},{email_verified:false},{email_verified:"true"},{sub:undefined}]) assert.equal(allowedGoogleUser({...user,...bad}),null);
 });
+test("Google profile pictures survive the signed session", async () => {
+  const picture = "https://lh3.googleusercontent.com/a/example-photo=s96-c";
+  const claims = {sub:"123",email:"member@elle-media.com",name:"Member",email_verified:true,hd:"elle-media.com",picture};
+  const user = allowedGoogleUser(claims);
+  assert.ok(user);
+  assert.equal(user.picture, picture);
+  const token = await signAuthPayload(user, "site-session", 60);
+  assert.equal((await readSession(token))?.picture, picture);
+});
+test("untrusted or malformed profile picture URLs are omitted without blocking login", async () => {
+  const claims = {sub:"123",email:"member@elle-media.com",name:"Member",email_verified:true,hd:"elle-media.com"};
+  for (const picture of ["http://lh3.googleusercontent.com/a/photo", "https://lh3.googleusercontent.com.evil.test/a/photo", "https://user@lh3.googleusercontent.com/a/photo", "https://lh3.googleusercontent.com:444/a/photo", "javascript:alert(1)", 42, "x".repeat(2000)]) {
+    assert.deepEqual(allowedGoogleUser({...claims,picture}), {sub:"123",email:"member@elle-media.com",name:"Member"});
+    const token = await signAuthPayload({...claims,picture}, "site-session", 60);
+    assert.deepEqual(await readSession(token), {sub:"123",email:"member@elle-media.com",name:"Member"});
+  }
+});
 test("sessions reject tampering, wrong purpose, expiry and old key cookies",async()=>{
   const user={sub:"123",email:"member@elle-media.com",name:"Member"};
   const token=await signAuthPayload(user,"site-session",60);

@@ -2,6 +2,7 @@ import "server-only";
 import { connection } from "next/server";
 import { db } from "@/lib/db";
 import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } from "@/lib/testing-google";
+import { createDemandGenLocalCache, demandGenCacheKey } from "@/lib/demand-gen-local-cache";
 
 const definitions=[
   {key:"image",title:"Campaign 1 · Image",campaignName:"EM-DG-Conversion-Prospecting-Purchase-April26",adGroupName:"IMG+Shopping_PurchaserLAL5%",adGroupId:"183243510646",mediaType:"image" as const},
@@ -17,8 +18,8 @@ const num=(value:unknown)=>Number(value??0);const ratio=(a:number,b:number)=>b>0
 function metrics(row:Record<string,unknown>):DemandGenMetricRow{const spend=num(row.spend),revenue=num(row.revenue),orders=num(row.orders),impressions=num(row.impressions),clicks=num(row.clicks);return {spend,revenue,orders,impressions,clicks,cpa:ratio(spend,orders),cvr:ratio(orders,clicks),roas:ratio(revenue,spend),ctr:ratio(clicks,impressions),cpc:ratio(spend,clicks)};}
 async function latestAndPeriod(input:TestingPeriodInput){const latest=await db.query<{latest_date:string}>(`SELECT MAX(date)::text latest_date FROM fact_ad_group_daily WHERE ad_group_id=ANY($1::text[]) AND date<CURRENT_DATE`,[definitions.map(item=>item.adGroupId)]);if(!latest.rows[0]?.latest_date)return null;return resolveTestingPeriod(latest.rows[0].latest_date,input);}
 
-export async function getDemandGenData(input:TestingPeriodInput={}):Promise<DemandGenData>{
-  await connection();const preset=input.preset??"lastWeek";const period=await latestAndPeriod(input);if(!period)return {period:null,periodLabel:testingPeriodLabels[preset],campaigns:[]};const ids=definitions.map(item=>item.adGroupId);
+async function loadDemandGenData(input:TestingPeriodInput={}):Promise<DemandGenData>{
+  const preset=input.preset??"lastWeek";const period=await latestAndPeriod(input);if(!period)return {period:null,periodLabel:testingPeriodLabels[preset],campaigns:[]};const ids=definitions.map(item=>item.adGroupId);
   const totals=await db.query<Record<string,unknown>>(`SELECT ad_group_id,SUM(cost_micros)/1000000.0 spend,SUM(conversions_value) revenue,SUM(conversions) orders,SUM(impressions) impressions,SUM(clicks) clicks FROM fact_ad_group_daily WHERE ad_group_id=ANY($1::text[]) AND date BETWEEN $2::date AND $3::date GROUP BY ad_group_id`,[ids,period.start,period.end]);
   const statuses=await db.query<{campaign_name:string;campaign_status:string;testing_start_date:string}>(`SELECT c.campaign_name,c.campaign_status,MIN(f.date)::text testing_start_date FROM dim_campaign c LEFT JOIN fact_ad_group_daily f ON f.customer_id=c.customer_id AND f.campaign_id=c.campaign_id AND f.ad_group_id=ANY($2::text[]) WHERE c.campaign_name=ANY($1::text[]) GROUP BY c.campaign_name,c.campaign_status`,[definitions.map(item=>item.campaignName),ids]);
   const previews=await db.query<Record<string,unknown>>(`SELECT ad_group_id,ad_id,MAX(preview_type) preview_type,MAX(preview_thumbnail_url) preview_thumbnail_url,MAX(youtube_video_url) youtube_video_url,SUM(spend) spend FROM v_ad_performance_daily WHERE ad_group_id=ANY($1::text[]) AND date BETWEEN $2::date AND $3::date GROUP BY ad_group_id,ad_id ORDER BY ad_group_id,spend DESC,ad_id`,[ids,period.start,period.end]);
@@ -26,8 +27,28 @@ export async function getDemandGenData(input:TestingPeriodInput={}):Promise<Dema
   return {period,periodLabel:testingPeriodLabels[preset],campaigns};
 }
 
-export async function getDemandGenAds(campaignKey:string,input:TestingPeriodInput={}):Promise<{campaign:DemandGenCampaign;ads:DemandGenAd[];period:{start:string;end:string};periodLabel:string}|null>{
-  await connection();const data=await getDemandGenData(input);const campaign=data.campaigns.find(item=>item.key===campaignKey);if(!campaign||!data.period)return null;
+export async function getDemandGenData(input:TestingPeriodInput={}):Promise<DemandGenData>{await connection();return loadDemandGenData(input);}
+
+type DemandGenAdsResult={campaign:DemandGenCampaign;ads:DemandGenAd[];period:{start:string;end:string};periodLabel:string}|null;
+declare global {
+ var emw3DemandGenAdsCache:ReturnType<typeof createDemandGenLocalCache<DemandGenAdsResult>>|undefined;
+ var emw3DemandGenAdsCacheTimer:ReturnType<typeof setInterval>|undefined;
+}
+const localAdsCache=globalThis.emw3DemandGenAdsCache??=createDemandGenLocalCache<DemandGenAdsResult>({maxEntries:32});
+
+/** The independent warehouse has no complete version for all joined views. */
+export async function getDemandGenAds(campaignKey:string,input:TestingPeriodInput={},group?:string):Promise<DemandGenAdsResult>{
+  await connection();
+  if(!globalThis.emw3DemandGenAdsCacheTimer){
+   globalThis.emw3DemandGenAdsCacheTimer=setInterval(()=>{void localAdsCache.refreshActive();},30_000);
+   globalThis.emw3DemandGenAdsCacheTimer.unref();
+  }
+  const key=demandGenCacheKey(process.env.DATABASE_URL??'',{campaign:campaignKey,group,...input});
+  return localAdsCache.get(key,()=>loadDemandGenAds(campaignKey,input));
+}
+
+async function loadDemandGenAds(campaignKey:string,input:TestingPeriodInput):Promise<DemandGenAdsResult>{
+  const data=await loadDemandGenData(input);const campaign=data.campaigns.find(item=>item.key===campaignKey);if(!campaign||!data.period)return null;
   const rows=await db.query<Record<string,unknown>>(`SELECT ad_id,ad_name,ad_type,MAX(preview_type) preview_type,MAX(preview_thumbnail_url) preview_thumbnail_url,MAX(youtube_video_url) youtube_video_url,SUM(spend) spend,SUM(conversions_value) revenue,SUM(conversions) orders,SUM(impressions) impressions,SUM(clicks) clicks FROM v_ad_performance_daily WHERE ad_group_id=$1 AND date BETWEEN $2::date AND $3::date GROUP BY ad_id,ad_name,ad_type ORDER BY (MAX(youtube_video_url) IS NOT NULL) DESC,spend DESC,ad_id`,[campaign.adGroupId,data.period.start,data.period.end]);
   const ads=rows.rows.map(row=>({adId:String(row.ad_id),name:String(row.ad_name??"Unnamed ad"),adType:String(row.ad_type??""),previewType:String(row.preview_type??"UNKNOWN"),...metrics(row),previewUrl:row.preview_thumbnail_url?String(row.preview_thumbnail_url):null,videoUrl:row.youtube_video_url?String(row.youtube_video_url):null}));
   return {campaign,ads,period:data.period,periodLabel:data.periodLabel};

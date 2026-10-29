@@ -1,0 +1,20 @@
+.header { position:sticky; top:0; z-index:20; display:flex; align-items:flex-end; justify-content:space-between; gap:1.125rem; flex-wrap:wrap; margin-bottom:1.5rem; padding-block:.75rem; background:var(--nova-page,#f7f8fa); }
+.identity { min-width:0; }
+.header h1 { margin:.4375rem 0 0; color:var(--nova-foreground,#20242a); font-size:2.05rem; font-weight:600; line-height:1.2; letter-spacing:-.075rem; overflow-wrap:anywhere; }
+.breadcrumb { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; color:var(--nova-muted,#707680); font-size:.75rem; }
+.breadcrumb a { color:inherit; text-decoration:none; }
+.breadcrumb svg { width:.8125rem; height:.8125rem; }
+.backLinks { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.75rem; }
+.controls { display:flex; flex-wrap:wrap; align-items:center; gap:.625rem; }
+.controls > label { color:var(--nova-muted,#707680); font-size:.75rem; font-weight:550; }
+.selectTrigger { display:inline-flex; align-items:center; justify-content:space-between; gap:.75rem; min-height:2.25rem; padding:0 .625rem; background:var(--nova-surface,#fff); color:var(--nova-foreground,#20242a); border:1px solid var(--nova-border,#e5e7eb); border-radius:.5rem; font:inherit; font-size:.8125rem; }
+.selectTrigger svg { width:1rem; height:1rem; }
+.selectTrigger:focus-visible,.breadcrumb a:focus-visible { outline:2px solid var(--nova-ring,#737b87); outline-offset:2px; }
+.selectContent { z-index:100; min-width:12.5rem; padding:.25rem; background:#fff; color:#1a1d22; border:1px solid #e1e4e8; border-radius:.5rem; box-shadow:0 8px 20px #0002; }
+.selectItem { display:flex; align-items:center; justify-content:space-between; gap:.625rem; border-radius:.375rem; padding:.4375rem .5625rem; font:13px "Testing Geist",system-ui,sans-serif; outline:none; cursor:default; }
+.selectItem[data-highlighted] { background:#f0f2f4; }
+.selectItem svg { width:.875rem; height:.875rem; }
+.custom { display:flex; align-items:end; flex-wrap:wrap; gap:.5rem; width:100%; }
+.custom label { display:flex; flex-direction:column; gap:.25rem; color:var(--nova-muted,#707680); font-size:.75rem; }
+:global(.dark) .selectContent { background:#232529; color:#f1f2f3; border-color:#3b3e43; }
+:global(.dark) .selectItem[data-highlighted] { background:#303338; }

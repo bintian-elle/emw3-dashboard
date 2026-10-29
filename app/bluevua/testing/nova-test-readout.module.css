@@ -1,0 +1,22 @@
+.campaign { min-width:0; outline:none; }
+.campaign:focus-visible { outline:2px solid var(--nova-ring,#737b87); outline-offset:2px; }
+.card { margin-bottom:1.5rem; overflow:hidden; }
+.summary { padding:1.25rem; }
+.summaryTitle { display:flex; align-items:center; gap:.5rem; margin-bottom:.625rem; }
+.summaryTitle svg { width:1rem; height:1rem; }
+.summaryTitle h2 { margin:0; color:var(--nova-foreground,#20242a); font-size:.875rem; font-weight:600; }
+.text { margin:0; color:var(--nova-foreground,#20242a); font-size:.875rem; line-height:1.65; overflow-wrap:anywhere; white-space:pre-line; }
+.text a { color:inherit; text-decoration:underline; text-underline-offset:.2rem; }
+.muted { margin:0; color:var(--nova-muted,#707680); font-size:.8125rem; line-height:1.6; }
+.actions { display:flex; align-items:stretch; flex-wrap:wrap; gap:.5rem; padding:1.25rem; }
+.actions > button { height:auto; min-height:2.875rem; }
+.details { border-top:1px solid var(--nova-border,#e5e7eb); padding-top:1.25rem; }
+.details > .muted { padding-inline:1.25rem; }
+.details[hidden] { display:none; }
+.detailGroup { min-width:0; padding:0 1.25rem 1.25rem; }
+.detailGroup h3 { margin:0 0 .75rem; color:var(--nova-foreground,#20242a); font-size:.875rem; font-weight:600; }
+.detailGroup ul { display:grid; gap:.75rem; margin:0; padding-left:1.25rem; list-style:disc; }
+.delta { display:grid; grid-template-columns:repeat(auto-fit,minmax(9rem,1fr)); gap:.75rem; }
+.delta > div { padding:.75rem; border-radius:.5rem; background:var(--nova-soft,#f4f4f5); }
+.delta dt,.delta p { color:var(--nova-muted,#707680); font-size:.75rem; }
+.delta dd { margin:.25rem 0; color:var(--nova-foreground,#20242a); font-size:1rem; font-weight:600; font-variant-numeric:tabular-nums; }

@@ -1,0 +1,41 @@
+'use client';
+
+import {useMemo,useState,type ReactNode} from 'react';
+import Image from 'next/image';
+import {Dialog} from 'radix-ui';
+import {ArrowDown,ArrowUp,ArrowUpDown,Image as ImageIcon,Play,X} from 'lucide-react';
+import {flexRender,getCoreRowModel,getSortedRowModel,useReactTable,type ColumnDef,type SortingState} from '@tanstack/react-table';
+import type {ExpandedTestRow,PmaxAssetPerformance,TestingAsset} from '@/lib/google-expanded-content-testing';
+import type {GoogleAdMetrics} from '@/lib/google-ad-performance';
+import type {ReadoutPeriod} from '@/lib/testing-readout-contract';
+import {orderTestingMetrics} from '@/lib/testing-metric-order';
+import {TestReadout} from './test-readout';
+import {NovaButton,NovaCard,NovaTable,NovaTableBody,NovaTableCell,NovaTableHead,NovaTableHeader,NovaTableRow} from './nova-preview-ui';
+import styles from './nova-testing-asset.module.css';
+
+const columns=orderTestingMetrics([{key:'spend',label:'Spend'},{key:'revenue',label:'Revenue'},{key:'roas',label:'ROAS'},{key:'orders',label:'#Purchase'},{key:'cvr',label:'CVR'},{key:'impressions',label:'Impressions'},{key:'clicks',label:'Clicks'},{key:'ctr',label:'CTR'},{key:'cpa',label:'CPA'},{key:'cpc',label:'CPC'}]);
+function format(metrics:GoogleAdMetrics,key:string){const value=metrics[key as keyof GoogleAdMetrics];if(value==null)return '—';if(['ctr','cvr'].includes(key))return new Intl.NumberFormat('en-US',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);if(key==='roas')return value.toFixed(2);return new Intl.NumberFormat('en-US',{...(['spend','revenue','cpa','cpc'].includes(key)?{style:'currency',currency:'USD'}:{}),maximumFractionDigits:2}).format(value);}
+const fieldName=(value:string)=>value.toLowerCase().replaceAll('_',' ').replace(/^./,v=>v.toUpperCase());
+type Props={pmax:boolean;row:ExpandedTestRow;groupName:string;campaignName:string;period:ReadoutPeriod;videoNames:Record<string,string>};
+
+export function NovaAssetGate(props:Props&{children:ReactNode}){
+ return <NovaAsset {...props}/>;
+}
+export function NovaMediaPreview({src,title,video=false}:{src:string|null;title:string;video?:boolean}){
+ const [failed,setFailed]=useState(false),preview=video&&src?`/api/google/creative-media/youtube/${src}`:src;
+ if(!src)return <span className={styles.thumbnail}><ImageIcon aria-hidden="true"/></span>;
+ return <Dialog.Root><Dialog.Trigger asChild><button type="button" className={styles.thumbnail} aria-label={`${video?'Play video':'Preview image'}: ${title}`}>{preview&&!failed?<Image src={preview} alt="" fill sizes="80px" unoptimized onError={()=>setFailed(true)}/>:<ImageIcon aria-hidden="true"/>}{video&&<span className={styles.play}><Play fill="currentColor" aria-hidden="true"/></span>}</button></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className={styles.overlay}/><Dialog.Content className={styles.dialog} aria-describedby={undefined}><Dialog.Title className={styles.srOnly}>{title}</Dialog.Title>{video?<iframe title={title} src={`https://www.youtube.com/embed/${src}`} referrerPolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen/>:<Image src={src} alt={title} fill sizes="90vw" unoptimized className={styles.fullImage}/>}<Dialog.Close asChild><button type="button" className={styles.close} aria-label="Close preview"><X aria-hidden="true"/></button></Dialog.Close></Dialog.Content></Dialog.Portal></Dialog.Root>;
+}
+function AssetTable({title,rows,assets,videoNames}:{title:string;rows:PmaxAssetPerformance[];assets:TestingAsset[];videoNames:Record<string,string>}){
+ const [sorting,setSorting]=useState<SortingState>([]);
+ const defs=useMemo<ColumnDef<PmaxAssetPerformance>[]>(()=>[
+  {id:'asset',header:'Asset',enableSorting:false,cell:({row})=>{const item=row.original,asset=assets.find(a=>a.id===item.assetId),name=asset?.youtubeVideoAsset?.youtubeVideoTitle||videoNames[item.assetId]||asset?.name||asset?.textAsset?.text||`Asset ${item.assetId}`,video=asset?.youtubeVideoAsset?.youtubeVideoId;return <div id={`asset-${item.assetId}`} className={styles.asset}>{video?<NovaMediaPreview src={video} title={name} video/>:asset?.imageAsset?<NovaMediaPreview src={asset.imageAsset.fullSize?.url??null} title={name}/>:null}<div><strong>{name}</strong><span>{fieldName(item.fieldType)}</span><span className={styles.status} data-enabled={item.status==='ENABLED'}>{item.status}</span></div></div>;}},
+  ...columns.map(column=>({id:column.key,accessorFn:(row:PmaxAssetPerformance)=>row.metrics[column.key as keyof GoogleAdMetrics]??undefined,header:column.label,sortUndefined:'last' as const,cell:({row}:{row:{original:PmaxAssetPerformance}})=>format(row.original.metrics,column.key)})),
+ ],[assets,videoNames]);
+ const table=useReactTable({data:rows,columns:defs,state:{sorting},onSortingChange:setSorting,getCoreRowModel:getCoreRowModel(),getSortedRowModel:getSortedRowModel(),enableSortingRemoval:true});
+ return <NovaCard className={styles.card}><header className={styles.cardHeader}><h2>{title} · {rows.length}</h2></header>{rows.length?<NovaTable aria-label={`${title} performance`}><NovaTableHeader>{table.getHeaderGroups().map(group=><NovaTableRow key={group.id}>{group.headers.map((header,index)=>{const direction=header.column.getIsSorted(),Icon=direction==='asc'?ArrowUp:direction==='desc'?ArrowDown:ArrowUpDown;return <NovaTableHead scope="col" key={header.id} className={index?styles.numeric:undefined} aria-sort={direction==='asc'?'ascending':direction==='desc'?'descending':'none'}>{header.column.getCanSort()?<NovaButton variant="ghost" size="sm" className={styles.sort} onClick={header.column.getToggleSortingHandler()} aria-label={`${header.column.columnDef.header}: sort`}>{flexRender(header.column.columnDef.header,header.getContext())}<Icon/></NovaButton>:flexRender(header.column.columnDef.header,header.getContext())}</NovaTableHead>;})}</NovaTableRow>)}</NovaTableHeader><NovaTableBody>{table.getRowModel().rows.map(row=><NovaTableRow key={row.id}>{row.getVisibleCells().map((cell,index)=><NovaTableCell key={cell.id} className={index?styles.numeric:undefined}>{flexRender(cell.column.columnDef.cell,cell.getContext())}</NovaTableCell>)}</NovaTableRow>)}</NovaTableBody></NovaTable>:<p className={styles.empty}>No {title.toLowerCase()} attached to this asset group.</p>}</NovaCard>;
+}
+function NovaAsset({pmax,row,groupName,campaignName,period,videoNames}:Props){
+ const groups=[{title:'Images',matches:(asset:TestingAsset)=>Boolean(asset.imageAsset)},{title:'Videos',matches:(asset:TestingAsset)=>Boolean(asset.youtubeVideoAsset)},{title:'Text assets',matches:(asset:TestingAsset)=>Boolean(asset.textAsset)}];
+ return <><div className={styles.meta}><span className={styles.status} data-enabled={row.status==='ENABLED'}>{row.status}</span><span>{pmax?'Asset group':'Ad group'} · {groupName}</span></div><TestReadout standalone channel={pmax?'google-pmax':'google-demand-gen'} testIdentity={campaignName} period={period}><div className={styles.cards}>{pmax?groups.map(({title,matches})=>{const ids=new Set(row.assets.filter(matches).map(asset=>asset.id));return <AssetTable key={title} title={title} rows={(row.assetPerformance??[]).filter(item=>ids.has(item.assetId))} assets={row.assets} videoNames={videoNames}/>;}):<>{groups.slice(0,2).map(({title,matches})=>{const assets=row.assets.filter(matches);return <NovaCard key={title} className={styles.card}><header className={styles.cardHeader}><h2>{title} · {assets.length}</h2></header>{assets.length?<div className={styles.assetGrid}>{assets.map(asset=>{const video=asset.youtubeVideoAsset?.youtubeVideoId,name=videoNames[asset.id]||asset.name||(title==='Images'?`Image ${asset.id}`:row.name);return <div className={styles.assetTile} key={asset.id}><NovaMediaPreview src={video??asset.imageAsset?.fullSize?.url??null} title={name} video={!!video}/><span>{name}</span></div>;})}</div>:<p className={styles.empty}>No {title.toLowerCase()} attached to this ad.</p>}</NovaCard>;})}<NovaCard className={styles.card}><header className={styles.cardHeader}><h2>Text assets · {row.texts.length}</h2></header><div className={styles.texts}>{row.texts.map((text,index)=><p key={`${index}:${text}`}>{text}</p>)}</div></NovaCard></>}</div></TestReadout></>;
+}

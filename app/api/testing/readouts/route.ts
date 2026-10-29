@@ -1,21 +1,19 @@
 import {readLocalPromptPreview} from "@/lib/testing-prompt-preview.server";
 import {previewReadoutRecords} from "@/lib/testing-prompt-preview";
-import {testingReadoutContent} from "@/lib/testing-readout-content";
-import { translatedTestingReadouts } from "@/lib/testing-readout-translation";
 import { NextResponse } from "next/server";
+import {after} from "next/server";
 import { currentSiteUser } from "@/lib/current-site-user";
 import { publishCompletedTestingReadouts } from "@/lib/testing-readout-publish";
-import { readTestingReadoutCache } from "@/lib/ai-job-queue";
+import {validTestingReadoutKeys} from "@/lib/testing-readout-keys";
+import {hasTestingPageReadouts,readTestingPageReadouts,reconcileExpectedTestingPageReadouts,reconcileTestingPageReadouts} from "@/lib/testing-readout-page-cache";
 
 export async function GET(request: Request) {
   const user = await currentSiteUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const rawKeys = new URL(request.url).searchParams.getAll("key");
-  const keys = [...new Set(rawKeys)].filter((key) =>
-    /^(period:concluded:[a-z0-9-]+|period:social-lifetime|period:reddit-lifetime|period:[a-z-]+:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}(?::\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2})?)$/.test(key),
-  );
-  if (!keys.length || keys.length > 8 || keys.length !== rawKeys.length) {
+  const keys = validTestingReadoutKeys(rawKeys);
+  if (!keys) {
     return NextResponse.json({ error: "Invalid readout cache key." }, { status: 400 });
   }
 
@@ -23,15 +21,23 @@ export async function GET(request: Request) {
   const preview=await readLocalPromptPreview(new URL(request.url).searchParams.get('language')??undefined);
   if(preview){
     const concludedKeys=keys.filter(key=>key.startsWith('period:concluded:'));
-    const permanent=concludedKeys.length?await readTestingReadoutCache(concludedKeys):[];
-    const concluded=new URL(request.url).searchParams.get('language')==='zh'?await translatedTestingReadouts(permanent,true):permanent;
+    const previewLanguage=new URL(request.url).searchParams.get('language')==='zh'?'zh':'en';
+    const expected=new URL(request.url).searchParams.get('expected');
+    if(expected&&concludedKeys.length){try{if(expected.length>8192)throw Error('Invalid version');await reconcileExpectedTestingPageReadouts(concludedKeys,previewLanguage,JSON.parse(expected));}catch{return NextResponse.json({error:'Published readout unavailable.'},{status:503,headers:{'Cache-Control':'private, no-store'}});}}
+    const concluded=concludedKeys.length?await readTestingPageReadouts(concludedKeys,previewLanguage,true):[];
+    if(concludedKeys.length)after(async()=>{await reconcileTestingPageReadouts(concludedKeys,previewLanguage).catch(()=>{});});
     return NextResponse.json({records:[...previewReadoutRecords(preview.manifest,preview.reports,keys),...concluded]},{headers:{"Cache-Control":"private, no-store"}});
   }
 
-  // Publishing only reads completed queue results; it never calls Codex or an ads API.
-  await publishCompletedTestingReadouts().catch(() => {});
-  const sourceRecords = (await readTestingReadoutCache(keys)).map(record=>({...record,payload:testingReadoutContent(record.cache_key,record.payload)}));
-  const records = new URL(request.url).searchParams.get("language") === "zh" ? await translatedTestingReadouts(sourceRecords) : sourceRecords;
+  const language=new URL(request.url).searchParams.get("language") === "zh" ? "zh" : "en";
+  const expected=new URL(request.url).searchParams.get('expected');
+  if(expected){try{if(expected.length>8192)throw Error('Invalid version');await reconcileExpectedTestingPageReadouts(keys,language,JSON.parse(expected));}catch{return NextResponse.json({error:'Published readout unavailable.'},{status:503,headers:{'Cache-Control':'private, no-store'}});}}
+  // A warm page snapshot is returned first; completed jobs are still published
+  // after the response and checked without blocking the visible summary.
+  if(hasTestingPageReadouts(keys))after(async()=>{await publishCompletedTestingReadouts().catch(()=>{});await reconcileTestingPageReadouts(keys,language).catch(()=>{});});
+  else await publishCompletedTestingReadouts().catch(() => {});
+  const records = await readTestingPageReadouts(keys,language);
+  if(keys.some(key=>key.startsWith('period:concluded:')))after(async()=>{await reconcileTestingPageReadouts(keys,language).catch(()=>{});});
   return NextResponse.json(
     { records },
     { headers: { "Cache-Control": "private, no-store" } },

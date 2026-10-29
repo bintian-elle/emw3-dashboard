@@ -7,11 +7,10 @@ import { readUserLanguage } from "@/lib/site-user-preferences";
 import { SiteLanguageProvider } from "@/components/application/dashboard/site-language-provider";
 import { AccountHeader } from "@/components/application/dashboard/account-header";
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "@/styles/globals.css";
 
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
-const mono = JetBrains_Mono({ variable: "--font-mono-source", subsets: ["latin"] });
+const geist = localFont({ src: "../public/fonts/nova-preview/geist-latin-wght-normal.woff2", variable: "--font-inter", weight: "100 900", display: "swap" });
 
 export const metadata: Metadata = {
   title: "EMW3 Analytics",
@@ -28,5 +27,5 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await currentSiteUser();
   const language = user ? await readUserLanguage(user.sub).catch(() => "en" as const) : "en";
-  return <html lang={language === "zh" ? "zh-CN" : "en"} className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:THEME_BOOTSTRAP}}/></head><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><ThemeInitializer/><Suspense><AccountHeader/></Suspense>{children}<FloatingTableHeaders/></SiteLanguageProvider></body></html>;
+  return <html lang={language === "zh" ? "zh-CN" : "en"} className={geist.variable} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:THEME_BOOTSTRAP}}/></head><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><ThemeInitializer/><Suspense><AccountHeader/></Suspense>{children}<FloatingTableHeaders/></SiteLanguageProvider></body></html>;
 }

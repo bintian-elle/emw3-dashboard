@@ -2,7 +2,7 @@ import {MetricSortScope,MetricSortHeader,MetricSortedRows} from "./metric-sortin
 import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import { cx } from "@/utils/cx";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/app/bluevua/testing/testing-link";
 import { RiImageLine, RiPlayCircleLine } from "@remixicon/react";
 import { Chip } from "@/components/base/badges/chip";
 import type { DemandGenData, DemandGenMetricRow } from "@/lib/testing-demand-gen";

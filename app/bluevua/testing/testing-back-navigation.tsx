@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/app/bluevua/testing/testing-link";
 import { RiArrowLeftLine } from "@remixicon/react";
 
 export function TestingBackNavigation({platform,platformHref,query=""}:{platform:string;platformHref:string;query?:string}) {

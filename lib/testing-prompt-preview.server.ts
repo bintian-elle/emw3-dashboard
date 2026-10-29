@@ -1,7 +1,21 @@
 import 'server-only';
-import {readFile} from 'node:fs/promises';
+import {readFile,stat} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {decodePromptPreviewReport,type PromptPreviewManifest,type PromptPreviewReport} from './testing-prompt-preview';
+
+/** Local development previews are file-backed; check metadata without reading reports. */
+export async function readLocalPromptPreviewVersion(language?:string):Promise<string|null>{
+ if(process.env.NODE_ENV!=='development')return null;
+ const root=path.join(process.cwd(),'.state/content-testing-preview');
+ let pointer:{run_id?:unknown;language_runs?:Record<string,unknown>};
+ try{pointer=JSON.parse(await readFile(path.join(root,'active.json'),'utf8'));}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return null;throw Error('Local preview selection is temporarily unavailable.');}
+ const selected=language&&pointer.language_runs?pointer.language_runs[language]:pointer.run_id;
+ if(typeof selected!=='string'||!/^[a-z0-9-]{1,64}$/.test(selected))throw Error('Invalid local preview selection.');
+ const folder=path.join(root,selected),files=['manifest.json','state.json',...['google-search','google-pmax','google-demand-gen','meta','reddit','reddit-lifetime','edm','social-media','overview'].map(id=>`results/${id}.json`)];
+ const stamps=await Promise.all(files.map(async file=>{try{const info=await stat(path.join(folder,file));return `${file}:${info.mtimeMs}:${info.size}`;}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return `${file}:missing`;throw error;}}));
+ return createHash('sha256').update(JSON.stringify([selected,language??'',stamps])).digest('hex');
+}
 
 export async function readLocalPromptPreview(language?:string):Promise<{manifest:PromptPreviewManifest;reports:PromptPreviewReport[];status:{current?:string;status?:string}}|null>{
  if(process.env.NODE_ENV!=='development')return null;

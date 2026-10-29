@@ -1,0 +1,15 @@
+.status { display:flex; align-items:center; justify-content:center; gap:.4rem; margin:0 0 .75rem; color:var(--nova-muted,#68717e); font-size:.75rem; }
+.status svg { width:.875rem; height:.875rem; animation:spin 1s linear infinite; }
+.question { flex:1; min-width:12rem; }
+.placeholder,.value,.cell,.legend span { display:inline-block; border-radius:.25rem; background:var(--nova-soft,#f0f2f4); }
+.placeholder { width:65%; height:.75rem; }
+.value { width:3.5rem; height:1.3rem; }
+.cell { width:2.5rem; height:.65rem; }
+.tabs { display:flex; gap:1rem; margin-top:.75rem; padding-bottom:.35rem; border-bottom:1px solid var(--nova-border,#e1e4e8); color:var(--nova-muted,#68717e); font-size:.75rem; }
+.tabs span:first-child { position:relative; color:var(--nova-foreground,#1a1d22); font-weight:550; }
+.tabs span:first-child::after { position:absolute; right:0; bottom:-.4rem; left:0; height:2px; background:var(--nova-foreground,#1a1d22); content:""; }
+.legend { display:flex; gap:.6rem; margin-top:.75rem; }
+.legend span { width:3rem; height:.6rem; }
+.chart { height:9rem; margin-top:.75rem; background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(33.33% - 1px),var(--nova-border,#e1e4e8) calc(33.33% - 1px),var(--nova-border,#e1e4e8) 33.33%); opacity:.55; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .status svg { animation:none; } }

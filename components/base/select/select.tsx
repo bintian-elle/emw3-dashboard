@@ -15,33 +15,11 @@ import type {
   SelectProps as AriaSelectProps,
   SelectValueRenderProps as AriaSelectValueRenderProps,
 } from "react-aria-components";
-import {
-  MENU_ITEM,
-  MENU_ITEM_ACTIVE,
-  MENU_ITEMS_CONTAINER,
-  MENU_POPOVER_SURFACE,
-  MENU_POPOVER_WIDTH,
-} from "@/components/base/dropdown/menu-styles";
-import { ChevronDownSmall } from "@/components/foundations/icons/chevrons";
+import { Check, ChevronDown } from "lucide-react";
 import { cx } from "@/utils/cx";
 import { useDismissOnOutsidePress, useTriggerToggle } from "@/utils/use-dismiss-on-outside-press";
 
-/**
- * Figma source: Board UI → dashboard 1 dropdown triggers ("All prices" filter
- * node 3731:3208, table status dropdown node 3731:3264).
- *
- * Select with a button trigger styled 1:1 with Figma:
- *   trigger  bg color/white, 1px border/button/default, shadow/xs,
- *            px 10 py 8, radius/2lg (10px), gap 6,
- *            Body 1/Medium text color/neutral/950,
- *            16px chevron (custom stroke glyph) in text/secondary
- *
- * The open popover/listbox shares the BoardUI menu recipe with Dropdown:
- * radius/2xl panel, p 10, shadow/dropdown, 150ms fade/scale/blur motion,
- * and radius/2lg rows with the same hover/selected surface.
- *
- * Item content is free-form: pass a `StatusDot` + text for status selects.
- */
+/** React Aria selection semantics with the shared Nova control appearance. */
 
 export type SelectSize = "sm" | "md";
 
@@ -49,7 +27,7 @@ const SelectSizeContext = createContext<SelectSize>("md");
 
 export interface SelectProps<T extends object>
   extends Omit<AriaSelectProps<T>, "children"> {
-  /** Trigger width. Defaults to hug content; the menu uses the shared 266px width. */
+  /** Trigger width. Defaults to hug content. */
   className?: string;
   triggerClassName?: string;
   /** Classes for the open popover (e.g. constrain its width). */
@@ -109,16 +87,16 @@ export function Select<T extends object>({
           <AriaButton
             ref={triggerRef}
             className={cx(
-              "flex w-full cursor-pointer items-center justify-between rounded-2lg",
-              "border border-border-button-default bg-background-primary-default shadow-xs",
+              "flex w-full cursor-pointer items-center justify-between rounded-lg",
+              "border border-border-button-default bg-background-primary-default",
               "text-text-primary",
-              "transition-[background-color,border-color,box-shadow,padding,font-size] duration-200 ease",
+              "transition-colors duration-150 motion-reduce:transition-none",
               "hover:bg-background-primary-hover hover:border-border-button-hover",
               "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-border-focus-ring",
               "disabled:cursor-not-allowed disabled:bg-background-primary-disabled disabled:text-text-tertiary disabled:shadow-none",
               size === "sm"
-                ? "gap-1 px-[7px] py-1 text-body-2-medium"
-                : "gap-1.5 px-2.5 py-2 text-body-medium",
+                ? "min-h-7 gap-1 px-2 text-[12px] font-medium"
+                : "min-h-9 gap-3 px-2.5 text-[13px] font-medium",
               triggerClassName,
             )}
           >
@@ -130,7 +108,7 @@ export function Select<T extends object>({
             >
               {renderValue as never /* RAC accepts node or render-prop */}
             </AriaSelectValue>
-            <ChevronDownSmall
+            <ChevronDown aria-hidden="true"
               className={cx(
                 "shrink-0 text-text-secondary transition-transform duration-200 ease",
                 size === "sm" ? "size-3.5" : "size-4",
@@ -143,18 +121,14 @@ export function Select<T extends object>({
             isNonModal
             offset={4}
             className={cx(
-              MENU_POPOVER_WIDTH,
-              MENU_POPOVER_SURFACE,
-              // Listbox rows already space themselves 4px apart, so the
-              // surface sits a touch tighter than the action-menu Dropdown.
-              "p-2",
+              "z-50 min-w-[var(--trigger-width)] max-w-[calc(100vw-2rem)] rounded-lg border border-border-button-default bg-background-primary-default p-1 text-text-primary shadow-lg",
               popoverClassName,
             )}
           >
             <AriaListBox
               items={items}
               style={listBoxStyle}
-              className={cx(MENU_ITEMS_CONTAINER, "max-h-[240px] overflow-auto", listBoxClassName)}
+              className={cx("flex max-h-[240px] w-full flex-col overflow-auto outline-none", listBoxClassName)}
             >
               <SelectSizeContext.Provider value={size}>{children}</SelectSizeContext.Provider>
             </AriaListBox>
@@ -176,15 +150,15 @@ export function SelectItem({ className, children, ...props }: SelectItemProps) {
       {...props}
       className={(state) =>
         cx(
-          MENU_ITEM,
-          size === "sm" ? "px-2 py-1.5 text-body-2-medium" : "text-body-medium",
-          (state.isFocused || state.isSelected) && MENU_ITEM_ACTIVE,
+          "flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 text-left text-text-primary outline-none",
+          size === "sm" ? "min-h-7 py-1 text-[12px]" : "min-h-8 py-1.5 text-[13px]",
+          (state.isFocused || state.isSelected) && "bg-background-secondary-default",
           state.isDisabled && "cursor-not-allowed text-text-disabled",
           typeof className === "function" ? className(state) : className,
         )
       }
     >
-      {children}
+      {(state) => <>{children}{state.isSelected && <Check className="ml-auto size-4 shrink-0" aria-hidden="true"/>}</>}
     </AriaListBoxItem>
   );
 }

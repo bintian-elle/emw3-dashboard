@@ -1,4 +1,5 @@
 import definitions from "@/config/concluded-tests.json";
+import {countConcludedCampaigns} from "./concluded-campaign-count";
 
 /** Explicit test conclusions; platform delivery status is not a test conclusion. */
 export const concludedChannels = ["Google Search", "Google PMAX", "Google Demand Gen", "Meta", "Reddit", "EDM"] as const;
@@ -23,4 +24,9 @@ export const concludedTests: readonly ConcludedTest[] = definitions as Concluded
 
 export function concludedTestsForChannel(channel: ConcludedChannel | "Google") {
   return concludedTests.filter(test => (channel === "Google" ? test.channel.startsWith("Google") : test.channel === channel || (channel === "Google Search" && test.channel === "Google")));
+}
+
+/** Count campaigns rather than individual tests; legacy Google belongs to Search. */
+export function concludedCampaignCount(channel?: ConcludedChannel): number {
+  return countConcludedCampaigns(concludedTests, channel);
 }

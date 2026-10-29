@@ -1,4 +1,4 @@
-import { Chip } from "@/components/base/badges/chip";
+import styles from "./ad-type-chip.module.css";
 
 export type AdContentType="Image"|"Video"|"Message";
 
@@ -10,5 +10,5 @@ export function resolveAdContentType({previewType,adType,hasVideo=false}:{previe
 }
 
 export function AdTypeChip({type,className}:{type:AdContentType;className?:string}) {
-  return <Chip className={className} variant="caption" color={type==="Video"?"purple":type==="Message"?"lime":"rose"}>{type}</Chip>;
+  return <span className={[styles.badge,className].filter(Boolean).join(" ")}>{type}</span>;
 }

@@ -4,6 +4,8 @@ import {RiArrowRightLine} from '@remixicon/react';
 import {ButtonLink} from '@/components/base/buttons/button';
 import {Table,TableHeader,TableColumn,TableBody,TableRow,TableCell} from '@/components/base/table/table';
 import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
+import {usePathname,useSearchParams} from 'next/navigation';
+import {TestingChannelBrand} from './testing-channel-brand';
 import type {ChannelPerformanceRow} from '@/lib/channel-performance-data';
 
 const dollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
@@ -17,20 +19,22 @@ export function ChannelPerformanceHeading(){
 }
 export function ChannelPerformanceRows({rows}:{rows:ChannelPerformanceRow[]}){
  const {language}=useSiteLanguage(),zh=language==='zh';
+ const pathname=usePathname(),params=useSearchParams();
+ const preview=(pathname==='/bluevua/testing'||pathname==='/bluevua/testing/')&&params.get('designPreview')==='nova';
  return <Table aria-label={zh?'广告渠道表现':'Advertising channel performance'} className="min-w-4xl">
   <TableHeader>
    <TableColumn isRowHeader>{zh?'渠道':'Channel'}</TableColumn>
-   <TableColumn><span className="block text-right">{zh?'花费':'Spend'}</span></TableColumn>
-   <TableColumn><span className="block text-right">{zh?'收入':'Revenue'}</span></TableColumn>
-   <TableColumn><span className="block text-right">{zh?'订单':'Orders'}</span></TableColumn>
-   <TableColumn><span className="block text-right">{zh?'触达':'Reach'}</span></TableColumn>
+   <TableColumn><span className="block text-right">{'Spend'}</span></TableColumn>
+   <TableColumn><span className="block text-right">{'Revenue'}</span></TableColumn>
+   <TableColumn><span className="block text-right">{'Orders'}</span></TableColumn>
+   <TableColumn><span className="block text-right">{'Reach'}</span></TableColumn>
    <TableColumn><span className="block text-right">CTR</span></TableColumn>
    <TableColumn><span className="block text-right">ROAS</span></TableColumn>
   </TableHeader>
   <TableBody>{rows.map(row=><TableRow key={row.key} id={row.key}>
    <TableCell className="relative min-w-48">
     {row.anchors.map(anchor=><span key={anchor} id={anchor} className="absolute top-0 scroll-mt-40" aria-hidden/>)}
-    <ButtonLink href={row.href} variant="ghost" size="small" trailingIcon={RiArrowRightLine} className="h-auto max-w-full justify-start px-0 py-1 text-body-medium text-status-blue-text">{row.name}</ButtonLink>
+    <span className="flex items-center gap-1">{preview&&<TestingChannelBrand name={row.name}/>}<ButtonLink href={row.href} variant="ghost" size="small" trailingIcon={RiArrowRightLine} className="h-auto max-w-full justify-start px-0 py-1 text-body-medium text-status-blue-text">{row.name}</ButtonLink></span>
    </TableCell>
    <TableCell className="text-right tabular-nums">{show(row.spend,dollars.format)}</TableCell>
    <TableCell className="text-right tabular-nums">{show(row.revenue,dollars.format)}</TableCell>

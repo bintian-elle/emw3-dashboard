@@ -1,16 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, readSession, safeReturnPath } from "@/lib/site-auth";
+import { testingDocumentPeriodRedirect } from "@/lib/testing-navigation";
 
 import {CODEX_SITE_COOKIE,codexReadPath,validCodexSiteToken} from "@/lib/codex-site-access";
 
 const crawlerPattern = /(?:googlebot|bingbot|duckduckbot|baiduspider|yandexbot|gptbot|chatgpt-user|oai-searchbot|claudebot|claude-web|anthropic-ai|ccbot|perplexitybot|google-extended|bytespider|amazonbot|applebot-extended|cohere-ai|meta-externalagent|meta-externalfetch)/i;
-const publicPaths = new Set(["/access", "/api/auth/login", "/api/auth/google", "/api/auth/google/callback", "/robots.txt"]);
+const publicPaths = new Set(["/access", "/api/auth/login", "/api/auth/google", "/api/auth/google/callback", "/robots.txt", "/brand/emw3-logo.gif"]);
 
 function blockedResponse() {
   return new NextResponse("Automated crawling is not permitted.", {
     status: 403,
     headers: { "X-Robots-Tag": "noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai" },
   });
+}
+
+function resetTestingDocumentPeriod(request: NextRequest) {
+  const path = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  const target = testingDocumentPeriodRedirect(path, request.method, request.headers);
+  if (!target) return null;
+  const response = NextResponse.redirect(new URL(target, request.url));
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
 }
 
 export async function proxy(request: NextRequest) {
@@ -22,6 +32,7 @@ export async function proxy(request: NextRequest) {
   const serviceToken=request.cookies.get(CODEX_SITE_COOKIE)?.value||request.headers.get("authorization")?.replace(/^Bearer /, "");
   if(await validCodexSiteToken(serviceToken)){
     if(!codexReadPath(request.method,pathname))return NextResponse.json({error:"Codex service access is read-only."},{status:403});
+    const reset=resetTestingDocumentPeriod(request);if(reset)return reset;
     const response=NextResponse.next();response.headers.set("Cache-Control","private, no-store");return response;
   }
   if (crawlerPattern.test(request.headers.get("user-agent") || "")) return blockedResponse();
@@ -42,7 +53,7 @@ export async function proxy(request: NextRequest) {
     }
   }
   const authorized = await readSession(request.cookies.get(SESSION_COOKIE)?.value);
-  if (authorized) return NextResponse.next();
+  if (authorized) return resetTestingDocumentPeriod(request) ?? NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

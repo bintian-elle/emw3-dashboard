@@ -1,0 +1,18 @@
+.campaigns { display:grid; gap:1.5rem; }
+.campaign { overflow:hidden; scroll-margin-top:10rem; }
+.campaignHeader { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:1rem; padding:1.25rem; border-bottom:1px solid var(--nova-border,#e5e7eb); }
+.campaignIdentity { display:flex; align-items:flex-start; min-width:0; gap:.75rem; }
+.brand { display:grid; place-items:center; width:2rem; height:2rem; flex:none; border:1px solid var(--nova-border,#e5e7eb); border-radius:.5rem; background:var(--nova-page,#f7f8fa); }
+.campaignIdentity h2 { margin:.375rem 0 0; color:var(--nova-foreground,#20242a); font-size:1.125rem; line-height:1.35; font-weight:600; overflow-wrap:anywhere; }
+.eyebrow { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; color:var(--nova-muted,#707680); font-size:.6875rem; font-weight:600; letter-spacing:.04em; }
+.status { display:inline-flex; align-items:center; padding:.125rem .375rem; border-radius:.3rem; background:var(--nova-soft,#f4f4f5); color:var(--nova-muted,#707680); font-size:.625rem; font-weight:500; letter-spacing:0; white-space:nowrap; }
+.status[data-enabled="true"] { color:#346b57; background:#e9f4ef; }
+:global(.dark) .status[data-enabled="true"] { color:#a6d4c1; background:#234337; }
+.period { color:var(--nova-muted,#707680); font-size:.75rem; line-height:1.6; }
+.groupName { margin:0; padding:.75rem 1.25rem; border-block:1px solid var(--nova-border,#e5e7eb); color:var(--nova-muted,#707680); font-size:.8125rem; font-weight:500; }
+.assetName { display:flex; align-items:flex-start; gap:.5rem; white-space:normal; min-width:12rem; }
+.assetName a { color:var(--nova-foreground,#20242a); text-decoration:underline; text-underline-offset:.2rem; overflow-wrap:anywhere; }
+.numeric { text-align:right !important; font-variant-numeric:tabular-nums; }
+.sort { display:inline-flex; margin-left:auto; padding:0; color:var(--nova-muted,#707680); font-size:.6875rem; font-weight:500; }
+.sort svg { width:.75rem; height:.75rem; }
+.empty { padding:1.25rem; color:var(--nova-muted,#707680); font-size:.875rem; }

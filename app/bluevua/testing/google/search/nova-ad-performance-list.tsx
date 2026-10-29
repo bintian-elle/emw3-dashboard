@@ -1,0 +1,26 @@
+'use client';
+
+import {Fragment,useMemo,useState} from 'react';
+import {ArrowDown,ArrowUp,ArrowUpDown,ChevronDown,ChevronRight} from 'lucide-react';
+import {flexRender,getCoreRowModel,getSortedRowModel,useReactTable,type ColumnDef,type SortingState} from '@tanstack/react-table';
+import type {ArchivedAsset,CreativeArchive} from '@/lib/google-creative-archive';
+import {emptyGoogleAdMetrics,type GoogleAdMetrics} from '@/lib/google-ad-performance';
+import {orderTestingMetrics} from '@/lib/testing-metric-order';
+import {NovaButton,NovaCard,NovaTable,NovaTableBody,NovaTableCell,NovaTableHead,NovaTableHeader,NovaTableRow} from '../../nova-preview-ui';
+import {NovaSearchAdPreview} from './nova-search-ad-preview';
+import styles from './nova-search-detail.module.css';
+
+type AdRow=CreativeArchive['ads'][number];
+const columns=orderTestingMetrics([{label:'Spend',key:'spend',format:'currency'},{label:'Revenue',key:'revenue',format:'currency'},{label:'ROAS',key:'roas',format:'decimal'},{label:'#Purchase',key:'orders',format:'decimal'},{label:'CVR',key:'cvr',format:'percent'},{label:'Impressions',key:'impressions',format:'decimal'},{label:'Clicks',key:'clicks',format:'decimal'},{label:'CTR',key:'ctr',format:'percent'},{label:'CPA',key:'cpa',format:'currency'},{label:'AOV',key:'aov',format:'currency'}] as const);
+function value(metric:GoogleAdMetrics|null,key:string){return key==='aov'?(metric&&metric.orders>0?metric.revenue/metric.orders:null):metric?.[key as keyof GoogleAdMetrics]??null;}
+function format(num:number|null,kind:'currency'|'decimal'|'percent'){if(num==null)return '—';return new Intl.NumberFormat('en-US',kind==='currency'?{style:'currency',currency:'USD',maximumFractionDigits:2}:kind==='percent'?{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}:{maximumFractionDigits:2}).format(num);}
+export function NovaAdPerformanceList({ads,metrics,businessName,logo,sitelinks}:{ads:AdRow[];metrics:Record<string,GoogleAdMetrics>|null;businessName:string;logo?:string;sitelinks:ArchivedAsset[]}){
+ const [sorting,setSorting]=useState<SortingState>([]),[previewId,setPreviewId]=useState<string|null>(null);
+ const defs=useMemo<ColumnDef<AdRow>[]>(()=>[
+  {id:'ad',header:'Ad',enableSorting:false,cell:({row})=>{const ad=row.original.adGroupAd.ad,open=previewId===ad.id;return <div className={styles.adName}><NovaButton variant="ghost" onClick={()=>setPreviewId(open?null:ad.id)} aria-expanded={open} aria-controls={`preview-${ad.id}`}>{open?<ChevronDown/>:<ChevronRight/>}<span>{ad.name||ad.responsiveSearchAd?.headlines?.[0]?.text||`Ad ${ad.id}`}</span></NovaButton><small>Ad {ad.id}</small></div>;}},
+  {id:'status',header:'Status',enableSorting:false,cell:({row})=><span className={styles.status} data-enabled={['ENABLED','ACTIVE'].includes(row.original.adGroupAd.status)}>{row.original.adGroupAd.status}</span>},
+  ...columns.map(column=>({id:column.key,accessorFn:(row:AdRow)=>value(metrics?(metrics[row.adGroupAd.ad.id]??emptyGoogleAdMetrics):null,column.key)??undefined,header:column.label,sortUndefined:'last' as const,cell:({row}:{row:{original:AdRow}})=>format(value(metrics?(metrics[row.original.adGroupAd.ad.id]??emptyGoogleAdMetrics):null,column.key),column.format)})),
+ ],[metrics,previewId]);
+ const table=useReactTable({data:ads,columns:defs,state:{sorting},onSortingChange:setSorting,getCoreRowModel:getCoreRowModel(),getSortedRowModel:getSortedRowModel(),enableSortingRemoval:true});
+ return <NovaCard className={styles.card}><header className={styles.cardHeader}><h2>Ads and Creative Performance</h2><p>Select an ad to view its preview.</p></header><NovaTable aria-label="Ad performance"><NovaTableHeader>{table.getHeaderGroups().map(group=><NovaTableRow key={group.id}>{group.headers.map((header,index)=>{const direction=header.column.getIsSorted(),Icon=direction==='asc'?ArrowUp:direction==='desc'?ArrowDown:ArrowUpDown;return <NovaTableHead scope="col" key={header.id} className={index>1?styles.numeric:undefined} aria-sort={direction==='asc'?'ascending':direction==='desc'?'descending':'none'}>{header.column.getCanSort()?<NovaButton variant="ghost" size="sm" className={styles.sort} onClick={header.column.getToggleSortingHandler()} aria-label={`${header.column.columnDef.header}: sort`}>{flexRender(header.column.columnDef.header,header.getContext())}<Icon aria-hidden="true"/></NovaButton>:flexRender(header.column.columnDef.header,header.getContext())}</NovaTableHead>;})}</NovaTableRow>)}</NovaTableHeader><NovaTableBody>{table.getRowModel().rows.map(row=>{const ad=row.original.adGroupAd.ad;return <Fragment key={row.id}><NovaTableRow id={`ad-${ad.id}`}>{row.getVisibleCells().map((cell,index)=><NovaTableCell key={cell.id} className={index>1?styles.numeric:undefined}>{flexRender(cell.column.columnDef.cell,cell.getContext())}</NovaTableCell>)}</NovaTableRow>{previewId===ad.id&&<NovaTableRow><NovaTableCell colSpan={columns.length+2}><div id={`preview-${ad.id}`} role="region" aria-label={`Preview ad ${ad.id}`} className={styles.previews}>{[0,1,2].map(variant=><NovaSearchAdPreview key={variant} ad={ad} variant={variant} businessName={businessName} logo={logo} sitelinks={sitelinks}/>)}</div></NovaTableCell></NovaTableRow>}</Fragment>;})}</NovaTableBody></NovaTable></NovaCard>;
+}

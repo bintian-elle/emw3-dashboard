@@ -9,5 +9,5 @@ const queryString=(params:SearchParams)=>{const query=new URLSearchParams();for(
 export default async function MetaTestingPage({searchParams}:{searchParams:Promise<SearchParams>}) {
   const params=await searchParams;
   const data=await getMetaCampaignTest(testingPeriodInput(params));
-  return <><TestingPageHeader section="Meta" title="Meta Testing Performance" description="Campaign strategy and ad group audience performance using the metrics defined in the Q4 testing plan." /><MetaCampaignSection data={data} query={queryString(params)} /><footer className="py-8 text-center text-caption-2-regular text-text-tertiary">Source: Meta Ads</footer></>;
+  return <><TestingPageHeader section="Meta" title="Meta Testing Performance" sharePeriod={data.period} description="Campaign strategy and ad group audience performance using the metrics defined in the Q4 testing plan." /><MetaCampaignSection data={data} query={queryString(params)} /><footer className="py-8 text-center text-caption-2-regular text-text-tertiary">Source: Meta Ads</footer></>;
 }

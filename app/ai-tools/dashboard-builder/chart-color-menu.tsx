@@ -3,7 +3,7 @@ import {useState} from 'react';
 import {Dropdown,DropdownTrigger,DropdownPopover} from '@/components/base/dropdown/dropdown';
 import {Button} from '@/components/base/buttons/button';
 import {Input} from '@/components/base/input/input';
-import {RiCloseLine} from '@remixicon/react';
+import {X as RiCloseLine} from 'lucide-react';
 import {CHART_PALETTE,validChartColor} from '@/lib/ai-dashboard-colors';
 import {cx} from '@/utils/cx';
 export function ChartColorMenu({label,color,open,onOpenChange,onChange,disabled=false}:{disabled?:boolean;label:string;color:string;open:boolean;onOpenChange:(open:boolean)=>void;onChange:(color:string|null)=>void}){

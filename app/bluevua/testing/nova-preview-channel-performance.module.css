@@ -1,0 +1,14 @@
+.card { overflow:hidden; }
+.header { padding:1.25rem 1.25rem 1.1rem; }
+.header h2 { margin:0; color:var(--nova-foreground,#20242a); font-size:.875rem; line-height:1.35; font-weight:550; letter-spacing:-.01em; }
+.card table { min-width:56rem; table-layout:fixed; }
+.card table :global([data-slot="table-header"]) { background:var(--nova-soft,#f4f4f5); }
+.card table :global([data-slot="table-head"]) { font-size:.65rem; font-weight:450; }
+.card table :global([data-slot="table-head"]):first-child,.card table :global([data-slot="table-cell"]):first-child { width:24%; padding-left:1.25rem; }
+.card table :global([data-slot="table-cell"]) { height:4.2rem; }
+.card table .number { text-align:right; font-variant-numeric:tabular-nums; }
+.sortButton { width:auto; height:auto; min-height:2rem; padding:0; gap:.4rem; font-size:.65rem; font-weight:450; color:inherit; }
+.sortButton svg { width:.75rem; height:.75rem; opacity:.5; }
+.sortNumber { margin-left:auto; }
+.specialIdentity { display:inline-flex; flex-direction:column; align-items:flex-start; gap:.3rem; max-width:100%; }
+.scope { color:var(--nova-muted,#707680); font-size:.6875rem; line-height:1.3; white-space:normal; }

@@ -1,11 +1,11 @@
-import { Chip } from "@/components/base/badges/chip";
+import styles from "./channel-content.module.css";
 
-export function CampaignStatusChip({ status }: { status: string }) {
-  const normalized = status.trim().toUpperCase();
-  if (normalized === "CONCLUDED") return <Chip variant="caption" color="purple">Concluded</Chip>;
-  if (["ACTIVE", "ENABLED", "SERVING"].includes(normalized)) return <Chip variant="caption" color="lime">Active</Chip>;
-  if (["PAUSED", "CAMPAIGN_PAUSED"].includes(normalized)) return <Chip variant="caption" color="yellow">Paused</Chip>;
-  if (["SENT", "COMPLETED"].includes(normalized)) return <Chip variant="caption" color="blue">Sent</Chip>;
-  if (["ENDED", "REMOVED", "ARCHIVED"].includes(normalized)) return <Chip variant="caption" color="neutral">Ended</Chip>;
-  return <Chip variant="caption" color="soft">{status}</Chip>;
+export function CampaignStatusChip({status}:{status:string}){
+ const normalized=status.trim().toUpperCase();
+ const label=normalized==="CONCLUDED"?"Concluded":
+  ["ACTIVE","ENABLED","SERVING"].includes(normalized)?"Active":
+  ["PAUSED","CAMPAIGN_PAUSED"].includes(normalized)?"Paused":
+  ["SENT","COMPLETED"].includes(normalized)?"Sent":
+  ["ENDED","REMOVED","ARCHIVED"].includes(normalized)?"Ended":status;
+ return <span className={styles.badge}>{label}</span>;
 }

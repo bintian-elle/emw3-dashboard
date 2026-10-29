@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Keep development-only build status chrome out of local design previews.
+  devIndicators: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // PDF.js resolves its native canvas dependency relative to the loaded module.
   // Keep PDF packages in node_modules so builds can move between release paths.

@@ -4,7 +4,20 @@ export const SESSION_COOKIE = "emw3_session";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 export const OAUTH_COOKIE = "emw3_oauth";
 export const ALLOWED_DOMAIN = "elle-media.com";
-export type SiteUser = { sub: string; email: string; name: string };
+export type SiteUser = { sub: string; email: string; name: string; picture?: string };
+
+// Profile pictures come from the verified Google ID token; restrict the URL
+// before retaining it in the signed session or rendering it in the browser.
+function googleProfilePicture(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value || value.length > 1024) return undefined;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || !url.hostname.endsWith(".googleusercontent.com") || url.username || url.password || url.port) return undefined;
+    return url.href;
+  } catch {
+    return undefined;
+  }
+}
 
 function signingKey() {
   const secret = (process.env.AUTH_SECRET || process.env.GOOGLE_LOGIN_AUTH_SECRET)?.trim();
@@ -22,14 +35,16 @@ export function allowedGoogleUser(claims: Record<string, unknown>): SiteUser | n
   if (typeof claims.sub !== "string" || !claims.sub || typeof claims.email !== "string" || claims.email_verified !== true || claims.hd !== ALLOWED_DOMAIN) return null;
   const email = claims.email.toLowerCase();
   if (email.split("@").length !== 2 || email.split("@")[1] !== ALLOWED_DOMAIN) return null;
-  return { sub: claims.sub, email, name: typeof claims.name === "string" && claims.name.trim() ? claims.name : email.split("@")[0] };
+  const picture = googleProfilePicture(claims.picture);
+  return { sub: claims.sub, email, name: typeof claims.name === "string" && claims.name.trim() ? claims.name : email.split("@")[0], ...(picture ? { picture } : {}) };
 }
 export async function readSession(token?: string): Promise<SiteUser | null> {
   if (!token) return null;
   try {
     const claims = await verifyAuthPayload(token, "site-session");
     if (typeof claims.sub !== "string" || typeof claims.email !== "string" || typeof claims.name !== "string" || claims.email.split("@")[1] !== ALLOWED_DOMAIN) return null;
-    return { sub: claims.sub, email: claims.email, name: claims.name };
+    const picture = googleProfilePicture(claims.picture);
+    return { sub: claims.sub, email: claims.email, name: claims.name, ...(picture ? { picture } : {}) };
   } catch { return null; }
 }
 export function safeReturnPath(value: unknown) {

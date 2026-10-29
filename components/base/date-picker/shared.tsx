@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useContext } from "react";
+import { useState, useContext } from "react";
 import {
   Button as RACButton,
   CalendarCell,
@@ -14,6 +14,7 @@ import {
 import type { CalendarCellRenderProps } from "react-aria-components";
 import { CalendarDate, getLocalTimeZone } from "@internationalized/date";
 import { cx } from "@/utils/cx";
+import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 
 /**
  * Shared building blocks for the base/date-picker family — `DateRangePicker`
@@ -62,18 +63,16 @@ export function formatChipDate(date: CalendarDate) {
   return `${String(date.day).padStart(2, "0")}/${String(date.month).padStart(2, "0")}/${date.year}`;
 }
 
-/** Parses the chip's own "DD/MM/YYYY" format back into a CalendarDate, or
- *  null if the text isn't a valid date (out-of-range day/month is rejected
- *  up front; CalendarDate itself constrains impossible day-in-month combos
- *  like Feb 30). */
+/** Parse the chip's "DD/MM/YYYY" format, rejecting invalid calendar dates. */
 export function parseChipDate(text: string): CalendarDate | null {
   const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text.trim());
   if (!match) return null;
   const day = Number(match[1]);
   const month = Number(match[2]);
   const year = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return new CalendarDate(year, month, day);
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const date = new CalendarDate(year, month, day);
+  return date.year === year && date.month === month && date.day === day ? date : null;
 }
 
 export function DayCell(props: CalendarCellRenderProps & { isRange: boolean }) {
@@ -100,7 +99,7 @@ export function DayCell(props: CalendarCellRenderProps & { isRange: boolean }) {
   const extendLeft = isRange && isSelected && !isSelectionStart && dayOfWeek !== 0;
   const extendRight = isRange && isSelected && !isSelectionEnd && dayOfWeek !== 6;
 
-  // The blue backgrounds fade in/out on opacity instead of popping instantly.
+  // The selection backgrounds fade in/out on opacity instead of popping instantly.
   // Both layers always render (geometry computed regardless of selection) so
   // toggling opacity is a plain CSS transition, not a mount/unmount — that
   // keeps ~70 cells worth of range changes cheap and reliably animated.
@@ -114,7 +113,7 @@ export function DayCell(props: CalendarCellRenderProps & { isRange: boolean }) {
       <span
         aria-hidden
         className={cx(
-          "absolute inset-y-0 bg-date-range-background transition-[opacity,border-radius] duration-100 ease-out",
+          "absolute inset-y-0 bg-background-secondary-default transition-[opacity,border-radius] duration-100 ease-out motion-reduce:transition-none",
           isSelectionStart ? "left-1/2" : extendLeft ? "-left-1.5" : "left-0",
           isSelectionEnd ? "right-1/2" : extendRight ? "-right-1.5" : "right-0",
           !isSelectionStart && dayOfWeek === 0 && "rounded-l-lg",
@@ -133,14 +132,14 @@ export function DayCell(props: CalendarCellRenderProps & { isRange: boolean }) {
         <span
           aria-hidden
           className={cx(
-            "absolute inset-0 bg-date-range-edge-background transition-[opacity,border-radius] duration-100 ease-out",
+            "absolute inset-0 bg-text-primary transition-[opacity,border-radius] duration-100 ease-out motion-reduce:transition-none",
             isSingleDay && "rounded-lg",
             isSelectionStart && !isSingleDay && "rounded-l-lg",
             isSelectionEnd && !isSingleDay && "rounded-r-lg",
             isEdge ? "opacity-100" : "opacity-0",
           )}
         />
-        <span className={cx("relative text-body-medium text-text-primary", isDisabled && "text-text-tertiary")}>
+        <span className={cx("relative text-body-medium", isEdge ? "text-background-primary-default" : "text-text-primary", isDisabled && "text-text-tertiary")}>
           {formattedDate}
         </span>
       </div>
@@ -173,15 +172,16 @@ export function MonthPanel({
   // which root rendered it, and both expose the same `visibleRange` shape.
   const rangeState = useContext(RangeCalendarStateContext);
   const singleState = useContext(CalendarStateContext);
+  const { language } = useSiteLanguage();
   const state = rangeState ?? singleState;
   const isRange = rangeState != null;
   const panelDate = state ? state.visibleRange.start.add({ months: offset }) : null;
   const title = panelDate
-    ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(panelDate.toDate(getLocalTimeZone()))
+    ? new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", { month: "long", year: "numeric" }).format(panelDate.toDate(getLocalTimeZone()))
     : "";
 
   return (
-    <div className={bare ? "w-[296px] shrink-0" : "w-[326px] shrink-0 rounded-2xl bg-background-primary-default p-[15px] shadow-xs"}>
+    <div className={bare ? "w-[296px] shrink-0" : "w-[326px] shrink-0 rounded-lg border border-border-button-default bg-background-primary-default p-[15px]"}>
       <div className="flex flex-col gap-5">
         {!hideHeader && (
           <div className="flex items-center justify-between">
@@ -246,15 +246,16 @@ export function DateChipInput({
   onCommit: (date: CalendarDate) => void;
 }) {
   const formatted = formatChipDate(date);
-  const [text, setText] = useState(formatted);
+  return <DateChipDraft key={formatted} formatted={formatted} label={label} onCommit={onCommit} />;
+}
 
-  useEffect(() => {
-    setText(formatted);
-  }, [formatted]);
+function DateChipDraft({formatted, label, onCommit}: {formatted: string; label: string; onCommit: (date: CalendarDate) => void}) {
+  const [text, setText] = useState(formatted);
 
   const commit = () => {
     const parsed = parseChipDate(text);
     if (parsed) {
+      setText(formatChipDate(parsed));
       onCommit(parsed);
     } else {
       setText(formatted);
@@ -273,25 +274,23 @@ export function DateChipInput({
         if (event.key === "Escape") setText(formatted);
       }}
       aria-label={label}
-      className="w-[104px] rounded-2lg border border-border-button-default bg-background-primary-default px-2 py-2 text-body-medium text-text-primary shadow-xs outline-none transition-colors duration-100 ease-out focus-visible:border-border-button-active"
+      className="w-[104px] rounded-lg border border-border-button-default bg-background-primary-default px-2 py-2 text-body-medium text-text-primary outline-none transition-colors duration-100 ease-out focus-visible:ring-2 focus-visible:ring-border-focus-ring motion-reduce:transition-none"
     />
   );
 }
 
-/** Shared trigger-button chrome for both pickers (Figma's "Primary" button —
- *  calendar icon + formatted-value text, white surface, radius/2lg). */
+/** Shared Nova trigger chrome for both pickers. */
 export const triggerButtonClassName = cx(
-  "inline-flex shrink-0 cursor-pointer items-center gap-0.5 rounded-2lg border border-border-button-default bg-background-primary-default p-2 shadow-xs outline-none",
+  "inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-border-button-default bg-background-primary-default px-2.5 py-1.5 outline-none",
   "transition-[background-color,border-color,box-shadow] duration-150 ease",
   "hover:bg-background-primary-hover hover:border-border-button-hover",
   "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-border-focus-ring",
   "disabled:cursor-not-allowed disabled:bg-background-primary-disabled disabled:text-text-tertiary disabled:shadow-none",
 );
 
-/** Shared popover chrome (Figma's rounded/3xl, background/secondary/default
- *  "Calendar component" surface) for both pickers. */
+/** Shared Nova popover chrome for both pickers. */
 export const popoverClassName = cx(
-  "max-w-[calc(100vw-2rem)] origin-top overflow-x-auto rounded-3xl bg-background-secondary-default shadow-dropdown",
+  "z-50 max-w-[calc(100vw-2rem)] origin-top overflow-x-auto rounded-xl border border-border-button-default bg-background-secondary-default shadow-lg",
   "transition duration-150 ease-out",
   "data-[entering]:opacity-0 data-[entering]:scale-95 data-[entering]:blur-[2px]",
   "data-[exiting]:opacity-0 data-[exiting]:scale-95 data-[exiting]:blur-[2px]",

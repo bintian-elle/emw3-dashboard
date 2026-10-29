@@ -1,17 +1,67 @@
+"use client";
+
+import Image from "next/image";
 import Link from "next/link";
-import { RiArrowRightLine, RiArrowRightUpLine, RiBarChartGroupedLine, RiDatabase2Line, RiRobot2Line, RiSparkling2Line } from "@remixicon/react";
-import { BluevuaMark, Emw3Logo } from "@/components/brand/emw3-logo";
-import { ButtonLink } from "@/components/base/buttons/button";
+import { ArrowRight, ChartNoAxesCombined, ChartNoAxesColumn, FlaskConical, LayoutDashboard, Mail, MessageSquareText, MousePointer2, Sparkles } from "lucide-react";
+import styles from "./home.module.css";
+import dashboardIllustration from "../public/brand/dashboard-builder-illustration.png";
+import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 
-const toolsUrl="/ai-tools";
+const dashboards = [
+  { name: "Google Ads", zhName: "Google 广告", description: "Explore campaign performance and key insights.", zhDescription: "查看广告活动表现和关键洞察。", href: "/bluevua/google", icon: ChartNoAxesCombined, color: "google" },
+  { name: "EDM", zhName: "邮件营销", description: "Analyze email marketing performance and engagement.", zhDescription: "分析邮件营销表现和互动情况。", href: "/bluevua/edm", icon: Mail, color: "edm" },
+  { name: "Website Tracking", zhName: "网站追踪", description: "Understand user behavior across the Bluevua website.", zhDescription: "了解用户在 Bluevua 网站上的行为。", href: "/bluevua/tracking", icon: MousePointer2, color: "tracking" },
+  { name: "Content Testing", zhName: "内容测试", description: "Compare and learn from content performance.", zhDescription: "比较内容表现并总结经验。", href: "/bluevua/testing", icon: FlaskConical, color: "testing" },
+] as const;
 
-export default function Home(){return <main className="min-h-screen bg-background-full p-4 sm:p-6 lg:p-8"><div className="mx-auto min-h-[calc(100vh-4rem)] max-w-7xl overflow-hidden rounded-3xl border border-border-button-default bg-background-secondary-default shadow-card">
-  <header className="flex items-center justify-between border-b border-separator-border px-5 py-4 sm:px-8"><Link href="/" aria-label="Go to homepage"><Emw3Logo priority className="w-44 sm:w-52"/></Link><span className="rounded-full border border-border-button-default bg-background-primary-default px-3 py-1.5 text-caption-1-semibold text-text-secondary">Marketing intelligence</span></header>
-  <section className="grid border-b border-separator-border lg:grid-cols-[1.35fr_0.65fr]"><div className="flex flex-col justify-center px-6 py-14 sm:px-10 sm:py-20 lg:px-14 lg:py-24"><span className="mb-5 inline-flex w-fit items-center gap-2 rounded-full bg-status-purple-background px-3 py-1.5 text-caption-1-semibold text-status-purple-text"><RiSparkling2Line className="size-4" aria-hidden/>Analytics and AI in one workspace</span><h1 className="max-w-4xl text-display-2-semibold text-text-primary sm:text-display-1-semibold">See performance clearly. Turn insight into action.</h1><p className="mt-6 max-w-2xl text-title-3-regular text-text-secondary">Monitor cross-channel performance, manage creative testing, and build dashboards with AI using your marketing data.</p><div className="mt-8 flex flex-wrap gap-3"><ButtonLink href="/bluevua" trailingIcon={RiArrowRightLine}>Open Bluevua</ButtonLink><ButtonLink href={toolsUrl} variant="secondary" trailingIcon={RiArrowRightUpLine}>Open AI Tools</ButtonLink></div></div>
-    <div className="relative flex min-h-80 items-center justify-center overflow-hidden border-t border-separator-border bg-background-primary-default p-8 lg:border-l lg:border-t-0"><div className="absolute -right-16 -top-16 size-64 rounded-full bg-status-purple-background"/><div className="absolute -bottom-20 -left-16 size-64 rounded-full bg-status-blue-background"/><div className="relative w-full max-w-sm rounded-3xl border border-border-button-default bg-background-primary-default p-5 shadow-sidebar"><div className="flex items-center gap-3"><span className="flex size-11 items-center justify-center rounded-xl bg-status-purple-background text-status-purple-text"><RiRobot2Line className="size-6" aria-hidden/></span><div><p className="text-body-medium text-text-primary">Dashboard Builder</p><p className="text-caption-2-regular text-text-secondary">Build with a question</p></div></div><div className="mt-5 grid gap-3"><div className="rounded-2xl bg-background-secondary-default p-4"><p className="text-caption-1-semibold text-text-tertiary">ASK</p><p className="mt-2 text-body-regular text-text-primary">Show all-channel overview for last week</p></div><div className="rounded-2xl bg-status-purple-background p-4"><p className="text-body-regular text-status-purple-text">Turn your question into metric cards, trends, and a report you can refine.</p></div></div></div></div>
-  </section>
-  <section className="px-6 py-10 sm:px-10 lg:px-14 lg:py-12" aria-label="Workspaces"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><p className="text-caption-1-semibold text-text-tertiary">WORKSPACE</p><p className="text-body-regular text-text-secondary">Connected data, reporting, testing and analysis</p></div><div className="grid gap-5 lg:grid-cols-2">
-    <Link href="/bluevua" className="group flex min-h-64 flex-col justify-between rounded-3xl border border-border-button-default bg-background-primary-default p-6 shadow-card outline-none transition hover:border-border-button-hover hover:shadow-sidebar focus-visible:ring-2 focus-visible:ring-border-focus-ring"><div><div className="flex items-start justify-between gap-4"><BluevuaMark className="size-14"/><RiArrowRightUpLine className="size-6 text-foreground-icon-tertiary transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden/></div><h3 className="mt-8 text-title-1-semibold text-text-primary">Bluevua dashboard</h3><p className="mt-2 max-w-lg text-body-regular text-text-secondary">Open the project workspace for dashboards, cross-channel testing, campaign metrics and creative performance.</p></div><div className="mt-6 flex flex-wrap gap-2"><span className="inline-flex items-center gap-1.5 rounded-full bg-status-blue-background px-3 py-1.5 text-caption-1-semibold text-status-blue-text"><RiBarChartGroupedLine className="size-4" aria-hidden/>Dashboard</span><span className="inline-flex items-center gap-1.5 rounded-full bg-status-lime-background px-3 py-1.5 text-caption-1-semibold text-status-lime-text"><RiDatabase2Line className="size-4" aria-hidden/>Live data</span></div></Link>
-    <Link href={toolsUrl} className="group flex min-h-64 flex-col justify-between rounded-3xl border border-border-button-default bg-background-primary-default p-6 shadow-card outline-none transition hover:border-border-button-hover hover:shadow-sidebar focus-visible:ring-2 focus-visible:ring-border-focus-ring"><div><div className="flex items-start justify-between gap-4"><span className="flex size-14 items-center justify-center rounded-2xl bg-status-purple-background text-status-purple-text"><RiRobot2Line className="size-7" aria-hidden/></span><RiArrowRightUpLine className="size-6 text-foreground-icon-tertiary transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden/></div><h3 className="mt-8 text-title-1-semibold text-text-primary">AI Tools</h3><p className="mt-2 max-w-lg text-body-regular text-text-secondary">Explore our AI tools. Start with Dashboard Builder to build reports from your marketing data through natural language.</p></div><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full bg-status-purple-background px-3 py-1.5 text-caption-1-semibold text-status-purple-text">Dashboard Builder</span><span className="rounded-full bg-status-yellow-background px-3 py-1.5 text-caption-1-semibold text-status-yellow-text">Natural language reports</span></div></Link>
-  </div></section>
-</div></main>;}
+export default function Home() {
+  const { language } = useSiteLanguage();
+  const t = (en: string, zh: string) => language === "zh" ? zh : en;
+  return <main className={styles.home}>
+    <section className={styles.workspaces} aria-labelledby="workspaces-heading">
+      <div className={styles.column}>
+        <h1 id="workspaces-heading" className={styles.heading}>{t("Workspaces", "工作区")}</h1>
+        <p className={styles.intro}>{t("Access brand workspaces to explore marketing data and insights across channels in one place.", "进入品牌工作区，在一处查看各渠道的营销数据与洞察。")}</p>
+        <div className={styles.workspaceList}>
+          <article className={styles.workspace}>
+            <Link href="/bluevua" className={styles.workspaceLink} aria-label={t("Open Bluevua workspace", "打开 Bluevua 工作区")}>
+              <Image src="/brand/bluevua-logo.svg" alt="" width={48} height={48} className={styles.brandLogo}/>
+              <span className={styles.brandName}>Bluevua</span><span className={styles.circleArrow}><ArrowRight size={18}/></span>
+            </Link>
+            <p className={styles.eyebrow}>{t("Marketing analytics workspace", "营销分析工作区")}</p>
+            <p className={styles.workspaceDescription}>{t("Explore key marketing data and analysis across channels for smarter decision making.", "查看各渠道的关键营销数据和分析，辅助决策。")}</p>
+            <div className={styles.dashboardGrid}>
+              {dashboards.map(({name, zhName, description, zhDescription, href, icon: Icon, color}) => <Link key={href} href={href} className={styles.dashboard}>
+                <span className={`${styles.dashboardIcon} ${styles[color]}`}>{color === "google" ? <Image src="/brand/channels/google-ads.svg" width={30} height={30} alt=""/> : <Icon size={23}/>}</span>
+                <span className={styles.dashboardTitle}>{name === "Google Ads" || name === "EDM" ? name : t(name, zhName)}</span><span className={styles.dashboardDescription}>{t(description, zhDescription)}</span>
+                <span className={styles.smallArrow}><ArrowRight size={16}/></span>
+              </Link>)}
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+    <section className={styles.ai} aria-labelledby="ai-heading">
+      <div className={styles.column}>
+        <p className={styles.eyebrow}>{t("AI Tools workspace", "AI 工具工作区")}</p>
+        <h2 id="ai-heading" className={styles.heading}>{t("Turn insights into impact with AI.", "借助 AI，让洞察产生价值。")}</h2>
+        <p className={styles.intro}>{t("Explore your marketing data and build reports through conversation.", "通过对话探索营销数据并创建报告。")}</p>
+        <article className={styles.feature}>
+          <div className={styles.featureCopy}>
+            <div className={styles.featureLabel}><span className={styles.featureIcon}><Sparkles size={20}/></span> {t("Dashboard Builder", "仪表盘生成器")}</div>
+            <h3>{t("Create tailored marketing dashboards with AI.", "用 AI 创建专属营销仪表盘。")}</h3>
+            <p>{t("Turn your marketing data into metric cards, trends and tables, then refine them through conversation.", "将营销数据转化为指标卡片、趋势图和表格，并通过对话持续调整。")}</p>
+            <Link href="/ai-tools/dashboard-builder" className={styles.primaryLink}>{t("Open Dashboard Builder", "打开仪表盘生成器")} <ArrowRight size={16}/></Link>
+          </div>
+          <Image src={dashboardIllustration} alt="" unoptimized className={styles.illustration}/>
+        </article>
+        <div className={styles.capabilities} aria-label={t("Dashboard Builder capabilities", "仪表盘生成器功能")}>
+          <div><span className={styles.capabilityIcon}><MessageSquareText size={20}/></span><h3>{t("Explore", "探索")}</h3><p>{t("Ask questions about your marketing data.", "针对营销数据提出问题。")}</p></div>
+          <div><span className={styles.capabilityIcon}><ChartNoAxesColumn size={20}/></span><h3>{t("Visualize", "可视化")}</h3><p>{t("Build metric cards, trends and tables.", "创建指标卡片、趋势图和表格。")}</p></div>
+          <div><span className={styles.capabilityIcon}><LayoutDashboard size={20}/></span><h3>{t("Refine", "调整")}</h3><p>{t("Develop dashboards through conversation.", "通过对话完善仪表盘。")}</p></div>
+        </div>
+        <Link href="/ai-tools" className={styles.allTools}>{t("Explore AI Tools", "查看 AI 工具")} <ArrowRight size={16}/></Link>
+      </div>
+    </section>
+  </main>;
+}

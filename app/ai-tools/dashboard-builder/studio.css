@@ -1,15 +1,74 @@
-@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/overpass/overpass-400.ttf') format('truetype'); }
-@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/overpass/overpass-500.ttf') format('truetype'); }
-@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/overpass/overpass-600.ttf') format('truetype'); }
-@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/overpass/overpass-700.ttf') format('truetype'); }
-@font-face { font-family: 'Deck Overpass'; font-style: normal; font-weight: 800; font-display: swap; src: url('/fonts/overpass/overpass-800.ttf') format('truetype'); }
-
-/* Presentation tokens sampled from the user's Weekly Meeting Deck PDF:
- * Overpass; royal blue 56/101/220; table blue 66/133/244; orange 246/125/38.
- * The report stays white regardless of the surrounding application theme. */
+@font-face {
+  font-family: 'Builder Geist';
+  src: url('/fonts/nova-preview/geist-latin-wght-normal.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+.ai-dashboard {
+  --nova-page: #f7f8fa;
+  --nova-surface: #fff;
+  --nova-foreground: #1a1d22;
+  --nova-muted: #68717e;
+  --nova-border: #e1e4e8;
+  --nova-soft: #f0f2f4;
+  --nova-ring: #76808b;
+  background: var(--nova-page);
+  color: var(--nova-foreground);
+  font-family: 'Builder Geist', system-ui, sans-serif;
+}
+.dark .ai-dashboard {
+  --nova-page: #191a1d;
+  --nova-surface: #232529;
+  --nova-foreground: #f1f2f3;
+  --nova-muted: #adb4be;
+  --nova-border: #3b3e43;
+  --nova-soft: #303338;
+  --nova-ring: #aeb6c1;
+}
+.ai-dashboard .dashboard-studio-header,
+.ai-dashboard .dashboard-chat {
+  background: var(--nova-surface);
+  border-color: var(--nova-border);
+  color: var(--nova-foreground);
+}
+.ai-dashboard .dashboard-studio-header {
+  min-height: 3.75rem;
+  gap: .75rem;
+  padding-block: .75rem;
+}
+.ai-dashboard .dashboard-studio-header h1,
+.ai-dashboard .dashboard-chat-header h2 { color: var(--nova-foreground); font-size: .875rem; font-weight: 600; }
+.ai-dashboard .dashboard-studio-header p { color: var(--nova-muted); font-size: .7rem; }
+.ai-dashboard .dashboard-studio-mark { width: 2rem; height: 2rem; border-radius: .5rem; background: var(--nova-soft); color: var(--nova-foreground); }
+.ai-dashboard .dashboard-studio-mark svg { width: 1rem; height: 1rem; }
+.ai-dashboard .dashboard-studio-header button {
+  min-height: 2.25rem;
+  border-radius: .5rem;
+  box-shadow: none;
+  font-family: inherit;
+  font-size: .75rem;
+}
+.ai-dashboard .dashboard-chat-header { min-height: 3.75rem; padding: .75rem 1rem; border-color: var(--nova-border); }
+.ai-dashboard .dashboard-chat-header > span { width: 2rem; height: 2rem; border-radius: .5rem; background: var(--nova-foreground); color: var(--nova-surface); }
+.ai-dashboard .dashboard-chat-header > span svg { width: 1rem; height: 1rem; }
+.ai-dashboard .dashboard-chat-messages { padding: 1rem; }
+.ai-dashboard .dashboard-user-message { border: 1px solid var(--nova-border); background: var(--nova-soft); color: var(--nova-foreground); }
+.ai-dashboard .dashboard-assistant-message { background: transparent; color: var(--nova-foreground); }
+.ai-dashboard .dashboard-assistant-message.text-text-error-primary { color: var(--color-text-error-primary); }
+.ai-dashboard .dashboard-chat-composer { padding: .875rem 1rem 1rem; border-color: var(--nova-border); }
+.ai-dashboard .dashboard-chat-composer > div { display: grid; gap: .4rem; margin-bottom: .75rem; }
+.ai-dashboard .dashboard-chat-composer > div button {
+  width: 100%; min-height: 2.25rem; justify-content: flex-start; border: 1px solid var(--nova-border);
+  border-radius: .5rem; background: var(--nova-surface); color: var(--nova-foreground);
+  box-shadow: none; font: 500 .75rem 'Builder Geist', system-ui, sans-serif;
+}
+.ai-dashboard .dashboard-chat-composer > div button:hover { background: var(--nova-soft); }
+.ai-dashboard .dashboard-chat-composer > div button:disabled { opacity: .5; }
+.ai-dashboard .dashboard-suggestion-number { margin-right: .75rem; color: var(--nova-muted); font-size: .65rem; font-variant-numeric: tabular-nums; }
 .ai-dashboard .dashboard-report-surface {
   color-scheme: light;
-  --font-sans: 'Deck Overpass', Arial, sans-serif;
+  --font-sans: 'Builder Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   --color-background-primary-default: var(--color-white);
   --color-background-secondary-default: var(--color-neutral-100);
   --color-background-secondary-hover: var(--color-neutral-200);
@@ -33,16 +92,43 @@
   background: var(--color-background-primary-default);
   font-family: var(--font-sans);
 }
+.dark .ai-dashboard .dashboard-report-surface {
+  color-scheme: dark;
+  --color-background-primary-default: #232529;
+  --color-background-secondary-default: #303338;
+  --color-background-secondary-hover: #3b3e43;
+  --color-background-tertiary-default: #3b3e43;
+  --color-text-primary: #f1f2f3;
+  --color-text-secondary: #c2c7ce;
+  --color-text-tertiary: #adb4be;
+  --color-text-placeholder: #929aa5;
+  --color-border-button-default: #3b3e43;
+  --color-border-button-hover: #6a717b;
+  --color-border-table: #3b3e43;
+  --color-separator-border: #3b3e43;
+  --color-foreground-icon-primary: #f1f2f3;
+  --color-foreground-icon-secondary: #adb4be;
+  --color-status-lime-background: #263d33;
+  --color-status-lime-text: #a5dcc0;
+  --color-status-rose-background: #4b2c32;
+  --color-status-rose-text: #ffb4bf;
+  --color-status-purple-text: #b8c3cf;
+}
 /* Cards stay neutral. Only actual chart marks carry series colors. */
 .dashboard-report-title, .dashboard-component-heading h2, .dashboard-text-title, .dashboard-metric-label { color: var(--color-text-primary); }
 .dashboard-component-heading h2, .dashboard-text-title { font-weight: 600; }
 .dashboard-report-card { border: 1px solid var(--color-report-rule); border-radius: .75rem; box-shadow: none; }
+.dashboard-report-title { font-size: 2.05rem; line-height: 1.2; font-weight: 600; letter-spacing: -.075rem; }
+.dashboard-report-card .dashboard-component-heading h2, .dashboard-report-card .dashboard-text-title { font-size: .875rem; letter-spacing: -.01em; }
 .dashboard-component-heading { padding-bottom: 0; border: 0; }
 .dashboard-report-card table thead { background: var(--color-background-secondary-default); color: var(--color-text-secondary); }
 .dashboard-report-card table thead tr { color: inherit; }
 .dashboard-report-card table thead th { padding-left: .75rem; padding-right: .75rem; font-weight: 600; }
 .dashboard-report-card table.dashboard-table-striped tbody tr:nth-child(even) { background: var(--color-background-secondary-default); }
-.dashboard-report-card .recharts-wrapper { font-family: Arial, sans-serif; }
+.dashboard-report-card details summary { color: var(--color-text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+.dashboard-report-card details summary:hover { color: var(--color-text-primary); }
+.dashboard-report-card details summary:focus-visible { outline: 2px solid var(--nova-ring); outline-offset: 3px; border-radius: 2px; }
+.dashboard-report-card .recharts-wrapper { font-family: var(--font-sans); }
 .dark .ai-dashboard { --color-text-secondary: color-mix(in srgb, var(--color-text-primary) 80%, var(--color-background-primary-default)); --color-text-tertiary: color-mix(in srgb, var(--color-text-primary) 64%, var(--color-background-primary-default)); }
 .dashboard-drag-handle { touch-action: none; cursor: grab; }
 .dashboard-drag-handle:active { cursor: grabbing; }

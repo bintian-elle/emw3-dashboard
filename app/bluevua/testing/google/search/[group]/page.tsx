@@ -15,8 +15,9 @@ import {notFound,redirect} from "next/navigation";
 import {googleContentTestingInventory} from "@/lib/google-content-testing-scope";
 import {readGoogleCreativeArchive} from "@/lib/google-creative-archive";
 import {TestReadout} from "../../../test-readout";
+import novaStyles from "../nova-search-detail.module.css";
 
-export default async function GoogleSearchCreativePage({params,searchParams}:{params:Promise<{group:string}>;searchParams:Promise<{returnTo?:string;period?:string;start?:string;end?:string}>}){
+export default async function GoogleSearchCreativePage({params,searchParams}:{params:Promise<{group:string}>;searchParams:Promise<{returnTo?:string;period?:string;start?:string;end?:string;designPreview?:string}>}){
  await connection();const {group:id}=await params;if(!/^\d+$/.test(id))notFound();
  const query=await searchParams;
  const returnTo=safeTestingReturnTo(query.returnTo,"/bluevua/testing/google/search");
@@ -56,5 +57,5 @@ export default async function GoogleSearchCreativePage({params,searchParams}:{pa
  const periodLabel=lifetime?"Test lifetime":testingPeriodLabels[input.preset??"lastWeek"];
  const fromArm=returnTo.startsWith("/bluevua/testing/google/concluded/");
  const backHref=fromArm||!campaign?.name?returnTo:testingCampaignHref(returnTo,"google-search",campaign.name,query);
- return <><TestingPageHeader section="Google Search" title={group.adGroup.name} description={campaign?.name} showReportingPeriod={!lifetime} backHref={backHref} backLabel={fromArm?"Back to ad groups":"Back to campaign"}/><p className="mb-4 text-caption-1-regular text-text-tertiary">Ads and creatives · {ads.length} ads</p>{period&&<p className="mb-4 text-body-medium text-text-secondary">{periodLabel} · {period.start} – {period.end}</p>}<TestReadout standalone channel={concludedDefinition||campaign?.name.startsWith("EM-Search-Nonbrand-")?"google-search":undefined} testIdentity={concludedDefinition?.campaignName??campaign?.name} period={{label:periodLabel,...period,...(concludedDefinition?{concludedTestId:concludedDefinition.id}:{})}}>{!metrics&&<p className="mb-4 text-body-regular text-text-secondary">Ad performance is not available for this reporting period.</p>}<AdPerformanceList ads={ads} metrics={metrics} businessName={business} logo={logo} sitelinks={sitelinks}/><AssociatedAssets scopes={groupAssociatedAssets(sourceAssets,group.campaign.id,id,campaign?.name??group.campaign.id,group.adGroup.name)}/></TestReadout></>;
+ return <><TestingPageHeader section="Google Search" title={group.adGroup.name} description={campaign?.name} showReportingPeriod={!lifetime} sharePeriod={period} backHref={backHref} backLabel={fromArm?"Back to ad groups":"Back to campaign"}/><p className={novaStyles.pageMeta}>Ads and creatives · {ads.length} ads</p>{period&&<p className={novaStyles.pageMeta}>{periodLabel} · {period.start} – {period.end}</p>}<TestReadout standalone channel={concludedDefinition||campaign?.name.startsWith("EM-Search-Nonbrand-")?"google-search":undefined} testIdentity={concludedDefinition?.campaignName??campaign?.name} period={{label:periodLabel,...period,...(concludedDefinition?{concludedTestId:concludedDefinition.id}:{})}}>{!metrics&&<p className={novaStyles.pageMeta}>Ad performance is not available for this reporting period.</p>}<AdPerformanceList ads={ads} metrics={metrics} businessName={business} logo={logo} sitelinks={sitelinks}/><AssociatedAssets scopes={groupAssociatedAssets(sourceAssets,group.campaign.id,id,campaign?.name??group.campaign.id,group.adGroup.name)}/></TestReadout></>;
 }

@@ -1,6 +1,6 @@
-import { RiGoogleFill } from "@remixicon/react";
-import { ButtonLink } from "@/components/base/buttons/button";
+import Link from "next/link";
+import styles from "../workspace-entry.module.css";
 
 export function AccessForm({ returnTo }: { returnTo: string }) {
-  return <div className="mt-8"><ButtonLink className="w-full" leadingIcon={RiGoogleFill} href={`/api/auth/google?returnTo=${encodeURIComponent(returnTo)}`}>Sign in with Google</ButtonLink></div>;
+  return <div style={{ marginTop: "1.5rem" }}><Link className={styles.button} href={`/api/auth/google?returnTo=${encodeURIComponent(returnTo)}`}>Sign in with Google</Link></div>;
 }

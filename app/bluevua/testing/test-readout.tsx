@@ -5,6 +5,7 @@ import {liveOverviewExecutiveSummary} from "@/lib/testing-readout-live-overview"
 import type {OverviewHeadlineMetrics} from "@/lib/overview-headline-metrics";
 import {currentPmaxReadout} from "@/lib/pmax-testing-performance";
 import { cleanTestingReadoutCopy } from "@/lib/testing-readout-copy";
+import {useReadoutVersion} from './use-readout-version';
 
 import { useTestingAiScope } from "./testing-ai";
 import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
@@ -18,6 +19,8 @@ import { Chip } from "@/components/base/badges/chip";
 import { cx } from "@/utils/cx";
 import type { TestingFrameworkKey, ReadoutMetric } from "@/lib/testing-framework";
 import { testingReadoutKey, type CachedTestReadout, type CachedPeriodReadout, type ReadoutPeriod } from "@/lib/testing-readout-contract";
+import { NovaTestReadout } from "./nova-test-readout";
+import { scrollTestingContentBy } from "./scroll-testing-content";
 
 type FrameworkEntry = {test_id?:string;campaign_name?:string;test_goal?:string|null;hypothesis?:{text?:string|null}};
 type CachedPayload = Partial<CachedPeriodReadout> & { test_frameworks?:FrameworkEntry[]; channel_frameworks?:FrameworkEntry[]; _local_prompt_preview?:boolean; _preview_pending?:boolean; _translation_pending?: boolean; _translation_error?: boolean };
@@ -27,12 +30,13 @@ const subscribeHydration = () => () => {};
 const clientHydration = () => true;
 const serverHydration = () => false;
 const channelNames: Record<TestingFrameworkKey, string> = { overview: "Overview", "google-search": "Google Search", "google-pmax": "Google PMAX", "google-demand-gen": "Demand Gen", meta: "Meta", "reddit-awareness": "Reddit", "reddit-conversion": "Reddit", social: "Social Media", edm: "EDM" };
-function loadCachedReadouts(keys: string[], language: SiteLanguage) {
+function loadCachedReadouts(keys: string[], language: SiteLanguage,revision:number,expected:string|null) {
   const uniqueKeys = [...new Set(keys)];
-  const cacheKey = `${language}:${[...uniqueKeys].sort().join("|")}`;
+  const cacheKey = `${language}:${[...uniqueKeys].sort().join("|")}:${revision}`;
   const existing = pendingLoads.get(cacheKey);
   if (existing && existing.expires > Date.now()) return existing.request;
   const query = new URLSearchParams({ language });
+  if(expected)query.set('expected',expected);
   uniqueKeys.forEach(key => query.append("key", key));
   const request = fetch(`/api/testing/readouts?${query}`, { cache: "no-store" }).then(async response => {
     if (!response.ok) throw new Error("Cached readouts unavailable");
@@ -60,6 +64,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const { language } = useSiteLanguage();
   const t = (en: string, zh: string) => language === "zh" ? zh : en;
   const pathname = usePathname();
+  const isNovaPreview = true;
   const overviewDetailsId = useId();
   const campaignId = useId();
   const detailsId = useId();
@@ -75,6 +80,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const showCreativeDetails = channel !== "overview";
   const socialKey = "period:social-lifetime";
   const periodKey = period ? testingReadoutKey(period) : null;
+  const version=useReadoutVersion([channel==='overview'?socialKey:null,periodKey],language);
   const requestKey = [language, channel ?? "", periodKey ?? "", testIdentity ?? ""].join("|");
   useLayoutEffect(() => {
     const pending = collapsePosition.current;
@@ -83,7 +89,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     const target = pending.kind === "overview" ? overviewToggleRef.current : campaignToggleRef.current;
     if (!target) return;
     const rect = target.getBoundingClientRect();
-    window.scrollBy({ top: rect.top + rect.height / 2 - pending.y, behavior: "instant" });
+    scrollTestingContentBy(target, rect.top + rect.height / 2 - pending.y);
     target.focus({ preventScroll: true });
   }, [expanded, expandedOverviewKey, requestKey]);
   const preserveCollapsePosition = (event: MouseEvent<HTMLButtonElement>, kind: "overview" | "campaign") => {
@@ -98,7 +104,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     const deadline = Date.now() + 90 * 60 * 1000;
     const load = async () => {
       try {
-        const records = await loadCachedReadouts([...(channel === "overview" ? [socialKey] : []), ...(periodKey ? [periodKey] : [])], language);
+        const records = await loadCachedReadouts([...(channel === "overview" ? [socialKey] : []), ...(periodKey ? [periodKey] : [])], language,version.revision,version.expected);
         if (cancelled) return;
         setCached({ key: requestKey, records });
         if (((!periodKey || records[periodKey]) && (channel !== "overview" || records[socialKey]) && !Object.values(records).some(record => record._translation_pending||record._preview_pending)) || Date.now() >= deadline) return;
@@ -107,7 +113,7 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     };
     void load();
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [requestKey, periodKey, channel, pathname, language]);
+  }, [requestKey, periodKey, channel, pathname, language,version.revision,version.expected]);
   const records = cached?.key === requestKey ? cached.records : undefined;
   const savedPeriodResult = periodKey ? records?.[periodKey] : undefined;
   const periodResult = currentPmaxReadout(savedPeriodResult,channel) ? savedPeriodResult : undefined;
@@ -156,6 +162,17 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     </section>
   );
   if(isOverview&&(periodResult?._local_prompt_preview||periodResult?.channel_reports?.some(report=>report.report_id==="overview")))return null;
+  if(isNovaPreview)return <NovaTestReadout
+    channel={channel} testIdentity={testIdentity} period={period} standalone={standalone} campaignId={campaignId}
+    summary={summary} test={test} overview={overview}
+    socialEdmBrief={socialEdmBrief} deltas={deltas} loading={cached?.key!==requestKey&&!!channel&&!!periodKey}
+    translationPending={!!periodResult?._translation_pending} translationError={!!periodResult?._translation_error}
+    ready={hydrated} canAsk={hydrated&&chat.canAsk} ask={chat.ask} open={chat.open}
+    expanded={isOverview?expandedOverviewKey===requestKey:expanded}
+    setExpanded={value=>isOverview?setExpandedOverviewKey(value?requestKey:null):setExpandedCampaignKey(value?campaignKey:null)}
+    toggleRef={isOverview?overviewToggleRef:campaignToggleRef} detailsId={isOverview?overviewDetailsId:detailsId} bottomId={questionBottomId}
+    preserveCollapsePosition={event=>preserveCollapsePosition(event,isOverview?"overview":"campaign")}
+  >{children}</NovaTestReadout>;
   const collapse = () => setExpandedCampaignKey(null);
   const detailsToggle = <Button ref={campaignToggleRef} type="button" variant="secondary" size="small" className="min-h-10" disabled={!hydrated} aria-expanded={expanded} aria-controls={detailsId} trailingIcon={expanded ? RiArrowUpSLine : RiArrowDownSLine} onClick={() => expanded ? collapse() : setExpandedCampaignKey(campaignKey)}>{expanded ? t("Hide details", "收起详情") : t("View detailed analysis", "查看详细分析")}</Button>;
   const analysisContent = analysisSection || <p className="p-5 text-body-regular text-text-secondary">{cached?.key !== requestKey && periodKey ? t("Fetching analysis…", "正在获取分析…") : t("Analysis is not available for this reporting period.", "此时间区间暂无可用分析。")}</p>;

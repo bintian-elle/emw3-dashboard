@@ -19,7 +19,7 @@ import {
   startOfYear,
   today,
 } from "@internationalized/date";
-import { RiCalendarLine } from "@remixicon/react";
+import { CalendarDays } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/base/buttons/button";
 import {
@@ -31,38 +31,9 @@ import {
 } from "@/components/base/date-picker/shared";
 import { cx } from "@/utils/cx";
 import { useDismissOnOutsidePress, useTriggerToggle } from "@/utils/use-dismiss-on-outside-press";
+import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 
-/**
- * Figma source: Board UI → "Calendar" (node 3871:5738).
- *
- * A dual-month date range picker: trigger button opens a popover with a
- * quick-select sidebar, two adjacent months (react-aria's
- * `visibleDuration={{ months: 2 }}`), and a footer with read-only date chips,
- * a "N days selected" pill, and Cancel/Apply.
- *
- * Two deliberate departures from the raw Figma frame:
- *  - The prev/next chevrons in Figma appear on *both* sides of *both* month
- *    headers (4 total), pre-rotated generic vector exports. A dual-month
- *    calendar only has one navigation state (the two months always stay
- *    adjacent), so only the outer two chevrons (prev on month 1, next on
- *    month 2) are wired up; the inner two slots are kept as invisible
- *    spacers rather than dead click targets, preserving Figma's header
- *    spacing without fake buttons.
- *  - The connecting range background (Figma: one hardcoded `bg-blue-100`
- *    rectangle sized for the one example range shown) is generalized into a
- *    per-cell layered background driven by react-aria's `isSelectionStart` /
- *    `isSelectionEnd` state, so any range length/position renders correctly.
- *
- * Colors/radii/spacing (semantic range-selection blues, blue-500/600,
- * radius/2lg/xl/2xl/3xl,
- * shadow-xs, background/secondary/default, background/tertiary/default,
- * border/button/default) are Tailwind v4 defaults or existing semantic
- * tokens — see styles/theme.css.
- *
- * Shared chrome (chevrons, day cell, month panel, editable date chip, trigger
- * + popover surfaces) lives in `./shared` — `DatePicker` (single-month,
- * non-range) reuses the same pieces.
- */
+/** Dual-month range selection with pending changes committed on Apply. */
 
 export interface DateRangeValue {
   start: CalendarDate;
@@ -78,6 +49,8 @@ export interface DateRangePickerProps {
   "aria-label"?: string;
   /** Trigger text shown when no range is committed yet. Default "Select date range". */
   placeholder?: string;
+  /** Return a message to keep an invalid pending range from being applied. */
+  validateRange?: (value: DateRangeValue) => string | undefined;
 }
 
 function daysInRange(value: DateRangeValue) {
@@ -116,6 +89,8 @@ function QuickSelect({
   onSelect: (range: DateRangeValue) => void;
 }) {
   const presets = useQuickSelectPresets();
+  const { language } = useSiteLanguage();
+  const labels: Record<string, string> = { Today: "今天", Yesterday: "昨天", "Last week": "上周", "This month": "本月", "Last month": "上月", "This year": "今年", "Last year": "去年", "All time": "全部时间" };
 
   return (
     <div className="flex w-[118px] shrink-0 flex-col gap-1.5">
@@ -131,7 +106,7 @@ function QuickSelect({
               : "hover:bg-background-secondary-hover",
           )}
         >
-          {preset.label}
+          {language === "zh" ? labels[preset.label] : preset.label}
         </button>
       ))}
     </div>
@@ -143,12 +118,16 @@ function Footer({
   onChange,
   onCancel,
   onApply,
+  invalidReason,
 }: {
   value: DateRangeValue | null;
   onChange: (value: DateRangeValue) => void;
   onCancel: () => void;
   onApply: () => void;
+  invalidReason?: string;
 }) {
+  const { language } = useSiteLanguage();
+  const zh = language === "zh";
   return (
     <div className="flex items-center justify-between pt-3 pr-4">
       <div className="flex items-center gap-2.5">
@@ -165,7 +144,7 @@ function Footer({
               <div className="flex items-center gap-[5px]">
                 <DateChipInput
                   date={value.start}
-                  label="Start date"
+                  label={zh ? "开始日期" : "Start date"}
                   onCommit={(start) =>
                     onChange({ start, end: start.compare(value.end) > 0 ? start : value.end })
                   }
@@ -173,14 +152,14 @@ function Footer({
                 <span className="text-body-medium text-text-secondary">-</span>
                 <DateChipInput
                   date={value.end}
-                  label="End date"
+                  label={zh ? "结束日期" : "End date"}
                   onCommit={(end) =>
                     onChange({ start: end.compare(value.start) < 0 ? end : value.start, end })
                   }
                 />
               </div>
               <span className="rounded-xl bg-background-tertiary-default px-2 py-2 text-body-medium text-text-secondary">
-                {daysInRange(value)} day{daysInRange(value) === 1 ? "" : "s"} selected
+                {zh ? `已选择 ${daysInRange(value)} 天` : `${daysInRange(value)} day${daysInRange(value) === 1 ? "" : "s"} selected`}
               </span>
             </motion.div>
           )}
@@ -188,10 +167,10 @@ function Footer({
       </div>
       <div className="flex items-center gap-2.5">
         <Button variant="secondary" onClick={onCancel}>
-          Cancel
+          {zh ? "取消" : "Cancel"}
         </Button>
-        <Button onClick={onApply} disabled={!value}>
-          Apply
+        <Button onClick={onApply} disabled={!value || !!invalidReason}>
+          {zh ? "应用" : "Apply"}
         </Button>
       </div>
     </div>
@@ -205,13 +184,16 @@ export function DateRangePicker({
   isDisabled,
   className,
   "aria-label": ariaLabel = "Date range",
-  placeholder = "Select date range",
+  placeholder,
+  validateRange,
 }: DateRangePickerProps) {
+  const { language } = useSiteLanguage();
   const isControlled = value !== undefined;
   const [internalValue, setInternalValue] = useState<DateRangeValue | null>(defaultValue);
   const committedValue = isControlled ? (value ?? null) : internalValue;
 
   const [pendingValue, setPendingValue] = useState<DateRangeValue | null>(committedValue);
+  const invalidReason = pendingValue ? validateRange?.(pendingValue) : undefined;
 
   const commit = (next: DateRangeValue | null) => {
     if (!isControlled) setInternalValue(next);
@@ -226,7 +208,7 @@ export function DateRangePicker({
   const allowOpenChange = useTriggerToggle(isOpen, triggerRef);
 
   return (
-    <I18nProvider locale="en-US">
+    <I18nProvider locale={language === "zh" ? "zh-CN" : "en-US"}>
     <DialogTrigger
       isOpen={isOpen}
       onOpenChange={(open) => {
@@ -236,9 +218,9 @@ export function DateRangePicker({
       }}
     >
       <AriaButton ref={triggerRef} isDisabled={isDisabled} className={cx(triggerButtonClassName, className)}>
-        <RiCalendarLine className="size-5 shrink-0 text-foreground-icon-primary" aria-hidden />
+        <CalendarDays className="size-4 shrink-0 text-foreground-icon-primary" aria-hidden="true" />
         <span className="flex items-center justify-center whitespace-nowrap px-1 text-body-medium text-text-primary">
-          {committedValue ? `${formatTriggerDate(committedValue.start)} - ${formatTriggerDate(committedValue.end)}` : placeholder}
+          {committedValue ? `${formatTriggerDate(committedValue.start)} - ${formatTriggerDate(committedValue.end)}` : (placeholder ?? (language === "zh" ? "选择日期范围" : "Select date range"))}
         </span>
       </AriaButton>
       <Popover ref={popoverRef} offset={4} placement="bottom end" isNonModal className={popoverClassName}>
@@ -270,10 +252,13 @@ export function DateRangePicker({
                       close();
                     }}
                     onApply={() => {
+                      if (!pendingValue || invalidReason) return;
                       commit(pendingValue);
                       close();
                     }}
+                    invalidReason={invalidReason}
                   />
+                  {invalidReason && <p role="alert" className="px-4 pt-2 text-body-medium text-text-error-primary">{invalidReason}</p>}
                 </div>
               </div>
             </RangeCalendar>

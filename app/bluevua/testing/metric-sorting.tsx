@@ -1,8 +1,8 @@
 "use client";
 import {createContext,useContext,useState,useSyncExternalStore,type ReactNode} from "react";
-import {RiArrowDownLine,RiArrowUpLine,RiExpandUpDownLine} from "@remixicon/react";
-import {Button} from "@/components/base/buttons/button";
-import {cx} from "@/utils/cx";
+import {ArrowDown,ArrowUp,ChevronsUpDown} from "lucide-react";
+import {NovaButton} from "./nova-preview-ui";
+import styles from "./channel-content.module.css";
 import {useSiteLanguage} from "@/components/application/dashboard/site-language-provider";
 import {nextMetricSort,sortMetricRows,type MetricSort,type MetricSortValues} from "@/lib/testing-metric-sort";
 const Context=createContext<{sort:MetricSort;toggle:(key:string)=>void;ready:boolean}|null>(null);
@@ -14,9 +14,9 @@ export function MetricSortScope({children}:{children:ReactNode}){
 }
 export function MetricSortButton({metric,label,align="right",className}:{metric:string;label:string;align?:"left"|"right";className?:string}){
  const context=useContext(Context),{language}=useSiteLanguage(),active=context?.sort?.key===metric;
- const direction=active?context.sort!.direction:null,Icon=direction==='ascending'?RiArrowUpLine:direction==='descending'?RiArrowDownLine:RiExpandUpDownLine;
+ const direction=active?context.sort!.direction:null,Icon=direction==='ascending'?ArrowUp:direction==='descending'?ArrowDown:ChevronsUpDown;
  const next=nextMetricSort(context?.sort??null,metric),action=next?(next.direction==='ascending'?(language==='zh'?'升序排列':'Sort ascending'):(language==='zh'?'降序排列':'Sort descending')):(language==='zh'?'恢复原始顺序':'Restore original order');
- return <Button type="button" variant="ghost" size="small" trailingIcon={Icon} aria-label={`${label}: ${action}`} aria-pressed={active} title={`${label}: ${action}`} disabled={!context?.ready} onClick={()=>context?.toggle(metric)} className={cx("h-auto min-h-8 max-w-full gap-1 whitespace-normal rounded-md bg-transparent p-0 text-caption-1-semibold text-text-tertiary shadow-none hover:bg-background-secondary-hover hover:text-text-primary",align==='right'?"ml-auto justify-end text-right":"justify-start text-left",active&&"text-text-primary",className)}>{label}</Button>;
+ return <NovaButton type="button" variant="ghost" size="sm" aria-label={`${label}: ${action}`} aria-pressed={active} title={`${label}: ${action}`} disabled={!context?.ready} onClick={()=>context?.toggle(metric)} className={[styles.sortButton,align==='right'?styles.alignRight:undefined,className].filter(Boolean).join(' ')}>{label}<Icon aria-hidden="true"/></NovaButton>;
 }
 export function MetricSortHeader({metric,label,className,buttonClassName}:{metric:string;label:string;className?:string;buttonClassName?:string}){
  const context=useContext(Context);

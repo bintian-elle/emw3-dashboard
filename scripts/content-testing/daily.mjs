@@ -45,7 +45,7 @@ try{
   if(!alreadyPublished){const result=await publishReports({english:folder,includeLifetimes:!first,backupDir:path.join(root,`backup-${preset}`)});console.log(JSON.stringify(result));}
   else console.log(JSON.stringify({status:'already_published',preset}));
   first??=folder;
- },concluded:()=>run(process.execPath,['scripts/refresh-testing-readouts.mjs','--concluded-only','--analysis-only']),
+ },concluded:()=>run(process.execPath,['--experimental-strip-types','scripts/content-testing/run-concluded.mjs']),
  translate:()=>run(process.execPath,['scripts/refresh-testing-readouts.mjs','--translations-only'])});
  await writeFile(path.join(root,'completion.json'),JSON.stringify({completedAt:new Date().toISOString(),...stages},null,2),{mode:0o600});
  if(stages.errors.length)throw Error(stages.errors.map(item=>`${item.stage}: ${item.error}`).join('; '));

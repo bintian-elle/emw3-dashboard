@@ -1,8 +1,8 @@
 import {MetricSortScope,MetricSortHeader,MetricSortedRows} from "./metric-sorting";
 import { CampaignName } from "./campaign-name";
-import { RiMailLine } from "@remixicon/react";
+import { TestingChannelBrand } from "./testing-channel-brand";
+import styles from "./channel-content.module.css";
 import { EmailLightbox } from "@/components/application/media/email-lightbox";
-import { Chip } from "@/components/base/badges/chip";
 import type { EdmTestingData } from "@/lib/testing-edm";
 import { CampaignStatusChip } from "./campaign-status-chip";
 import { TestReadout } from "./test-readout";
@@ -12,72 +12,19 @@ const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const percent = new Intl.NumberFormat("en-US", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const date = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
 
-export function EdmCampaignSection({ data }: { data: EdmTestingData }) {
-  return (
-    <section className="mt-8 space-y-6">
-      {!data.campaigns.length&&<p className="rounded-3xl border border-border-button-default bg-background-primary-default p-6 text-body-regular text-text-secondary">No confirmed EDM content test matches this reporting period.</p>}
-      {data.campaigns.map((campaign) => {
-          return (
-        <article key={campaign.campaignId} className="overflow-hidden rounded-3xl border border-border-button-default bg-background-primary-default shadow-card">
-          <div className="flex flex-col gap-4 border-b border-border-table p-6 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-status-yellow-background text-status-yellow-text">
-                <RiMailLine className="size-5" aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-1.5 text-caption-1-semibold text-text-tertiary">
-                  <span>EDM ·</span>
-                  <Chip variant="caption" color="yellow">A/B TEST</Chip>
-                  <span>CAMPAIGN</span>
-                  <CampaignStatusChip status={campaign.campaignStatus} /><Chip variant="caption" color={campaign.hasData?"blue":"yellow"}>{campaign.hasData?"Performance available":"Awaiting report"}</Chip>
-                </div>
-                <h2 className="mt-1 break-words text-title-2-semibold text-text-primary"><CampaignName name={campaign.campaignName} channel="edm"/></h2>
-                {campaign.sendDate&&<p className="mt-2 text-caption-1-regular text-text-tertiary">{campaign.hasData?"Sent":"Scheduled"} · {date(campaign.sendDate)}</p>}
-              </div>
-            </div>
-            <p className="shrink-0 rounded-xl bg-background-secondary-default px-3 py-2 text-body-medium text-text-secondary">
-              {data.periodLabel} · {date(data.period.start)} – {date(data.period.end)}
-            </p>
-          </div>
-          <TestReadout channel="edm" testIdentity={campaign.campaignName} period={{label:data.periodLabel,...data.period}}>
-          <MetricSortScope>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-5xl table-fixed text-body-2-regular">
-                <colgroup><col className="w-[32%]" />{Array.from({length:6},(_,index)=><col key={index} />)}</colgroup>
-                <thead className="border-b border-border-table bg-background-secondary-default">
-                  <tr>
-                    <th scope="col" className="px-5 py-3 text-left text-caption-1-semibold text-text-tertiary">Email</th>
-                    {["Total Revenue", "#Purchase", "Click Rate", "Module 2 CTR", "Open Rate", "Delivered"].map(metric=><MetricSortHeader key={metric} metric={metric} label={metric} className="px-4 py-3 text-right" buttonClassName={metric==="Module 2 CTR"?"text-status-yellow-text":undefined} />)}
-                  </tr>
-                </thead>
-                <MetricSortedRows as="tbody" rows={campaign.tests.map((test) => ({id:test.variationId,values:test.hasData?{"Total Revenue":test.revenue,"#Purchase":test.orders,"Click Rate":test.clickRate,"Module 2 CTR":test.secondModuleClickRate,"Open Rate":test.openRate,Delivered:test.delivered}:{},content:(
-              <tr key={test.variationId} className="border-b border-border-table last:border-0 hover:bg-background-primary-hover">
-                <td className="p-5 align-middle">
-                <div className="flex min-w-0 items-center gap-4">
-                  <EmailLightbox html={test.html} title={`${test.label} · ${test.subject}`} />
-                  <div className="min-w-0">
-                    <p className="text-caption-1-semibold text-status-yellow-text">{test.label}</p>
-                    <p className="mt-1 break-words text-body-medium text-text-primary">{test.fromLabel}</p>
-                    <p className="mt-1 break-words text-body-2-regular text-text-secondary">{test.subject}</p>
-                    {test.previewText && <p className="mt-1 break-words text-caption-2-regular text-text-tertiary">{test.previewText}</p>}
-                  </div>
-                </div>
-                </td>
-                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.hasData?currency.format(test.revenue):"—"}</td>
-                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.hasData?number.format(test.orders):"—"}</td>
-                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.clickRate==null?"—":percent.format(test.clickRate)}</td>
-                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.secondModuleClickRate==null?"—":percent.format(test.secondModuleClickRate)}</td>
-                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.openRate==null?"—":percent.format(test.openRate)}</td>
-                <td className="px-4 py-5 text-right align-middle tabular-nums text-text-primary">{test.hasData?number.format(test.delivered):"—"}</td>
-              </tr>
-            )}))}/>
-              </table>
-            </div>
-          </MetricSortScope>
-          </TestReadout>
-        </article>
-          );
-      })}
-    </section>
-  );
+export function EdmCampaignSection({data}:{data:EdmTestingData}){
+ return <section className={styles.list}>
+  {!data.campaigns.length&&<p className={`${styles.card} ${styles.empty}`}>No confirmed EDM content test matches this reporting period.</p>}
+  {data.campaigns.map(campaign=><article key={campaign.campaignId} className={styles.card}>
+   <header className={styles.header}><div className={styles.heading}><span className={styles.headingIcon}><TestingChannelBrand name="EDM"/></span><div className={styles.headingText}><div className={styles.eyebrow}>EDM <span className={styles.badge}>A/B TEST</span> CAMPAIGN <CampaignStatusChip status={campaign.campaignStatus}/><span className={styles.badge}>{campaign.hasData?"Performance available":"Awaiting report"}</span></div><h2 className={styles.title}><CampaignName name={campaign.campaignName} channel="edm"/></h2>{campaign.sendDate&&<p className={styles.muted}>{campaign.hasData?"Sent":"Scheduled"} · {date(campaign.sendDate)}</p>}</div></div><p className={styles.date}>{data.periodLabel} · {date(data.period.start)} – {date(data.period.end)}</p></header>
+   <TestReadout channel="edm" testIdentity={campaign.campaignName} period={{label:data.periodLabel,...data.period}}><MetricSortScope><div className={styles.tableWrap}><table className={styles.table}>
+    <colgroup><col style={{width:"32%"}}/>{Array.from({length:6},(_,index)=><col key={index}/>)}</colgroup>
+    <thead><tr><th scope="col">Email</th>{["Total Revenue","#Purchase","Click Rate","Module 2 CTR","Open Rate","Delivered"].map(metric=><MetricSortHeader key={metric} metric={metric} label={metric}/>)}</tr></thead>
+    <MetricSortedRows as="tbody" rows={campaign.tests.map(test=>({id:test.variationId,values:test.hasData?{"Total Revenue":test.revenue,"#Purchase":test.orders,"Click Rate":test.clickRate,"Module 2 CTR":test.secondModuleClickRate,"Open Rate":test.openRate,Delivered:test.delivered}:{},content:<tr key={test.variationId}>
+     <td><div className={styles.identity}><EmailLightbox html={test.html} title={`${test.label} · ${test.subject}`}/><div className={styles.identityText}><span className={styles.badge}>{test.label}</span><p>{test.fromLabel}</p><p className={styles.muted}>{test.subject}</p>{test.previewText&&<p className={styles.muted}>{test.previewText}</p>}</div></div></td>
+     <td>{test.hasData?currency.format(test.revenue):"—"}</td><td>{test.hasData?number.format(test.orders):"—"}</td><td>{test.clickRate==null?"—":percent.format(test.clickRate)}</td><td>{test.secondModuleClickRate==null?"—":percent.format(test.secondModuleClickRate)}</td><td>{test.openRate==null?"—":percent.format(test.openRate)}</td><td>{test.hasData?number.format(test.delivered):"—"}</td>
+    </tr>}))}/>
+   </table></div></MetricSortScope></TestReadout>
+  </article>)}
+ </section>;
 }

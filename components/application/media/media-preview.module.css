@@ -1,0 +1,37 @@
+.thumbnail { position:relative; display:grid; place-items:center; flex:none; padding:0; overflow:hidden; border:1px solid #e5e7eb; border-radius:.5rem; background:#f4f4f5; color:#71717a; cursor:pointer; }
+.thumbnail:focus-visible,.close:focus-visible,.link:focus-visible { outline:2px solid #71717a; outline-offset:2px; }
+.thumbnail:disabled { cursor:default; }
+.medium { width:4rem; height:4rem; }
+.large { width:5rem; height:5rem; }
+.emailThumbnail { width:5rem; height:6rem; }
+.thumbnailImage { object-fit:cover; pointer-events:none; }
+.thumbnailIcon { width:1.25rem; height:1.25rem; }
+.play { position:absolute; display:grid; place-items:center; width:2rem; height:2rem; border-radius:50%; background:#fff; color:#18181b; box-shadow:0 1px 4px #0003; pointer-events:none; }
+.play svg { width:1rem; height:1rem; fill:currentColor; }
+.thumbnailFrame { position:absolute; top:0; left:0; width:640px; height:768px; transform:scale(.15); transform-origin:top left; border:0; background:#fff; pointer-events:none; }
+.overlay { position:fixed; inset:0; z-index:100; background:rgb(0 0 0 / .55); }
+.content { position:fixed; top:50%; left:50%; z-index:101; transform:translate(-50%,-50%); width:min(90vw,72rem); height:min(85dvh,60rem); overflow:hidden; border-radius:.75rem; background:#fff; color:#18181b; box-shadow:0 16px 48px rgb(0 0 0 / .2); outline:none; }
+.imageContent { background:#111; }
+.image { object-fit:contain; }
+.videoContent { width:min(95vw,64rem); }
+.frame { width:100%; height:100%; border:0; background:#fff; }
+.emailContent { display:flex; flex-direction:column; width:min(95vw,56rem); height:90dvh; }
+.heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.875rem 1rem; border-bottom:1px solid #e5e7eb; }
+.headingTitle { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.875rem; font-weight:600; }
+.headingLabel { display:block; margin-bottom:.2rem; color:#71717a; font-size:.7rem; font-weight:600; }
+.emailBody { flex:1; min-height:0; padding:1rem; background:#f4f4f5; }
+.emailFrame { width:100%; height:100%; border:1px solid #e5e7eb; border-radius:.5rem; background:#fff; }
+.close { position:absolute; right:.75rem; top:.75rem; display:grid; place-items:center; width:2rem; height:2rem; padding:0; border:1px solid #e5e7eb; border-radius:.5rem; background:#fff; color:#18181b; cursor:pointer; }
+.close:hover { background:#f4f4f5; }
+.close svg { width:1rem; height:1rem; }
+.heading .close { position:static; flex:none; }
+.srOnly { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.link { border-radius:.25rem; color:inherit; text-decoration:underline; text-underline-offset:.2em; }
+.link:hover { opacity:.75; }
+.tooltip { z-index:110; max-width:16rem; padding:.4rem .6rem; border-radius:.375rem; background:#18181b; color:#fafafa; font-size:.75rem; box-shadow:0 4px 12px #0002; }
+:global(.dark) .thumbnail { border-color:#3f3f46; background:#27272a; color:#a1a1aa; }
+:global(.dark) .content:not(.imageContent) { background:#18181b; color:#fafafa; }
+:global(.dark) .heading { border-color:#3f3f46; }
+:global(.dark) .emailBody { background:#27272a; }
+@media (prefers-reduced-motion:no-preference) { .overlay,.content { animation:fadeIn .12s ease-out; } }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }

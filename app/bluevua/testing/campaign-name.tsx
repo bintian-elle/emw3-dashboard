@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/app/bluevua/testing/testing-link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { TestingFrameworkKey } from "@/lib/testing-framework";
 

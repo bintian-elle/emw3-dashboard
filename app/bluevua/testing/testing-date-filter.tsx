@@ -8,6 +8,7 @@ import { Select, SelectItem } from "@/components/base/select/select";
 import type { TestingPeriodPreset } from "@/lib/testing-google";
 
 import { TestingDataLoading } from "./testing-data-loading";
+import { useNovaPeriodDraft, validateLatestCompleteRange } from "./nova-reporting-period";
 
 import { redditSinceStartPreset, redditSinceStartLabel } from "@/lib/reddit-testing-period";
 
@@ -22,9 +23,10 @@ export function TestingDateFilter({reddit=false}:{reddit?:boolean}){
   const router=useRouter();const pathname=usePathname();const searchParams=useSearchParams();
   const availableOptions=reddit?[{id:redditSinceStartPreset,label:redditSinceStartLabel},...options]:options;
   const requested=searchParams.get("period");
-  const selected=availableOptions.some(option=>option.id===requested)?requested!:(reddit?redditSinceStartPreset:"lastWeek");
-  const customRange=useMemo<DateRangeValue|undefined>(()=>{const start=searchParams.get("start"),end=searchParams.get("end");return start&&end?{start:parseDate(start),end:parseDate(end)}:undefined;},[searchParams]);
+  const {start,end,setStart,setEnd,customDraft,setCustomDraft}=useNovaPeriodDraft(requested,searchParams.get("start"),searchParams.get("end"));
+  const selected=customDraft?"custom":availableOptions.some(option=>option.id===requested)?requested!:(reddit?redditSinceStartPreset:"lastWeek");
+  const customRange=useMemo<DateRangeValue|undefined>(()=>{try{return start&&end?{start:parseDate(start),end:parseDate(end)}:undefined;}catch{return undefined;}},[start,end]);
   const update=(period:PeriodPreset,range?:DateRangeValue)=>{if(pending)return;const params=new URLSearchParams(searchParams.toString());params.set("period",period);if(period==="custom"&&range){params.set("start",range.start.toString());params.set("end",range.end.toString());}else{params.delete("start");params.delete("end");}if(params.toString()===searchParams.toString())return;startTransition(()=>router.replace(`${pathname}?${params.toString()}`,{scroll:false}));};
   if(pending)return <TestingDataLoading compact/>;
-  return <section className="flex flex-wrap items-center gap-3"><div className="flex min-w-0 items-center gap-3"><span className="shrink-0 text-caption-1-semibold text-text-secondary">Reporting period</span><Select className="min-w-0 flex-1 sm:w-48 sm:flex-none" triggerClassName="h-11" selectedKey={selected} popoverClassName="overflow-visible" listBoxStyle={{maxHeight:"none",overflow:"visible"}} onSelectionChange={key=>update(String(key) as PeriodPreset)} aria-label="Testing reporting period">{availableOptions.map(option=><SelectItem key={option.id} id={option.id}>{option.label}</SelectItem>)}</Select></div>{selected==="custom"&&<div className="flex min-w-0 flex-wrap items-center gap-3"><span className="shrink-0 text-caption-1-semibold text-text-secondary">Custom range</span><DateRangePicker value={customRange} aria-label="Custom testing reporting period" onChange={range=>{if(range)update("custom",range);}} /></div>}</section>;
+  return <section className="flex flex-wrap items-center gap-3"><div className="flex min-w-0 items-center gap-3"><span className="shrink-0 text-caption-1-semibold text-text-secondary">Reporting period</span><Select className="min-w-0 flex-1 sm:w-48 sm:flex-none" triggerClassName="h-11" selectedKey={selected} popoverClassName="overflow-visible" listBoxStyle={{maxHeight:"none",overflow:"visible"}} onSelectionChange={key=>{const value=String(key) as PeriodPreset;if(value==='custom')setCustomDraft(true);else{setCustomDraft(false);update(value);}}} aria-label="Testing reporting period">{availableOptions.map(option=><SelectItem key={option.id} id={option.id}>{option.label}</SelectItem>)}</Select></div>{selected==="custom"&&<div className="flex min-w-0 flex-wrap items-center gap-3"><span className="shrink-0 text-caption-1-semibold text-text-secondary">Custom range</span><DateRangePicker value={customRange} isDisabled={pending} validateRange={validateLatestCompleteRange} aria-label="Custom testing reporting period" onChange={range=>{if(range){setStart(range.start.toString());setEnd(range.end.toString());update('custom',range);}}}/></div>}</section>;
 }

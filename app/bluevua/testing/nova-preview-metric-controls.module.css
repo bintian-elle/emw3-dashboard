@@ -1,0 +1,42 @@
+/* Match the line-style tabs in the reference dashboard. */
+.chartModes {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  border-bottom: 1px solid var(--nova-border, #e4e6e9);
+}
+.chartMode {
+  position: relative;
+  min-height: 2rem;
+  padding: 0.25rem 0.15rem;
+  border: 0;
+  background: transparent;
+  color: var(--nova-muted, #69717d);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chartMode:hover,
+.chartMode[data-state="active"] {
+  color: var(--nova-foreground, #18191b);
+}
+.chartMode[data-state="active"]::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--nova-foreground, #18191b);
+  content: "";
+}
+.chartMode:focus-visible {
+  outline: 2px solid var(--nova-ring, #777f89);
+  outline-offset: 2px;
+}
+.chartContent:focus-visible {
+  outline: 2px solid var(--nova-ring, #777f89);
+  outline-offset: 2px;
+}
