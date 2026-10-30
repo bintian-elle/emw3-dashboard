@@ -18,3 +18,10 @@ export async function resolveMetaCreativeLinks(adId: string, creativeId: string 
   const preview = !postUrl ? await read(adId, {fields:'preview_shareable_link'}).catch(() => null) : null;
   return {postUrl, previewUrl:safeUrl(preview?.preview_shareable_link)};
 }
+
+/** A missing public-page permission may hide a link, never the ad's metrics.
+ * Rate limits, authentication failures and required data errors remain fatal. */
+export function isOptionalMetaLinkPermissionError(params:Record<string,string>,error:unknown){
+ const fields=new Set(['permalink_url','instagram_permalink_url,effective_object_story_id,object_story_id','preview_shareable_link']);
+ return fields.has(params.fields)&&error instanceof Error&&/pages_read_engagement|Page Public Content Access/i.test(error.message);
+}

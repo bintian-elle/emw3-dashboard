@@ -26,3 +26,19 @@ test('inaccessible Facebook post falls back to the shareable preview', async () 
   });
   assert.deepEqual(links,{postUrl:null,previewUrl:'https://www.facebook.com/ads/preview/fallback'});
 });
+
+test('only expected optional post-link permission errors are non-fatal to snapshot publication',async()=>{
+ const {isOptionalMetaLinkPermissionError}=await import('./meta-creative-links.ts');
+ const denied=Error("Meta API (400): (#10) This endpoint requires the 'pages_read_engagement' permission or the 'Page Public Content Access' feature.");
+ assert.equal(isOptionalMetaLinkPermissionError({fields:'permalink_url'},denied),true);
+ assert.equal(isOptionalMetaLinkPermissionError({fields:'spend,impressions,actions'},denied),false);
+ assert.equal(isOptionalMetaLinkPermissionError({fields:'permalink_url'},Error('Meta API rate limit (HTTP 429)')),false);
+ assert.equal(isOptionalMetaLinkPermissionError({fields:'permalink_url'},Error('OAuth token invalid')),false);
+ let failure:unknown;
+ const read=async(id:string,params:Record<string,string>)=>{
+  try{if(id==='private_post')throw denied;return id==='creative'?{effective_object_story_id:'private_post'}:{preview_shareable_link:'https://www.facebook.com/ads/preview/fallback'};}
+  catch(error){if(!isOptionalMetaLinkPermissionError(params,error))failure??=error;throw error;}
+ };
+ assert.deepEqual(await resolveMetaCreativeLinks('ad','creative',read),{postUrl:null,previewUrl:'https://www.facebook.com/ads/preview/fallback'});
+ assert.equal(failure,undefined);
+});

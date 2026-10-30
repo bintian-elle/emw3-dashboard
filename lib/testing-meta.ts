@@ -1,6 +1,6 @@
 import "server-only";
 import {metaTestingAdInventory,META_TESTING_BASIS} from "@/lib/meta-testing-ad-scope";
-import { resolveMetaCreativeLinks } from "@/lib/meta-creative-links";
+import { resolveMetaCreativeLinks,isOptionalMetaLinkPermissionError } from "@/lib/meta-creative-links";
 import { readTestingDataSnapshot, initializeTestingDataSnapshot } from "@/lib/testing-data-cache";
 import {isMetaVideo,type MetaCreative} from "@/lib/meta-creative-type";
 import { connection } from "next/server";
@@ -80,7 +80,7 @@ export async function fetchFreshMetaCampaignTest(input:TestingPeriodInput={}):Pr
   await connection();
   let failure:unknown;
   const read:MetaGraph=async <T>(path:string,params:Record<string,string>):Promise<T>=>{
-    try{return await graph<T>(path,params,true);}catch(error){failure??=error;throw error;}
+    try{return await graph<T>(path,params,true);}catch(error){if(!isOptionalMetaLinkPermissionError(params,error))failure??=error;throw error;}
   };
   const data=await buildMetaCampaignTest(input,read);
   // Optional creative helpers historically swallow errors; do not publish their
