@@ -1,4 +1,5 @@
 import "server-only";
+import {metaTestingAdInventory,META_TESTING_BASIS} from "@/lib/meta-testing-ad-scope";
 import { resolveMetaCreativeLinks } from "@/lib/meta-creative-links";
 import { readTestingDataSnapshot, initializeTestingDataSnapshot } from "@/lib/testing-data-cache";
 import {isMetaVideo,type MetaCreative} from "@/lib/meta-creative-type";
@@ -12,11 +13,11 @@ type MetaAction={action_type:string;value:string};
 type MetaInsightRow={ad_id?:string;ad_name?:string;adset_id:string;adset_name:string;reach?:string;spend?:string;impressions?:string;clicks?:string;inline_link_clicks?:string;actions?:MetaAction[];action_values?:MetaAction[]};
 type MetaAdRow={id:string;name:string;adset_id:string;configured_status?:string;effective_status?:string;creative?:MetaCreative&{body?:string;title?:string}};
 type MetaCampaignRow={id:string;name:string;status:string;effective_status:string};
-export type MetaActiveAd={linkClicks?:number|null;linkCtr?:number|null;adId:string;name:string;postUrl?:string|null;previewUrl?:string|null;mediaType:"Image"|"Video";thumbnailUrl:string|null;videoUrl:string|null;spend:number;revenue:number;orders:number;impressions:number;clicks:number;cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null;cpm:number|null;hookRate:number|null;reach:number|null;costPerReach:number|null;creativeContent?:MetaCreative&{body?:string;title?:string}};
+export type MetaActiveAd={status?:string;effectiveStatus?:string;linkClicks?:number|null;linkCtr?:number|null;adId:string;name:string;postUrl?:string|null;previewUrl?:string|null;mediaType:"Image"|"Video";thumbnailUrl:string|null;videoUrl:string|null;spend:number;revenue:number;orders:number;impressions:number;clicks:number;cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null;cpm:number|null;hookRate:number|null;reach:number|null;costPerReach:number|null;creativeContent?:MetaCreative&{body?:string;title?:string}};
 export type MetaAdGroupMetric={campaignName:string;adGroupId:string;name:string;activeAds:MetaActiveAd[];spend:number;revenue:number;orders:number;impressions:number;clicks:number;cpa:number|null;cvr:number|null;roas:number|null;ctr:number|null;cpc:number|null;cpm:number|null;hookRate:number|null;reach:number|null;costPerReach:number|null};
 export type MetaCampaign={campaignId:string;campaignName:string;campaignStatus:string;effectiveStatus:string;adGroups:MetaAdGroupMetric[];totals:{spend:number;revenue:number;orders:number;clicks:number;impressions:number;reach:number|null;costPerReach:number|null};metrics:ReturnType<typeof performance>} ;
 export type MetaCampaignTest={periodLabel:string;period:{start:string;end:string};campaigns:MetaCampaign[];adGroups:MetaAdGroupMetric[];totals:{spend:number;revenue:number;orders:number;clicks:number;impressions:number;reach:number|null;costPerReach:number|null}};
-export type MetaTestingSnapshot={data:MetaCampaignTest;daily:OverviewDailySource;history?:Awaited<ReturnType<typeof metaTestingHistory>>;currency?:string};
+export type MetaTestingSnapshot={metricBasis?:string;data:MetaCampaignTest;daily:OverviewDailySource;history?:Awaited<ReturnType<typeof metaTestingHistory>>;currency?:string};
 const snapshotDaily=new WeakMap<MetaCampaignTest,OverviewDailySource>();
 
 function token(){const value=process.env.META_ACCESS_TOKEN;if(!value)throw new Error("Meta credentials are not configured.");return value;}
@@ -50,11 +51,11 @@ async function campaignTest(campaignId:string,period:{start:string;end:string},r
     graphCollection<MetaInsightRow>(read,`${campaignId}/insights`,{time_range:timeRange,fields:"spend,impressions,reach,clicks,inline_link_clicks,actions,action_values",level:"campaign"}),
   ]);
   const insightByAd=new Map(adInsights.data.map(row=>[row.ad_id,row]));
-  const active=ads.data.filter(ad=>ad.configured_status==="ACTIVE"||ad.effective_status==="ACTIVE");
-  const videoIds=new Set(active.filter(ad=>isMetaVideo(ad.name,ad.creative)).map(ad=>ad.id));
-  const mediaEntries=await Promise.all(active.map(async ad=>[ad.id,{...await resolveMetaCreativeLinks(ad.id,ad.creative?.id,read),thumbnailUrl:await creativeThumbnail(ad.creative?.id,ad.creative?.thumbnail_url??null,read),videoUrl:videoIds.has(ad.id)?await adPreviewUrl(ad.id,read).catch(()=>null):null}] as const));
+  const testingAds=metaTestingAdInventory(ads.data,adInsights.data);
+  const videoIds=new Set(testingAds.filter(ad=>isMetaVideo(ad.name,ad.creative)).map(ad=>ad.id));
+  const mediaEntries=await Promise.all(testingAds.map(async ad=>[ad.id,{...(ad.creative?await resolveMetaCreativeLinks(ad.id,ad.creative.id,read):{postUrl:null,previewUrl:null}),thumbnailUrl:await creativeThumbnail(ad.creative?.id,ad.creative?.thumbnail_url??null,read),videoUrl:videoIds.has(ad.id)&&ad.creative?await adPreviewUrl(ad.id,read).catch(()=>null):null}] as const));
   const mediaByAd=new Map(mediaEntries);const adsByGroup=new Map<string,MetaActiveAd[]>();
-  for(const ad of active){const insight=insightByAd.get(ad.id);const isVideo=videoIds.has(ad.id);const media=mediaByAd.get(ad.id);const item={adId:ad.id,name:ad.name,creativeContent:ad.creative,mediaType:isVideo?"Video" as const:"Image" as const,thumbnailUrl:media?.thumbnailUrl??null,videoUrl:media?.videoUrl??null,postUrl:media?.postUrl??null,previewUrl:media?.previewUrl??media?.videoUrl??null,...performance(insight??{adset_id:ad.adset_id,adset_name:""})};adsByGroup.set(ad.adset_id,[...(adsByGroup.get(ad.adset_id)??[]),item]);}
+  for(const ad of testingAds){const insight=insightByAd.get(ad.id);const isVideo=videoIds.has(ad.id);const media=mediaByAd.get(ad.id);const item={adId:ad.id,name:ad.name,status:ad.configured_status,effectiveStatus:ad.effective_status,creativeContent:ad.creative,mediaType:isVideo?"Video" as const:"Image" as const,thumbnailUrl:media?.thumbnailUrl??null,videoUrl:media?.videoUrl??null,postUrl:media?.postUrl??null,previewUrl:media?.previewUrl??media?.videoUrl??null,...performance(insight??{adset_id:ad.adset_id,adset_name:""})};adsByGroup.set(ad.adset_id,[...(adsByGroup.get(ad.adset_id)??[]),item]);}
   for(const items of adsByGroup.values())items.sort((a,b)=>b.spend-a.spend);
   const adGroups=groupInsights.data.map(row=>({campaignName:campaign.name,adGroupId:row.adset_id,name:row.adset_name,activeAds:adsByGroup.get(row.adset_id)??[],...performance(row)})).sort((a,b)=>b.spend-a.spend);
   const metrics=performance(campaignInsights.data[0]??{adset_id:"",adset_name:""});
@@ -89,7 +90,7 @@ export async function fetchFreshMetaCampaignTest(input:TestingPeriodInput={}):Pr
   if(failure)throw failure;
   const extra=input.preset==='mtd'?{history:await metaTestingHistory(read),currency:await metaTestingCurrency(read)}:{};
   if(failure)throw failure;
-  return {data,daily,...extra};
+  return {metricBasis:META_TESTING_BASIS,data,daily,...extra};
 }
 
 export async function getMetaCampaignTest(input:TestingPeriodInput={}):Promise<MetaCampaignTest>{
@@ -137,7 +138,7 @@ async function buildMetaOverviewDaily(data:MetaCampaignTest,graph:MetaGraph):Pro
   return {totals,ads:ads.filter(row=>row.ad_id&&types.has(row.ad_id)).map(row=>({date:row.date_start,entityId:row.ad_id!,assetType:types.get(row.ad_id!)!,...performance(row)}))};
  }));
  // Financial totals include the complete campaign, just like the existing headline.
- // Keep campaign totals separate from active-ad rows to avoid counting either twice.
+ // Keep campaign totals separate from selected-period ad rows to avoid counting either twice.
  return {channel:'Meta',rows:results.flatMap(result=>result.ads),totals:results.flatMap(result=>result.totals.map(row=>({date:row.date_start,...performance(row)}))),reach:results.flatMap(result=>result.totals.map(row=>({date:row.date_start,value:performance(row).reach})))};
 }
 

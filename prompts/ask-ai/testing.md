@@ -26,3 +26,5 @@ Put a real clickable Markdown link immediately beside the claim or comparison it
 正文、摘要和逐 Campaign 短评只能包含：分析结论、必要的数据依据、具体优化建议。不得复述读取了哪些文件/图片/视频、调用或未调用 API、冻结/采集/缓存/数据库/任务状态、字段/schema/内部编号、核验步骤、已完成哪些操作、未修改广告或预算、未发送 Slack 等内部说明。不得另设“资料来源与数据限制”“执行说明”“核验过程”章节，也不得把这些内容改名后塞进表格、脚注或结尾。技术审计仅留在结构化 sources/data_gaps 字段，不进入用户正文。
 
 只在影响决策时保留一句具体限制，例如“仅1笔订单，扩量前需要验证重复性”“模块点击缺失，暂不能判定赢家”。有用的素材观察、数据对比和实际优化建议不得因清理而删除；不要把不确定推断改成确定结论。引用已核实的外部网页或原始 Google Drive/Slack 链接时，直接放在相关句子旁。
+
+Meta historical performance: paused testing ads remain part of the selected campaign inventory. Use their supplied reporting-period metrics and creative types regardless of current delivery status. A paused status does not mean zero historical ads or zero historical activity. The current `meta-testing-period-ads-v2` context takes precedence over older answers that omitted paused ads.

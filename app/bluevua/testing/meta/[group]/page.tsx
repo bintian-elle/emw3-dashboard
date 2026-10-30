@@ -10,6 +10,7 @@ import styles from "../../channel-content.module.css";
 import { highResolutionCreativeUrl } from "@/lib/creative-image";
 import { testingPeriodInput } from "@/lib/testing-google";
 import { getMetaCampaignTest, type MetaActiveAd } from "@/lib/testing-meta";
+import {CampaignStatusChip} from "../../campaign-status-chip";
 import { TestReadout } from "../../test-readout";
 
 const currency=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
@@ -22,7 +23,7 @@ const metrics:Array<{label:string;key:keyof MetaActiveAd;format:"currency"|"deci
 function metric(value:number|null,format:"currency"|"decimal"|"percent"|"roas"|"cost"){if(value==null||!Number.isFinite(value))return "—";if(format==="cost")return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:4}).format(value);if(format==="currency")return currency.format(value);if(format==="percent")return percent.format(value);if(format==="roas")return value.toFixed(2);return decimal.format(value);}
 type SearchParams={period?:string|string[];start?:string|string[];end?:string|string[];returnTo?:string|string[]};
 
-function AdIdentity({ad}:{ad:MetaActiveAd}){const src=highResolutionCreativeUrl(ad.thumbnailUrl);return <div className={styles.identity}>{ad.videoUrl?<VideoLightbox src={ad.videoUrl} thumbnailUrl={src} title={ad.name}/>:<ImageLightbox src={src} alt={ad.name} size="lg"/>}<div className={styles.identityText}><p >{(ad.postUrl||ad.previewUrl)?<CreativeSourceLink href={(ad.postUrl||ad.previewUrl)!} name={ad.name} kind={ad.postUrl?"post":"preview"}/>:ad.name}</p><span className={styles.badge}>{ad.mediaType}</span></div></div>;}
+function AdIdentity({ad}:{ad:MetaActiveAd}){const src=highResolutionCreativeUrl(ad.thumbnailUrl);return <div className={styles.identity}>{ad.videoUrl?<VideoLightbox src={ad.videoUrl} thumbnailUrl={src} title={ad.name}/>:<ImageLightbox src={src} alt={ad.name} size="lg"/>}<div className={styles.identityText}><p >{(ad.postUrl||ad.previewUrl)?<CreativeSourceLink href={(ad.postUrl||ad.previewUrl)!} name={ad.name} kind={ad.postUrl?"post":"preview"}/>:ad.name}</p><span className={styles.badge}>{ad.mediaType}</span>{(ad.effectiveStatus||ad.status)&&<CampaignStatusChip status={ad.effectiveStatus||ad.status!}/>}</div></div>;}
 
 export default async function MetaAdGroupPage({params,searchParams}:{params:Promise<{group:string}>;searchParams:Promise<SearchParams>}){
   const route=await params;const query=await searchParams;const data=await getMetaCampaignTest(testingPeriodInput(query));const group=data.adGroups.find(item=>item.adGroupId===route.group);if(!group)notFound();
