@@ -25,7 +25,7 @@
 - Overview 与 Test inventory 切换时优先展示目标页面的标题、导航和卡片结构，等待数据的位置显示局部加载状态，并在内容顶部中央显示简短提示；清单复用已发布的共享快照，不为切换触发渠道 API 刷新。
 - Testing 报表优先使用当前周期的本机缓存，后台轻量核对共享快照版本，只有版本变化时才更新数据；缓存失效或数据源错误时保留最后一次成功的数据，不将不同周期的数据混用。
 - Concluded Test 侧栏入口直接进入主页面并显示已结束 Campaign 总数；主页面使用与 Test inventory 一致的可搜索 Campaign 列表，不显示状态标签；数量按 Campaign 去重，与侧栏使用相同口径。
-- Business Performance 与 Channel Performance 的标题样式一致，标题与内容分别置于同一张卡片中；渠道表格默认按侧栏顺序排列，渠道名称不提供排序，数值列保留表头排序。EDM、Social Media 以各自表头和数据行展示专属指标，保留渠道跳转。
+- Business Performance 与 Channel Performance 的标题样式一致，标题与内容分别置于同一张卡片中；数据表默认按 ROAS 从高到低排列并显示排序方向；没有 ROAS 的表按名称排列。渠道名称不提供手动排序，数值列保留表头排序。EDM、Social Media 以各自表头和数据行展示专属指标，保留渠道跳转。
 - Business Performance 的 Total ROAS 和 Total Conversion Rate 趋势图可通过下划线标签切换渠道或素材维度；默认按 Google、Meta、Reddit、EDM 的固定顺序展示渠道，图表仅显示当前维度的图例。切换保留折线动画并尊重减少动态效果设置。素材维度缺少可靠数据时明确展示不可用，不推算缺失数据。
 - 公司动图 Logo 和 Bluevua 品牌标识使用本地资源；顶部公司 Logo 链接到网站主页，减少动态效果时显示静态标识。
 - 渠道使用真实品牌图标，Google 三种 campaign 使用清晰区分的单个方形图标位，不使用横向组合标识。

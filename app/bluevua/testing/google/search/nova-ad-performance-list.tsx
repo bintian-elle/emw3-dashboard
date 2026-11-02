@@ -15,7 +15,7 @@ const columns=orderTestingMetrics([{label:'Spend',key:'spend',format:'currency'}
 function value(metric:GoogleAdMetrics|null,key:string){return key==='aov'?(metric&&metric.orders>0?metric.revenue/metric.orders:null):metric?.[key as keyof GoogleAdMetrics]??null;}
 function format(num:number|null,kind:'currency'|'decimal'|'percent'){if(num==null)return '—';return new Intl.NumberFormat('en-US',kind==='currency'?{style:'currency',currency:'USD',maximumFractionDigits:2}:kind==='percent'?{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}:{maximumFractionDigits:2}).format(num);}
 export function NovaAdPerformanceList({ads,metrics,businessName,logo,sitelinks}:{ads:AdRow[];metrics:Record<string,GoogleAdMetrics>|null;businessName:string;logo?:string;sitelinks:ArchivedAsset[]}){
- const [sorting,setSorting]=useState<SortingState>([]),[previewId,setPreviewId]=useState<string|null>(null);
+ const [sorting,setSorting]=useState<SortingState>([{id:'roas',desc:true}]),[previewId,setPreviewId]=useState<string|null>(null);
  const defs=useMemo<ColumnDef<AdRow>[]>(()=>[
   {id:'ad',header:'Ad',enableSorting:false,cell:({row})=>{const ad=row.original.adGroupAd.ad,open=previewId===ad.id;return <div className={styles.adName}><NovaButton variant="ghost" onClick={()=>setPreviewId(open?null:ad.id)} aria-expanded={open} aria-controls={`preview-${ad.id}`}>{open?<ChevronDown/>:<ChevronRight/>}<span>{ad.name||ad.responsiveSearchAd?.headlines?.[0]?.text||`Ad ${ad.id}`}</span></NovaButton><small>Ad {ad.id}</small></div>;}},
   {id:'status',header:'Status',enableSorting:false,cell:({row})=><span className={styles.status} data-enabled={['ENABLED','ACTIVE'].includes(row.original.adGroupAd.status)}>{row.original.adGroupAd.status}</span>},

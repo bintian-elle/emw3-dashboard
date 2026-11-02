@@ -22,7 +22,7 @@ export function NovaExpandedGate({data,returnTo}:{children:ReactNode;data:Expand
 }
 
 function NovaRows({rows,data,parent,periodQuery}:{rows:ExpandedTestRow[];data:ExpandedTestingData;parent:string;periodQuery:string}){
- const [sorting,setSorting]=useState<SortingState>([]),pmax=data.channel==='pmax';
+ const [sorting,setSorting]=useState<SortingState>([{id:'roas',desc:true}]),pmax=data.channel==='pmax';
  const defs=useMemo<ColumnDef<ExpandedTestRow>[]>(()=>[
   {id:'name',header:pmax?'Asset group':'Ad',enableSorting:false,cell:({row})=><div className={styles.assetName}><TestingLink prefetch={false} href={withTestingReturnTo(`/bluevua/testing/google/${data.channel}/${row.original.id}${periodQuery}`,parent)}>{row.original.name}</TestingLink><span className={styles.status} data-enabled={row.original.status==='ENABLED'}>{row.original.status}</span></div>},
   ...columns.map(column=>({id:column.key,accessorFn:(row:ExpandedTestRow)=>row.metrics[column.key as keyof GoogleAdMetrics]??undefined,header:column.label,sortUndefined:'last' as const,cell:({row}:{row:{original:ExpandedTestRow}})=>format(row.original.metrics,column.key)})),

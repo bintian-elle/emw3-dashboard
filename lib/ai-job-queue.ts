@@ -20,6 +20,11 @@ export async function readTestingReadoutCache(keys:string[]){
  const result=await pool.query<TestingReadoutCacheRecord>(`select cache_key,readout_type,period_label,period_start::text,period_end::text,comparison_label,comparison_start::text,comparison_end::text,prompt_version,payload,generated_at,updated_at from testing_ai_readout_cache where cache_key=any($1::text[])`,[keys]);
  return result.rows;
 }
+/** Find saved reports for the same dates even if the user chose a different preset label. */
+export async function readTestingReadoutsForDates(start:string,end:string){
+ const result=await pool.query<TestingReadoutCacheRecord>(`select cache_key,readout_type,period_label,period_start::text,period_end::text,comparison_label,comparison_start::text,comparison_end::text,prompt_version,payload,generated_at,updated_at from testing_ai_readout_cache where period_start=$1::date and period_end=$2::date and cache_key like 'period:%' and cache_key not like 'period:concluded:%' order by updated_at desc limit 100`,[start,end]);
+ return result.rows;
+}
 /** Published readout metadata only; translation versions are scoped to language and source. */
 export async function readTestingReadoutVersions(keys:string[],language:'en'|'zh'){
  if(!keys.length)return [];

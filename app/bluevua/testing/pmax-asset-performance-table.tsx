@@ -25,7 +25,7 @@ export function PmaxAssetPerformanceTable(props:Props){
  })}</div>;
 }
 function AssetTypePerformanceTable({rows,assets,videoNames,title}:Props&{title:string}){
- const [sort,setSort]=useState<SortDescriptor>();
+ const [sort,setSort]=useState<SortDescriptor>({column:"roas",direction:"descending"});
  const ordered=[...rows].sort((a,b)=>{
   if(!sort)return Number(b.status==="ENABLED")-Number(a.status==="ENABLED")||a.assetId.localeCompare(b.assetId);
   const key=sort.column as keyof GoogleAdMetrics,x=a.metrics[key],y=b.metrics[key];if(x==null)return y==null?0:1;if(y==null)return -1;return (sort.direction==="descending"?-1:1)*(x-y);

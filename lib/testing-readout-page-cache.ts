@@ -73,3 +73,9 @@ async function reconcile(keys:string[],language:'en'|'zh',expected?:unknown){
 export function reconcileTestingPageReadouts(keys:string[],language:'en'|'zh'){return reconcile(keys,language);}
 /** Verify an observed version on this instance before serving it to a viewer. */
 export function reconcileExpectedTestingPageReadouts(keys:string[],language:'en'|'zh',expected:unknown){return reconcile(keys,language,expected);}
+
+/** Called by the scheduled publisher after bilingual results finish, never by a language toggle. */
+export function invalidatePublishedTestingPageReadouts(){
+ for(const key of new Set([...state.records.keys(),...state.pending.keys()]))state.generations.set(key,(state.generations.get(key)??0)+1);
+ state.records.clear();state.translations.clear();state.translationVersions.clear();state.authoritative.clear();
+}

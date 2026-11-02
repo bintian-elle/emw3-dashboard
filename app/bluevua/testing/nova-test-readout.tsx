@@ -14,6 +14,7 @@ import {testingReadoutKey,type CachedTestReadout,type CachedPeriodReadout,type R
 import type {TestingFrameworkKey,ReadoutMetric} from '@/lib/testing-framework';
 import {NovaButton,NovaCard} from './nova-preview-ui';
 import {NovaInsightQuestion} from './nova-insight-question';
+import {GenerateReadoutButton} from './generate-readout-button';
 import shared from './nova-preview-sections.module.css';
 import styles from './nova-test-readout.module.css';
 
@@ -43,7 +44,7 @@ export function NovaTestReadout({channel,testIdentity,period,standalone,campaign
  const noData=loading?t('Fetching analysis…','正在获取分析…'):t('Analysis is not available for this reporting period.','此时间区间暂无可用分析。');
  const toggle=<NovaButton ref={toggleRef} variant="outline" disabled={!ready} aria-expanded={expanded} aria-controls={detailsId} onClick={()=>setExpanded(!expanded)}>{expanded?t('Hide details','收起详情'):(isOverview?t('View all insights and data coverage','查看全部洞察与数据覆盖'):t('View detailed analysis','查看详细分析'))}{expanded?<ChevronUp/>:<ChevronDown/>}</NovaButton>;
  const question=<NovaInsightQuestion scope="test" expanded={expanded} detailsId={detailsId} bottomId={bottomId} canAsk={canAsk} ask={ask} open={open}/>;
- const summaryBlock=<div className={styles.summary}><div className={styles.summaryTitle}><Sparkles aria-hidden="true"/><h2>{t('Test summary','测试总结')}</h2></div>{summary?<Text text={summary}/>:<p className={styles.muted} role={loading?'status':undefined}>{noData}</p>}{zh&&translationPending&&<p className={styles.muted} role="status">中文翻译正在准备，暂显示英文分析。</p>}{zh&&translationError&&<p className={styles.muted} role="status">中文翻译暂不可用，暂显示英文分析。</p>}</div>;
+ const summaryBlock=<div className={styles.summary}><div className={styles.summaryTitle}><Sparkles aria-hidden="true"/><h2>{t('Test summary','测试总结')}</h2></div>{summary?<Text text={summary}/>:<div className={styles.muted} role={loading?'status':undefined}>{noData} {!loading&&<GenerateReadoutButton period={period} scope={channel??"overview"}/>}</div>}{zh&&translationPending&&<p className={styles.muted} role="status">中文翻译正在准备，暂显示英文分析。</p>}{zh&&translationError&&<p className={styles.muted} role="status">中文翻译暂不可用，暂显示英文分析。</p>}</div>;
  const details=<div id={detailsId} hidden={!expanded} className={styles.details}>
   {test?.preview_sections?test.preview_sections.map((section,index)=><section key={index} className={styles.detailGroup}>{section.title&&<h3>{section.title}</h3>}<div className={shared.markdown}><Streamdown plugins={plugins} isAnimating={false} controls={{table:false}} tableMaxHeight={0}>{conclusionOnlyMarkdown(section.markdown)}</Streamdown></div></section>):<>
    {period&&!testingReadoutKey(period)&&<p className={styles.muted}>{t('Select Last Week, Week-to-date or Month-to-date to view analysis.','选择上周、本周至今或本月至今，查看分析。')}</p>}

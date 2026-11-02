@@ -59,3 +59,6 @@ next-env.d.ts
 
 # Versioned production release artifacts
 /.next-release*/
+
+# Local Next.js development build output
+/private/tmp/emw3-nova-dev/

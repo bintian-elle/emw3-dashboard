@@ -1,0 +1,5 @@
+.container { display:inline-flex; align-items:center; flex-wrap:wrap; gap:.5rem; }
+.spinner { width:1rem; height:1rem; animation:spin 1s linear infinite; }
+.time { color:var(--nova-muted,#707680); font-variant-numeric:tabular-nums; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .spinner { animation:none; } }

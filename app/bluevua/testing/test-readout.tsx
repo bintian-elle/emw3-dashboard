@@ -1,10 +1,13 @@
 "use client";
+
+import {fetchTestingReadoutJson} from '@/lib/testing-readout-fetch';
 import {PromptPreviewMarkdown} from "./prompt-preview-report";
 import {testingReadoutContent} from "@/lib/testing-readout-content";
 import {liveOverviewExecutiveSummary} from "@/lib/testing-readout-live-overview";
 import type {OverviewHeadlineMetrics} from "@/lib/overview-headline-metrics";
 import {currentPmaxReadout} from "@/lib/pmax-testing-performance";
 import { cleanTestingReadoutCopy } from "@/lib/testing-readout-copy";
+import {manualTestingScope} from "@/lib/testing-manual-scope";
 import {useReadoutVersion} from './use-readout-version';
 
 import { useTestingAiScope } from "./testing-ai";
@@ -38,9 +41,7 @@ function loadCachedReadouts(keys: string[], language: SiteLanguage,revision:numb
   const query = new URLSearchParams({ language });
   if(expected)query.set('expected',expected);
   uniqueKeys.forEach(key => query.append("key", key));
-  const request = fetch(`/api/testing/readouts?${query}`, { cache: "no-store" }).then(async response => {
-    if (!response.ok) throw new Error("Cached readouts unavailable");
-    const result = await response.json() as { records?: Array<{ cache_key: string; payload: CachedPayload }> };
+  const request = fetchTestingReadoutJson<{ records?: Array<{ cache_key: string; payload: CachedPayload }> }>(`/api/testing/readouts?${query}`).then(result => {
     return Object.fromEntries((result.records ?? []).map(record => [record.cache_key, testingReadoutContent(record.cache_key,record.payload)])) as ReadoutRecords;
   });
   const entry = { expires: Date.now() + 25000, request };
@@ -80,6 +81,8 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const showCreativeDetails = channel !== "overview";
   const socialKey = "period:social-lifetime";
   const periodKey = period ? testingReadoutKey(period) : null;
+  const manualScope=manualTestingScope(channel);
+  const manualKey=period&&manualScope?testingReadoutKey({...period,manualScope}):null;
   const version=useReadoutVersion([channel==='overview'?socialKey:null,periodKey],language);
   const requestKey = [language, channel ?? "", periodKey ?? "", testIdentity ?? ""].join("|");
   useLayoutEffect(() => {
@@ -96,26 +99,25 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
     const rect = event.currentTarget.getBoundingClientRect();
     collapsePosition.current = { kind, y: event.clientY > 0 ? event.clientY : rect.top + rect.height / 2 };
   };
+  const [generation,setGeneration]=useState(0);
+  useEffect(()=>{const refresh=()=>{pendingLoads.clear();setGeneration(value=>value+1);};window.addEventListener('testing-readout-generated',refresh);return()=>window.removeEventListener('testing-readout-generated',refresh);},[]);
   const [cached, setCached] = useState<{ key: string; records: ReadoutRecords } | null>(null);
   useEffect(() => {
     if (!channel || (!periodKey && channel !== "overview")) return;
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const deadline = Date.now() + 90 * 60 * 1000;
     const load = async () => {
       try {
-        const records = await loadCachedReadouts([...(channel === "overview" ? [socialKey] : []), ...(periodKey ? [periodKey] : [])], language,version.revision,version.expected);
+        const records = await loadCachedReadouts([...(channel === "overview" ? [socialKey] : []), ...(manualKey ? [manualKey] : []), ...(periodKey ? [periodKey] : [])], language,version.revision,generation?null:version.expected);
         if (cancelled) return;
         setCached({ key: requestKey, records });
-        if (((!periodKey || records[periodKey]) && (channel !== "overview" || records[socialKey]) && !Object.values(records).some(record => record._translation_pending||record._preview_pending)) || Date.now() >= deadline) return;
+        if (((!periodKey || records[periodKey]) && (channel !== "overview" || records[socialKey]) && !Object.values(records).some(record => record._translation_pending||record._preview_pending))) return;
       } catch { if (cancelled) return; }
-      if (Date.now() < deadline) timer = setTimeout(() => { void load(); }, 30000);
     };
     void load();
-    return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [requestKey, periodKey, channel, pathname, language,version.revision,version.expected]);
+    return () => { cancelled = true; };
+  }, [requestKey, periodKey, manualKey, channel, pathname, language,version.revision,version.expected,generation]);
   const records = cached?.key === requestKey ? cached.records : undefined;
-  const savedPeriodResult = periodKey ? records?.[periodKey] : undefined;
+  const savedPeriodResult = (manualKey ? records?.[manualKey] : undefined) ?? (periodKey ? records?.[periodKey] : undefined);
   const periodResult = currentPmaxReadout(savedPeriodResult,channel) ? savedPeriodResult : undefined;
   const framework = period?.concludedTestId ? periodResult?.test_frameworks?.find(item=>item.test_id===testIdentity||item.campaign_name===testIdentity) : undefined;
   const frameworkSection = framework ? <section aria-label="Test framework" className="border-b border-border-table bg-background-secondary-default/50"><div className="grid gap-4 p-5 sm:grid-cols-2">{framework.test_goal && <div className="rounded-2xl border border-border-table bg-background-primary-default p-4"><p className="text-caption-1-semibold text-text-tertiary">{t("Test goal","测试目标")}</p><p className="mt-3 text-body-regular text-text-primary">{framework.test_goal}</p></div>}{framework.hypothesis?.text && <div className="rounded-2xl border border-border-table bg-background-primary-default p-4"><p className="text-caption-1-semibold text-text-tertiary">{t("Hypothesis","测试假设")}</p><p className="mt-3 text-body-regular text-text-primary">{framework.hypothesis.text}</p></div>}</div></section> : null;

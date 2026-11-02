@@ -8,8 +8,8 @@ import {nextMetricSort,sortMetricRows,type MetricSort,type MetricSortValues} fro
 const Context=createContext<{sort:MetricSort;toggle:(key:string)=>void;ready:boolean}|null>(null);
 const subscribe=()=>()=>{};
 export function useMetricSortReady(){return useSyncExternalStore(subscribe,()=>true,()=>false);}
-export function MetricSortScope({children}:{children:ReactNode}){
- const [sort,setSort]=useState<MetricSort>(null),ready=useMetricSortReady();
+export function MetricSortScope({children,defaultRoas=false,roasKey="roas"}:{children:ReactNode;defaultRoas?:boolean;roasKey?:string}){
+ const [sort,setSort]=useState<MetricSort>(defaultRoas?{key:roasKey,direction:"descending"}:null),ready=useMetricSortReady();
  return <Context.Provider value={{sort,ready,toggle:key=>setSort(previous=>nextMetricSort(previous,key))}}>{children}</Context.Provider>;
 }
 export function MetricSortButton({metric,label,align="right",className}:{metric:string;label:string;align?:"left"|"right";className?:string}){
@@ -22,8 +22,8 @@ export function MetricSortHeader({metric,label,className,buttonClassName}:{metri
  const context=useContext(Context);
  return <th scope="col" aria-sort={context?.sort?.key===metric?context.sort.direction:'none'} className={className}><MetricSortButton metric={metric} label={label} className={buttonClassName}/></th>;
 }
-export function MetricSortedRows({rows,as="div"}:{rows:Array<{id:string;values:MetricSortValues;content:ReactNode}>;as?:"div"|"tbody"|"fragment"}){
- const context=useContext(Context),content=sortMetricRows(rows,context?.sort??null,row=>row.values).map(row=><RowContent key={row.id}>{row.content}</RowContent>);
+export function MetricSortedRows({rows,as="div"}:{rows:Array<{id:string;name?:string;values:MetricSortValues;content:ReactNode}>;as?:"div"|"tbody"|"fragment"}){
+ const context=useContext(Context),content=(context?.sort?sortMetricRows(rows,context.sort,row=>row.values):[...rows].sort((a,b)=>(a.name??a.id).localeCompare(b.name??b.id,undefined,{numeric:true,sensitivity:"base"}))).map(row=><RowContent key={row.id}>{row.content}</RowContent>);
  return as==='tbody'?<tbody>{content}</tbody>:as==='fragment'?<>{content}</>:<div>{content}</div>;
 }
 function RowContent({children}:{children:ReactNode}){return children;}

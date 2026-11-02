@@ -1,5 +1,5 @@
 import {testingCampaignAnchor,withTestingReturnTo} from "@/lib/testing-navigation";
-import {MetricSortScope,MetricSortButton,MetricSortedRows} from "./metric-sorting";
+import {MetricSortScope,MetricSortHeader,MetricSortedRows} from "./metric-sorting";
 import { CampaignName } from "./campaign-name";
 import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import Link from "@/app/bluevua/testing/testing-link";
@@ -26,10 +26,10 @@ export function MetaCampaignSection({data,query="",returnTo}:{data:MetaCampaignT
  return <section className={styles.list}>{data.campaigns.map(campaign=><article key={campaign.campaignId} id={testingCampaignAnchor("meta",campaign.campaignName)} className={styles.card}>
   <header className={styles.header}><div className={styles.heading}><span className={styles.headingIcon}><TestingChannelBrand name="Meta"/></span><div className={styles.headingText}><div className={styles.eyebrow}>META <span className={styles.badge}>STRATEGY</span> CAMPAIGN <CampaignStatusChip status={campaign.effectiveStatus}/></div><h2 className={styles.title}><CampaignName name={campaign.campaignName} channel="meta"/></h2></div></div><p className={styles.date}>{data.periodLabel} · {displayDate(data.period.start)} – {displayDate(data.period.end)}</p></header>
   <TestReadout channel="meta" testIdentity={campaign.campaignName} period={{label:data.periodLabel,...data.period}}>
-   {campaign.adGroups.length?<MetricSortScope><MetricSortedRows rows={campaign.adGroups.map(group=>{const cover=group.activeAds[0];const href=withTestingReturnTo(`/bluevua/testing/meta/${group.adGroupId}${query?`?${query}`:""}`,returnTo??`/bluevua/testing/meta${query?`?${query}`:""}`);return {id:group.adGroupId,values:Object.fromEntries(metrics.map(item=>[item.key,group[item.key] as number|null])),content:<div key={group.adGroupId} className={styles.row}>
-    <div className={styles.identity}>{cover?.videoUrl?<VideoLightbox src={cover.videoUrl} thumbnailUrl={highResolutionCreativeUrl(cover.thumbnailUrl)} title={cover.name}/>:<ImageLightbox src={highResolutionCreativeUrl(cover?.thumbnailUrl??null)} alt={group.name}/>}<div className={styles.identityText}><Link href={href}>{group.name}</Link><p className={styles.muted}>{group.activeAds.length} ads</p></div></div>
-    <dl className={styles.metrics}>{metrics.map(item=><div key={item.label}><dt><MetricSortButton metric={item.key} label={item.label} align="left"/></dt><dd>{metric(group[item.key] as number|null,item.format)}</dd></div>)}</dl>
-   </div>};})}/></MetricSortScope>:<p className={styles.empty}>No ad group performance is available for this campaign and period.</p>}
+   {campaign.adGroups.length?<MetricSortScope defaultRoas><div className={styles.tableWrap}><table className={`${styles.table} ${styles.performanceTable}`} aria-label="Meta ad group performance"><thead><tr><th scope="col">Ad group</th>{metrics.map(item=><MetricSortHeader key={item.key} metric={item.key} label={item.label}/>)}</tr></thead><MetricSortedRows as="tbody" rows={campaign.adGroups.map(group=>{const cover=group.activeAds[0];const href=withTestingReturnTo(`/bluevua/testing/meta/${group.adGroupId}${query?`?${query}`:""}`,returnTo??`/bluevua/testing/meta${query?`?${query}`:""}`);return {id:group.adGroupId,name:group.name,values:Object.fromEntries(metrics.map(item=>[item.key,group[item.key] as number|null])),content:<tr key={group.adGroupId}>
+    <td><div className={styles.identity}>{cover?.videoUrl?<VideoLightbox src={cover.videoUrl} thumbnailUrl={highResolutionCreativeUrl(cover.thumbnailUrl)} title={cover.name}/>:<ImageLightbox src={highResolutionCreativeUrl(cover?.thumbnailUrl??null)} alt={group.name}/>}<div className={styles.identityText}><Link href={href}>{group.name}</Link><p className={styles.muted}>{group.activeAds.length} ads</p></div></div></td>
+    {metrics.map(item=><td key={item.key}>{metric(group[item.key] as number|null,item.format)}</td>)}
+   </tr>};})}/></table></div></MetricSortScope>:<p className={styles.empty}>No ad group performance is available for this campaign and period.</p>}
   </TestReadout>
  </article>)}</section>;
 }

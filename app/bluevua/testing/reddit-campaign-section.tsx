@@ -1,5 +1,5 @@
 import {testingCampaignAnchor,withTestingReturnTo} from "@/lib/testing-navigation";
-import {MetricSortScope,MetricSortButton,MetricSortedRows} from "./metric-sorting";
+import {MetricSortScope,MetricSortHeader,MetricSortedRows} from "./metric-sorting";
 import { CampaignName } from "./campaign-name";
 import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import { RedditContentPerformance } from "./reddit-content-performance";
@@ -21,10 +21,10 @@ export function RedditCampaignSection({data,query="",contentTesting=false}:{data
  return <section className={styles.list}>{data.campaigns.map(campaign=><article key={campaign.campaignId} id={testingCampaignAnchor("reddit",campaign.name)} className={styles.card}>
   <header className={styles.header}><div className={styles.heading}><span className={styles.headingIcon}><TestingChannelBrand name="Reddit"/></span><div className={styles.headingText}><div className={styles.eyebrow}>REDDIT <span className={styles.badge}>{campaign.kind.toUpperCase()}</span> CAMPAIGN <CampaignStatusChip status={campaign.campaignStatus??"Active"}/></div><h2 className={styles.title}><CampaignName name={campaign.name} channel={campaign.kind==="Awareness"?"reddit-awareness":"reddit-conversion"}/></h2></div></div><p className={styles.date}>{data.periodLabel} · {date(data.period.start)} – {date(data.period.end)}</p></header>
   <TestReadout channel={contentTesting?(campaign.kind==="Awareness"?"reddit-awareness":"reddit-conversion"):undefined} testIdentity={campaign.name} period={{label:data.periodLabel,...data.period}}>
-   {contentTesting?<RedditContentPerformance campaign={campaign}/>:<MetricSortScope><MetricSortedRows rows={campaign.groups.map(group=>{const cover=group.activeAds[0],href=withTestingReturnTo(`/bluevua/testing/reddit/${group.adGroupId}${query?`?${query}`:""}`,`/bluevua/testing/reddit${query?`?${query}`:""}`);return {id:group.adGroupId,values:Object.fromEntries(labels[campaign.kind].map(item=>[item.key,group[item.key as keyof typeof group] as number|null])),content:<div key={group.adGroupId} className={styles.row}>
-    <div className={styles.identity}><ImageLightbox src={cover?.thumbnailUrl??null} alt={group.name}/><div className={styles.identityText}><Link href={href}>{group.name}</Link><p className={styles.muted}>{group.activeAds.length} active ads</p></div></div>
-    <dl className={styles.metrics}>{orderTestingMetrics(labels[campaign.kind]).map(item=><div key={item.key}><dt><MetricSortButton metric={item.key} label={item.label} align="left"/></dt><dd>{value(group as RedditCampaign,item.key)}</dd></div>)}</dl>
-   </div>};})}/></MetricSortScope>}
+   {contentTesting?<RedditContentPerformance campaign={campaign}/>:<MetricSortScope defaultRoas={campaign.kind==="Conversion"}><div className={styles.tableWrap}><table className={`${styles.table} ${styles.performanceTable}`} aria-label="Reddit ad group performance"><thead><tr><th scope="col">Ad group</th>{orderTestingMetrics(labels[campaign.kind]).map(item=><MetricSortHeader key={item.key} metric={item.key} label={item.label}/>)}</tr></thead><MetricSortedRows as="tbody" rows={campaign.groups.map(group=>{const cover=group.activeAds[0],href=withTestingReturnTo(`/bluevua/testing/reddit/${group.adGroupId}${query?`?${query}`:""}`,`/bluevua/testing/reddit${query?`?${query}`:""}`);return {id:group.adGroupId,name:group.name,values:Object.fromEntries(labels[campaign.kind].map(item=>[item.key,group[item.key as keyof typeof group] as number|null])),content:<tr key={group.adGroupId}>
+    <td><div className={styles.identity}><ImageLightbox src={cover?.thumbnailUrl??null} alt={group.name}/><div className={styles.identityText}><Link href={href}>{group.name}</Link><p className={styles.muted}>{group.activeAds.length} active ads</p></div></div></td>
+    {orderTestingMetrics(labels[campaign.kind]).map(item=><td key={item.key}>{value(group as RedditCampaign,item.key)}</td>)}
+   </tr>};})}/></table></div></MetricSortScope>}
   </TestReadout>
  </article>)}</section>;
 }

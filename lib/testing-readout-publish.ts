@@ -7,7 +7,7 @@ import { overviewExecutiveSummary } from "@/lib/testing-readout-overview";
 
 export async function publishTestingReadoutJob(job: QueuedJob) {
   if ((job.result as { testing_cache_published_at?: string })?.testing_cache_published_at) return;
-  const input = job.body.analysis_payload as { captured_at?:string; metric_basis?:{pmax?:string}; prompt_version?: string; concluded_test_id?: string; regenerate_framework?: boolean; requirement_ids?: Record<string,string[]>; periods: Array<{ period: ReadoutPeriod; tests: Array<{ test_id: string }> }> };
+  const input = job.body.analysis_payload as { captured_at?:string; metric_basis?:{pmax?:string}; prompt_version?: string; concluded_test_id?: string; regenerate_framework?: boolean; requirement_ids?: Record<string,string[]>; reused_tests?:import("@/lib/testing-readout-contract").CachedTestReadout[]; periods: Array<{ period: ReadoutPeriod; tests: Array<{ test_id: string }> }> };
   const supplied = input.periods;
   const promptVersion = input.prompt_version ?? "content-testing-v2";
   const identities = Object.fromEntries(supplied.map(item => [testingReadoutKey(item.period)!, item.tests.map(test => test.test_id)]));
@@ -15,7 +15,7 @@ export async function publishTestingReadoutJob(job: QueuedJob) {
   // Save valid periods even if another period fails validation. Older jobs cannot
   // overwrite a more recently generated result for the same reporting dates.
   for (const [cacheKey, rawPayload] of decoded.records) {
-    const payload=testingReadoutContent(cacheKey,cleanTestingReadoutCopy(rawPayload));
+    const payload=testingReadoutContent(cacheKey,cleanTestingReadoutCopy({...rawPayload,tests:[...rawPayload.tests,...(input.reused_tests??[])]}));
     await writeTestingReadoutCache({
     cache_key: cacheKey, readout_type: "period", period_label: payload.period.label, period_start: payload.period.start, period_end: payload.period.end,
     comparison_label: null, comparison_start: null, comparison_end: null, prompt_version: promptVersion, payload: { ...payload, ...(input.concluded_test_id ? {test_frameworks:generatedFramework(payload.tests)} : {}), ...(payload.overview ? { overview: { ...payload.overview, executive_summary: overviewExecutiveSummary(payload.overview.executive_summary, payload.overview.key_findings) } } : {}), captured_at:input.captured_at??null, ...(input.metric_basis?{metric_basis:input.metric_basis}:{}), generation_job_id: job.id },

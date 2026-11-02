@@ -4,8 +4,9 @@ import { allowedGoogleUser, OAUTH_COOKIE, SESSION_COOKIE, SESSION_MAX_AGE, verif
 
 const keys = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 export async function GET(request: NextRequest) {
+  let returnTo = "/";
   const fail = (error: string) => {
-    const response = NextResponse.redirect(new URL(`/access?error=${error}`, authOrigin(request.url)));
+    const response = NextResponse.redirect(new URL(`/access?${new URLSearchParams({error,returnTo})}`, authOrigin(request.url)));
     response.cookies.set(OAUTH_COOKIE, "", authCookieOptions(0));
     response.headers.set("Cache-Control", "no-store");
     return response;
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
     const cookie = request.cookies.get(OAUTH_COOKIE)?.value;
     if (!cookie) return fail("login");
     const state = await verifyAuthPayload(cookie, "oauth-state");
+    returnTo = safeReturnPath(state.returnTo);
     if (request.nextUrl.searchParams.get("state") !== state.state || typeof state.verifier !== "string" || typeof state.nonce !== "string") return fail("login");
     const code = request.nextUrl.searchParams.get("code");
     if (!code || request.nextUrl.searchParams.has("error")) return fail("login");

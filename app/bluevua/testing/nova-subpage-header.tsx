@@ -1,5 +1,7 @@
 'use client';
 
+import {fetchTestingReadoutJson} from '@/lib/testing-readout-fetch';
+
 import {useEffect,useId,useLayoutEffect,useRef,useState,useTransition,type MouseEvent,type ReactNode} from 'react';
 import Link from 'next/link';
 import {usePathname,useRouter,useSearchParams} from 'next/navigation';
@@ -82,9 +84,9 @@ function NovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHeadlineM
  const contentId=useId(),bottomId=useId(),buttonRef=useRef<HTMLButtonElement>(null),collapseY=useRef<number|null>(null);
  useEffect(()=>{
   if(!baseId)return;
-  let cancelled=false,timer:ReturnType<typeof setTimeout>|undefined;
-  const load=async()=>{let poll=true;try{const params=new URLSearchParams({...Object.fromEntries(query.entries()),language});if(version.expected)params.set('expected',version.expected);const response=await fetch(`/api/testing/preview?${params}`,{cache:'no-store'});if(response.ok){const data=await response.json() as Preview;if(cancelled)return;if(data.disabled)poll=false;else{setPreview({key:requestKey,value:data});poll=data.status.status!=='completed';}}}catch{/* Retain the last successfully loaded analysis. */}finally{if(!cancelled&&poll)timer=setTimeout(()=>void load(),20000);}};
-  void load();return()=>{cancelled=true;if(timer)clearTimeout(timer);};
+  let cancelled=false;
+  const load=async()=>{let poll=true;try{const params=new URLSearchParams({...Object.fromEntries(query.entries()),language});if(version.expected)params.set('expected',version.expected);{const data=await fetchTestingReadoutJson<Preview>(`/api/testing/preview?${params}`);if(cancelled)return;if(data.disabled)poll=false;else{setPreview({key:requestKey,value:data});poll=data.status.status!=='completed';}}}catch{/* Retain the last successfully loaded analysis. */}finally{void poll;}};
+  void load();return()=>{cancelled=true;};
  },[baseId,language,query,requestKey,version.revision,version.expected]);
  const key=preview&&baseId?`${preview.manifest.run_id}:${baseId}`:null,expanded=!!key&&expandedKey===key;
  useLayoutEffect(()=>{if(expanded||collapseY.current===null)return;const y=collapseY.current;collapseY.current=null;const button=buttonRef.current;if(!button)return;const rect=button.getBoundingClientRect();scrollTestingContentBy(button,rect.top+rect.height/2-y);button.focus({preventScroll:true});},[expanded]);

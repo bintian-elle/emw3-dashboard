@@ -52,3 +52,21 @@ test("concluded lifetime keys isolate individual tests and restore trusted ident
  assert.equal(decodeTestingReadouts(envelope({...readout,period:{...nativePeriod,end:"2026-09-24"}}),[period],{[key]:["live-test"]}).records.size,0);
  assert.throws(()=>testingReadoutKey({...period,concludedTestId:"../unsafe"}));
 });
+
+
+test('custom and extended reporting periods have distinct reusable cache keys',()=>{
+ assert.equal(testingReadoutKey({label:'Custom',start:'2026-10-01',end:'2026-10-05'}),'period:custom:2026-10-01:2026-10-05');
+ assert.equal(testingReadoutKey({label:'Last 30 days',start:'2026-10-01',end:'2026-10-30'}),'period:last-30-days:2026-10-01:2026-10-30');
+});
+
+test('accepts a mislabeled single period only when its exact dates identify it uniquely',()=>{
+ const selected={label:'Last 7 days',start:'2026-10-26',end:'2026-11-01'};
+ const other={...selected,label:'Week-to-date'};
+ const key=testingReadoutKey(selected)!;
+ const result=envelope({...readout,period:other});
+ const decoded=decodeTestingReadouts(result,[selected],{[key]:['live-test']});
+ assert.deepEqual(decoded.errors,[]);
+ assert.equal(decoded.records.get(key)?.period.label,selected.label);
+ const ambiguous={...selected,label:'Custom'};
+ assert.equal(decodeTestingReadouts(result,[selected,ambiguous],{[key]:['live-test'],[testingReadoutKey(ambiguous)!]:['live-test']}).records.size,0);
+});

@@ -12,6 +12,7 @@ import { getSocialPerformance } from "@/lib/testing-social";
 import { concludedTestsForChannel } from "@/lib/concluded-tests";
 import { readConcludedSnapshot } from "@/lib/concluded-test-snapshot";
 import { readTestingReadoutCache } from "@/lib/ai-job-queue";
+import {manualTestingScope} from "@/lib/testing-manual-scope";
 import { testingReadoutKey } from "@/lib/testing-readout-contract";
 import { googleContentTestingInventory } from "@/lib/google-content-testing-scope";
 import { readGoogleAdPerformanceArchive } from "@/lib/google-ad-performance-archive";
@@ -79,7 +80,9 @@ export async function loadTestingChatContext(scope: TestingChatScope, comparison
  const concluded=scope.period.concludedTestId??(scope.channel==='concluded'?concludedTestsForChannel('Google Search').find(t=>t.campaignName===scope.campaign)?.id:undefined);
  const key=testingReadoutKey({...scope.period,...(concluded?{concludedTestId:concluded}:{})});
  const permanentKeys=scope.channel==='concluded'?concludedTestsForChannel('Google Search').filter(t=>tests.some(test=>test.campaign===t.campaignName)).map(t=>`period:concluded:${t.id}`):[];
- const saved=await readTestingReadoutCache([...new Set([...(concluded?[`period:concluded:${concluded}`]:[]),...(key?[key]:[]),...permanentKeys])]);
+ const manualScope=manualTestingScope(scope.channel);
+ const manualKey=manualScope?testingReadoutKey({...scope.period,manualScope}):null;
+ const saved=await readTestingReadoutCache([...new Set([...(manualKey?[manualKey]:[]),...(concluded?[`period:concluded:${concluded}`]:[]),...(key?[key]:[]),...permanentKeys])]);
  const names=new Set(tests.map(t=>t.campaign));
  const readouts=saved.map(row=>{const payload=withoutTestingFramework(row.payload) as Record<string,unknown>,compatible=currentPmaxReadout(payload,"overview");return {key:row.cache_key,period_start:row.period_start,period_end:row.period_end,...Object.fromEntries(Object.entries(payload).filter(([field])=>!['tests','test_frameworks','channel_frameworks'].includes(field)&&((!scope.campaign&&compatible)||field!=='overview'))),tests:(payload.tests as Array<{campaign_name?:string;test_id:string;channel?:string}>|undefined)?.filter(t=>(compatible||t.channel!=="Google PMAX")&&(names.has(t.test_id)||names.has(t.campaign_name??'')))};});
  function count(value:unknown):number {if(!value||typeof value!=='object')return 0;if(Array.isArray(value))return value.reduce((n,v)=>n+count(v),0);const row=value as Record<string,unknown>;if(typeof row.adId==='string')return 1;if(row.adGroupAd&&typeof row.adGroupAd==='object')return 1;return Object.values(row).reduce<number>((n,v)=>n+count(v),0);}

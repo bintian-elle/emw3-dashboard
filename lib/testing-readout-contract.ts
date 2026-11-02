@@ -1,8 +1,8 @@
 export class TestingReadoutValidationError extends Error {}
 
-export type ReadoutPeriod = { label: string; start: string; end: string; concludedTestId?: string };
+export type ReadoutPeriod = { label: string; start: string; end: string; concludedTestId?: string; manualScope?: string };
 export const readoutPeriodSlugs: Record<string, string> = {
-  "Last Week (Tue–Mon)": "last-week-tue-mon", "Week-to-date": "week-to-date", "Month-to-date": "month-to-date", "Lifetime snapshot": "social-lifetime",
+  "Last Week (Tue–Mon)": "last-week-tue-mon", "Week-to-date": "week-to-date", "Month-to-date": "month-to-date", "Year-to-date": "year-to-date", "Last 7 days": "last-7-days", "Last 30 days": "last-30-days", "Last 90 days": "last-90-days", "Custom": "custom", "Lifetime snapshot": "social-lifetime",
 };
 export function testingReadoutKey(period: ReadoutPeriod) {
   if (period.concludedTestId) {
@@ -12,7 +12,8 @@ export function testingReadoutKey(period: ReadoutPeriod) {
   if (period.label === "Lifetime (Sep 24, 2026 – Now)") return "period:reddit-lifetime";
   if (period.label === "Lifetime snapshot") return "period:social-lifetime";
   const slug = readoutPeriodSlugs[period.label];
-  return slug ? `period:${slug}:${period.start}:${period.end}` : null;
+  if(period.manualScope&&!/^(overview|google-search|google-pmax|google-demand-gen|meta|reddit|edm)$/.test(period.manualScope))throw new Error("Invalid manual scope");
+  return slug ? `period:${period.manualScope?`manual-${period.manualScope}-`:""}${slug}:${period.start}:${period.end}` : null;
 }
 export type CachedTestReadout = {
   test_id: string; channel?: string; campaign_name?: string | null; summary: string | null; preview_sections?: Array<{title:string;markdown:string}>;
@@ -35,11 +36,13 @@ export function decodeTestingReadouts(result: unknown, expected: ReadoutPeriod[]
       const payload: unknown = item;
       if (!object(payload) || payload.run_mode !== "period_readout" || payload.schema_version !== "1.0" || !object(payload.period) || !Array.isArray(payload.tests)) throw new Error("Invalid testing readout schema.");
       const actualPeriod = payload.period;
-      const period = expected.find(p => p.label === actualPeriod.label && p.start === actualPeriod.start && p.end === actualPeriod.end);
+      const sameDates=expected.filter(p=>p.start===actualPeriod.start&&p.end===actualPeriod.end);
+      // The model may rename a period; only restore the requested label when dates uniquely identify it.
+      const period = sameDates.find(p=>p.label===actualPeriod.label) ?? (sameDates.length===1?sameDates[0]:undefined);
       if (!period) throw new Error("Unexpected reporting dates or label.");
       const key = testingReadoutKey(period)!;
       if (records.has(key)) throw new Error("Duplicate period result.");
-      if(requirements && period.label!=="Lifetime snapshot" && period.label!=="Lifetime (Sep 24, 2026 – Now)"){
+      if(requirements && (!period.manualScope||period.manualScope==="overview") && period.label!=="Lifetime snapshot" && period.label!=="Lifetime (Sep 24, 2026 – Now)"){
         if(!object(payload.overview)||typeof payload.overview.executive_summary!=='string'||!Array.isArray(payload.overview.key_findings)||!payload.overview.key_findings.length||!Array.isArray(payload.overview.recommended_actions)||!payload.overview.recommended_actions.length)throw new Error('Overview requires a summary, key insights and optimization recommendations.');
         const text=JSON.stringify(payload.overview);
         for(const id of requirements.Overview??[])if(!text.includes(id))throw new Error(`Missing Overview requirement ${id}`);
