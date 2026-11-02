@@ -1,3 +1,5 @@
+import {InsightAssetsProvider} from "./insight-assets";
+import {readInsightAssets} from "@/lib/testing-insight-assets.server";
 import { currentSiteUser } from "@/lib/current-site-user";
 import { createHash } from "node:crypto";
 import { TestingAiProvider } from "./testing-ai";
@@ -12,7 +14,7 @@ import {testingSnapshotScopes,testingSnapshotWatchKey} from "@/lib/testing-snaps
 import {TestingScopedSnapshotProvider,TestingSnapshotBaseline} from "./testing-snapshot-baseline";
 
 export default async function TestingLayout({children}:{children:ReactNode}) {
-  const user=await currentSiteUser();
+  const [user,assets]=await Promise.all([currentSiteUser(),readInsightAssets()]);
   const owner=createHash("sha256").update(user?.sub??"anonymous").digest("hex");
   const account=user?{name:user.name,email:user.email,...(user.picture?{picture:user.picture}:{})}:null;
   // Start a cache-only read once for this layout. Suspended badges stream independently
@@ -20,5 +22,5 @@ export default async function TestingLayout({children}:{children:ReactNode}) {
   const inventoryBaseline=readRememberedSnapshotVersions(testingSnapshotScopes('inventory'));
   const scopedBaseline=readRememberedSnapshotVersionEntries();
   const inventory=getTestingInventory().catch(()=>({items:[],unavailable:["google-search","google-pmax","google-demand-gen","meta","reddit","edm"] as TestingInventoryChannel[]}));
-  return <Suspense><ResetPeriodOnReload/><TestingSnapshotBaseline cacheKey={testingSnapshotWatchKey('inventory')} versions={inventoryBaseline}/><TestingAiProvider key={owner} owner={owner}><TestingScopedSnapshotProvider entries={scopedBaseline}><TestingInventoryProvider inventory={inventory}><TestingDesignPreview account={account} inventory={inventory}>{children}</TestingDesignPreview></TestingInventoryProvider></TestingScopedSnapshotProvider></TestingAiProvider></Suspense>;
+  return <Suspense><ResetPeriodOnReload/><TestingSnapshotBaseline cacheKey={testingSnapshotWatchKey('inventory')} versions={inventoryBaseline}/><TestingAiProvider key={owner} owner={owner}><TestingScopedSnapshotProvider entries={scopedBaseline}><TestingInventoryProvider inventory={inventory}><InsightAssetsProvider assets={assets}><TestingDesignPreview account={account} inventory={inventory}>{children}</TestingDesignPreview></InsightAssetsProvider></TestingInventoryProvider></TestingScopedSnapshotProvider></TestingAiProvider></Suspense>;
 }

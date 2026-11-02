@@ -6,11 +6,7 @@ import {useEffect,useId,useLayoutEffect,useRef,useState,useTransition,type Mouse
 import Link from 'next/link';
 import {usePathname,useRouter,useSearchParams} from 'next/navigation';
 import {ArrowLeft,ChevronDown,ChevronUp,LayoutDashboard,Sparkles} from 'lucide-react';
-import {Streamdown} from 'streamdown';
-import {cjk} from '@streamdown/cjk';
-import {code} from '@streamdown/code';
-import {math} from '@streamdown/math';
-import {mermaid} from '@streamdown/mermaid';
+import {InsightText,InsightMarkdown} from './insight-assets';
 import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
 import {conclusionOnlyMarkdown} from '@/lib/testing-prompt-presentation';
 import {liveOverviewExecutiveSummary} from '@/lib/testing-readout-live-overview';
@@ -32,7 +28,6 @@ import {testingSnapshotInput} from '@/lib/testing-snapshot-watch';
 import {useReadoutVersion} from './use-readout-version';
 
 type Props={section?:string;title:string;redditDateFilter:boolean;showReportingPeriod:boolean;backHref?:string;backLabel:string;overviewMetrics?:OverviewHeadlineMetrics;sharePeriod?:{start:string;end:string}};
-const plugins={cjk,code,math,mermaid};
 
 export function NovaSubpageHeaderGate(props:Props&{children:ReactNode}){
  return <><NovaSubpageHeader {...props}/><NovaChannelReport overviewMetrics={props.overviewMetrics}/></>;
@@ -97,10 +92,12 @@ function NovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHeadlineM
  if(!supported&&!preview.manifest.run_id.startsWith('published-'))return <NovaCard className={reportStyles.loading}>{zh?'本轮预览使用':'This preview covers'} {preview.manifest.period.start} – {preview.manifest.period.end}{zh?'；请选择 Last Week 查看。':'. Select Last Week to view it.'}</NovaCard>;
  const report=preview.reports.find(item=>item.report_id===reportId);
  if(!report&&preview.manifest.run_id.startsWith('published-'))return null;
+ const assetChannel=baseId==='social-media'?'social':baseId==='reddit-lifetime'?'reddit':baseId==='overview'?undefined:baseId;
+ const reportHeading=baseId==='overview'?(zh?'总览分析':'Overview analysis'):(zh?'渠道分析':'Channel analysis');
  const summary=report&&baseId==='overview'&&overviewMetrics?liveOverviewExecutiveSummary(report.executive_summary,overviewMetrics,language):report?.executive_summary;
  const hide=(event:MouseEvent<HTMLButtonElement>)=>{const rect=event.currentTarget.getBoundingClientRect();collapseY.current=event.clientY>0?event.clientY:rect.top+rect.height/2;setExpandedKey(null);};
  return <NovaCard className={reportStyles.readout}><div className={reportStyles.readoutBody}>
-  <div className={reportStyles.readoutHeading}><Sparkles aria-hidden="true"/><h2>{report?.title??(zh?'渠道分析':'Channel analysis')}</h2><span>{lifetime?'Lifetime':`${preview.manifest.period.start} – ${preview.manifest.period.end}`}</span></div>
-  {report?<><div className={reportStyles.readoutSummary}>{summary}</div><div className={reportStyles.readoutActions}><NovaButton ref={buttonRef} variant="outline" aria-expanded={expanded} aria-controls={contentId} onClick={()=>setExpandedKey(expanded?null:key)}>{expanded?(zh?'收起完整分析':'Hide full analysis'):(zh?'查看完整分析':'View full analysis')}{expanded?<ChevronUp/>:<ChevronDown/>}</NovaButton>{expanded&&report.sections.map((section,index)=><NovaButton key={section.title} variant="ghost" size="sm" onClick={()=>document.getElementById(`${contentId}-${index}`)?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}>{section.title}</NovaButton>)}<Question expanded={expanded} detailsId={contentId} bottomId={bottomId}/></div></>:<p role="status" className={reportStyles.loading}>{zh?'正在获取分析…':'Fetching analysis…'}</p>}
- </div>{report&&expanded&&<div id={contentId} className={reportStyles.readoutDetails}>{report.sections.map((section,index)=><section key={section.title} id={`${contentId}-${index}`} className={reportStyles.readoutDetail}><h3>{section.title}</h3><div className={reportStyles.markdown}><Streamdown plugins={plugins} isAnimating={false} controls={{table:false}} tableMaxHeight={0}>{conclusionOnlyMarkdown(section.markdown)}</Streamdown></div></section>)}<div className={reportStyles.readoutBottom}><NovaButton variant="outline" aria-expanded aria-controls={contentId} onClick={hide}>{zh?'收起完整分析':'Hide full analysis'}<ChevronUp/></NovaButton><div id={bottomId} className={reportStyles.questionBottom}/></div></div>}</NovaCard>;
+  <div className={reportStyles.readoutHeading}><Sparkles aria-hidden="true"/><h2>{reportHeading}{report?.title?` · ${report.title}`:''}</h2><span>{lifetime?'Lifetime':`${preview.manifest.period.start} – ${preview.manifest.period.end}`}</span></div>
+  {report?<><div className={reportStyles.readoutSummary}><InsightMarkdown channel={assetChannel}>{summary??""}</InsightMarkdown></div><div className={reportStyles.readoutActions}><NovaButton ref={buttonRef} variant="outline" aria-expanded={expanded} aria-controls={contentId} onClick={()=>setExpandedKey(expanded?null:key)}>{expanded?(zh?'收起完整分析':'Hide full analysis'):(zh?'查看完整分析':'View full analysis')}{expanded?<ChevronUp/>:<ChevronDown/>}</NovaButton>{expanded&&report.sections.map((section,index)=><NovaButton key={section.title} variant="ghost" size="sm" onClick={()=>document.getElementById(`${contentId}-${index}`)?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}>{section.title}</NovaButton>)}<Question expanded={expanded} detailsId={contentId} bottomId={bottomId}/></div></>:<p role="status" className={reportStyles.loading}>{zh?'正在获取分析…':'Fetching analysis…'}</p>}
+ </div>{report&&expanded&&<div id={contentId} className={reportStyles.readoutDetails}>{report.sections.map((section,index)=><section key={section.title} id={`${contentId}-${index}`} className={reportStyles.readoutDetail}><h3><InsightText channel={assetChannel}>{section.title}</InsightText></h3><div className={reportStyles.markdown}><InsightMarkdown channel={assetChannel}>{conclusionOnlyMarkdown(section.markdown)}</InsightMarkdown></div></section>)}<div className={reportStyles.readoutBottom}><NovaButton variant="outline" aria-expanded aria-controls={contentId} onClick={hide}>{zh?'收起完整分析':'Hide full analysis'}<ChevronUp/></NovaButton><div id={bottomId} className={reportStyles.questionBottom}/></div></div>}</NovaCard>;
 }

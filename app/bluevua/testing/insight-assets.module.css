@@ -1,0 +1,11 @@
+.trigger { display:inline; padding:0; border:0; border-radius:2px; background:none; color:inherit; font:inherit; text-align:inherit; text-decoration:underline dotted; text-underline-offset:3px; cursor:pointer; overflow-wrap:anywhere; }
+.trigger:focus-visible { outline:2px solid var(--nova-ring,#737b87); outline-offset:3px; }
+.preview { z-index:100; width:min(320px,calc(100vw - 32px)); padding:12px; border:1px solid var(--nova-border,#e4e4e7); border-radius:12px; background:var(--nova-surface,#fff); color:var(--nova-foreground,#20242a); box-shadow:0 8px 30px #0002; font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+.preview img { width:100%; height:180px; object-fit:contain; background:var(--nova-soft,#f4f4f5); border-radius:6px; margin-bottom:8px; }
+.preview strong,.preview small { display:block; }
+.preview p { margin:8px 0; white-space:pre-wrap; max-height:120px; overflow:auto; }
+.preview small { color:var(--nova-muted,#707680); margin-top:4px; }
+.preview a { display:inline-flex; align-items:center; gap:4px; margin-top:8px; color:inherit; text-decoration:underline; }
+.preview a svg { width:14px; height:14px; }
+
+:global(.dark) .preview { --nova-surface:#232529; --nova-foreground:#f1f2f3; --nova-muted:#adb4be; --nova-border:#3b3e43; --nova-soft:#303338; }

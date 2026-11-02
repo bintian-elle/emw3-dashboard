@@ -28,3 +28,6 @@ Put a real clickable Markdown link immediately beside the claim or comparison it
 只在影响决策时保留一句具体限制，例如“仅1笔订单，扩量前需要验证重复性”“模块点击缺失，暂不能判定赢家”。有用的素材观察、数据对比和实际优化建议不得因清理而删除；不要把不确定推断改成确定结论。引用已核实的外部网页或原始 Google Drive/Slack 链接时，直接放在相关句子旁。
 
 Meta historical performance: paused testing ads remain part of the selected campaign inventory. Use their supplied reporting-period metrics and creative types regardless of current delivery status. A paused status does not mean zero historical ads or zero historical activity. The current `meta-testing-period-ads-v2` context takes precedence over older answers that omitted paused ads.
+
+
+All user-facing analysis must reference creatives, ads and posts using their verified names and usable links, never bare Asset ID / Ad ID / Creative ID or parenthetical IDs. Keep IDs only in structured tracking metadata. If a name or URL is missing, state that the creative name/link is unavailable; do not invent one. Use the same Post numbering as the supplied dashboard data.

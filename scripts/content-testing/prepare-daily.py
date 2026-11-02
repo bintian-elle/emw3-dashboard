@@ -23,6 +23,8 @@ def prepare(root,source,selected,prompts,reuse=None):
         assert tests,f'{slug}: no configured tests; do not publish incomplete coverage'
         names={t['test_id'] for t in tests};catalog=source['creative_catalog']
         supporting={'daily_history':{name:rows for name,rows in catalog.get('daily_history',{}).items() if name in names}}
+        reference_channel={'social-media':'social','reddit-lifetime':'reddit'}.get(slug,slug)
+        supporting['creative_references']=[item for item in catalog.get('reference_index',[]) if item.get('channel')==reference_channel]
         if channel=='Google Search':supporting['search']=catalog.get('search',{})
         if channel=='Meta':supporting['daily_history']=catalog.get('meta_daily_history',[])
         if channel=='Social Media':supporting['social']=catalog.get('social',{})
