@@ -65,3 +65,9 @@ test('failed install is not stamped and never builds/restarts', t => {
   assert.equal(existsSync(join(f.root, 'node_modules/.dashboard-dependencies')), false);
   assert.doesNotMatch(result.calls, /npm run build|pm2/);
 });
+
+test('restart updates the PM2 environment to select the build just produced',t=>{
+ const result=fixture(t).run({NEXT_DIST_DIR:'.next-release-test'});
+ assert.equal(result.status,0,result.stderr);
+ assert.match(result.calls,/pm2 restart emw3-dashboard --update-env/);
+});

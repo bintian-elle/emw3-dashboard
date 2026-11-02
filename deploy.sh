@@ -38,7 +38,15 @@ echo "3. Building Next.js (using configured cache policy)..."
 npm run build
 
 echo "4. Restarting application..."
-pm2 restart emw3-dashboard
+# PM2 can retain a different NEXT_DIST_DIR from a prior release. Select the
+# same directory used by this build rather than silently restarting old code.
+build_dir=$(node <<'JS'
+try { require('@next/env').loadEnvConfig(process.cwd()); }
+catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error; }
+console.log(process.env.NEXT_DIST_DIR || '.next');
+JS
+)
+NEXT_DIST_DIR="$build_dir" pm2 restart emw3-dashboard --update-env
 
 echo "5. Saving PM2 state..."
 pm2 save
