@@ -67,3 +67,31 @@ export function splitInsightAssetText(text:string,assets:readonly InsightAsset[]
  }
  if(start<text.length)parts.push(...unresolvedAssetText(text.slice(start)));return parts.length?parts:[text];
 }
+
+const escapePattern=(value:string)=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+/** Collapse legacy identity/name labels before Markdown splits them into separate nodes.
+ * Keep the exact ID internally so duplicate names still open the correct creative.
+ */
+export function normalizeInsightAssetMarkdown(markdown:string,assets:readonly InsightAsset[]):string{
+ const nameCounts=new Map<string,number>();
+ for(const asset of assets)nameCounts.set(asset.name,(nameCounts.get(asset.name)??0)+1);
+ const token=(value:string,url?:string)=>{const raw=escapePattern(value);return `(?:\\\`${raw}\\\`|\\*\\*${raw}\\*\\*|${url?`\\[${raw}\\]\\(${escapePattern(url)}\\)|`:''}${raw})`;};
+ let fence:string|null=null;
+ return markdown.split('\n').map(line=>{
+  const marker=line.trimStart().match(/^(`{3,}|~{3,})/);
+  if(marker){if(!fence)fence=marker[1][0];else if(marker[1][0]===fence)fence=null;return line;}
+  if(fence)return line;
+  for(const asset of assets){
+   const identity=token(asset.id,asset.url),name=token(asset.name,asset.url);
+   const alternatives=[`${identity}\\s*[/／]\\s*${name}`,`${name}\\s*[/／]\\s*${identity}`,`${identity}\\s*[/／]\\s*${identity}`];
+   if(nameCounts.get(asset.name)===1)alternatives.push(`${name}\\s*[/／]\\s*${name}`);
+   const pattern=new RegExp(`(?<![A-Za-z0-9_])(?:${alternatives.join('|')})(?![A-Za-z0-9_])`,'g');
+   line=line.replace(pattern,(match:string,offset:number,source:string)=>{
+    const before=source.slice(0,offset).split(/[\s<>]/).at(-1)??'';
+    return /https?:\/\//.test(before)?match:`\`${asset.id}\``;
+   });
+  }
+  if(line.includes('|'))line=line.split('|').map(cell=>cell.replace(/^(\s*)(?:Asset|Ad|Creative)[ _-]*ID\s*[/／]\s*(视频名称|图片名称|素材名称|名称|Video\s*Name|Image\s*Name|Asset\s*Name|Creative\s*Name)(\s*)$/i,(_match,before:string,label:string,after:string)=>`${before}${label==='视频名称'?'视频素材':label==='图片名称'?'图片素材':/[\u3400-\u9fff]/.test(label)?'素材名称':/Video/i.test(label)?'Video creative':/Image/i.test(label)?'Image creative':'Asset name'}${after}`)).join('|');
+  return line;
+ }).join('\n');
+}

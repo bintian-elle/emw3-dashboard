@@ -42,4 +42,4 @@ Existing implementation references:
 - `styles/theme.css` and `styles/typography.css`: current theme and type definitions.
 - `styles/globals.css`: shared styles.
 
-- AI 渠道总分析标题明确标注“渠道分析 / Channel analysis”，Social Media 的选定帖子分析标注“Post 分析 · 10 条 Instagram Posts”。分析内素材引用优先显示真实名称，悬停或点击名称展示预览、原始 ID 和素材链接；缺失名称或预览时明确保留可核对标识，不猜测素材。元数据只读已发布缓存，不因语言切换请求广告 API。
+- AI 渠道总分析标题明确标注“渠道分析 / Channel analysis”，Social Media 的选定帖子分析标注“Post 分析 · 10 条 Instagram Posts”。分析内素材引用优先显示真实名称，悬停或点击名称展示预览、原始 ID 和素材链接；缺失名称或预览时明确保留可核对标识，不猜测素材。元数据只读已发布缓存，不因语言切换请求广告 API。同一素材的旧“ID / 名称”标签合并为一次名称引用，表头使用素材名称或格式名称；不同 ID 的同名素材保持独立。

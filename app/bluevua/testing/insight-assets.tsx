@@ -9,7 +9,7 @@ import {code} from '@streamdown/code';
 import {math} from '@streamdown/math';
 import {mermaid} from '@streamdown/mermaid';
 import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
-import {splitInsightAssetText,type InsightAsset} from '@/lib/testing-insight-assets';
+import {splitInsightAssetText,normalizeInsightAssetMarkdown,type InsightAsset} from '@/lib/testing-insight-assets';
 import styles from './insight-assets.module.css';
 const Context=createContext<readonly InsightAsset[]>([]);
 export function InsightAssetsProvider({assets,children}:{assets:InsightAsset[];children:ReactNode}){return <Context.Provider value={assets}>{children}</Context.Provider>;}
@@ -33,6 +33,8 @@ export function InsightAssetLink({href,children,...props}:ComponentProps<'a'>){
 const plugins={cjk,code,math,mermaid};
 /** Only leaf text is enriched; links and code blocks retain their original semantics. */
 export function InsightMarkdown({children,channel}:{children:string;channel?:string}){
+ const all=useContext(Context);
+ const markdown=useMemo(()=>normalizeInsightAssetMarkdown(children,channel&&channel!=='overview'?all.filter(asset=>asset.channel===channel||(channel.startsWith('reddit')&&asset.channel==='reddit')):all),[children,channel,all]);
  const components=useMemo(()=>({
   a:InsightAssetLink,
   p:({children,...props}:ComponentProps<'p'>)=><p {...props}><InsightText channel={channel}>{children}</InsightText></p>,
@@ -42,5 +44,5 @@ export function InsightMarkdown({children,channel}:{children:string;channel?:str
   em:({children,...props}:ComponentProps<'em'>)=><em {...props}><InsightText channel={channel}>{children}</InsightText></em>,
   code:({children,...props}:ComponentProps<'code'>)=>typeof children==='string'&&/^\d{10,}$/.test(children)?<InsightText channel={channel}>{children}</InsightText>:<code {...props}><InsightText channel={channel}>{children}</InsightText></code>,
  }),[channel]);
- return <Streamdown components={components} plugins={plugins} isAnimating={false} controls={{table:false}} tableMaxHeight={0}>{children}</Streamdown>;
+ return <Streamdown components={components} plugins={plugins} isAnimating={false} controls={{table:false}} tableMaxHeight={0}>{markdown}</Streamdown>;
 }
