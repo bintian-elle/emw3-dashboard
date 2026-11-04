@@ -9,7 +9,7 @@ Approach: Use explicit semantic targets, which remain stable across layout chang
 - [x] Add validation/catalog tests; observe failure, implement pending-only change records and CLI validation.
 - [x] Add semantic anchors, linked release list, navigation, timed highlight and unavailable/dismiss states.
 - [x] Verify unit tests, TypeScript/lint, local browser desktop/mobile navigation and late/missing/hidden targets. Browser plugin not available; use isolated Playwright.
-- [ ] Review final diff, commit only this feature, manually build/deploy staging and verify live links/highlighting. Preserve unrelated edits and production.
+- [x] Review final diff, commit only this feature, manually build/deploy staging and verify live links/highlighting. Preserve unrelated edits and production.
 
 Verification: 15 staging tests passed; TypeScript and targeted ESLint clean. Isolated browser QA passed repeated same-page selection, scrolling, dismissal, mobile overflow, delayed targets, missing-target failure and hidden analysis expansion. Real report browser QA passed overview target, cross-page navigation to a named creative, social table target and 390px mobile layout. Read-only review found no remaining blocker. Unrelated dashboard-builder/history edits remain excluded.
 
@@ -19,7 +19,9 @@ User additionally requested region screenshots instead of text-only location mar
 
 - [x] Test image validation/persistence and deletion permissions before implementation.
 - [x] Implement private image storage/API, screenshot selection/preview, read colors and deletion UI.
-- [ ] Verify real screenshot fidelity, persistence/sharing, cancellation, mobile selection, read toggles and creator/admin permissions; manually build and deploy final combined release.
+- [x] Verify real screenshot fidelity, persistence/sharing, cancellation, mobile selection, read toggles and creator/admin permissions; manually build and deploy final combined release.
 
 
 Final local verification: 18 staging tests passed, including concurrent status/delete regression. Screenshot QA passed capture/preview/save/shared image access/read colors/creator and admin deletion/outsider rejection/mobile layout. Global note QA passed all-page listing, page labels, no foreign-page pins, cross-page anchor highlighting and non-anchored page notes. Panel hierarchy QA confirmed update links are inside the update section and team notes is its lower sibling. TypeScript and targeted ESLint passed. Archived JSON is an authoritative deletion tombstone; listing and image routes suppress raced replacements. User authorized manual staging deployment and direct independent production deployment of AI tool changes; AI tool changes are omitted from the staging release summary/catalog.
+
+Published after explicit user authorization: staging8012d65/manual run41763277377 and independent production AIf0f98dc/manual run41763264562. Both passed startup and authenticated public checks; 8 staging reporting routes passed. Real browser confirmed bidirectional current-page/period navigation. No automatic deployment was enabled, and AI changes are absent from staging release copy.

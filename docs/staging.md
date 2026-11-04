@@ -46,7 +46,7 @@ Automatic deployment is disabled at the user's request. .github/workflows/deploy
 5. Run deploy-staging.sh with that artifact path. The script verifies its isolated checkout/env/source commit, reuses matching dependencies, starts a timestamped build, health-checks it and falls back to the previous staging build if startup fails. Current and previous builds are retained. The no-artifact mode is a low-priority on-host fallback.
 6. Check authenticated reporting pages, login, notes, origin protection, reviewer access and production isolation; update the accurate content-version record.
 
-Production currently uses the minimal login overlay built on the deployed 8afdfc1 content base. Its .next-release-login-review symlink points into the isolated emw3-dashboard-login-release directory, which must remain present. The old production build is retained for rollback. Never promote the entire staging branch merely to change login or version metadata.
+Production now uses the independently built AI release f0f98dc on deployed content base 8afdfc1, retaining the login entry and current-page navigation fix. Existing Testing business pages remain on their previously deployed content. The prior .next-release-login-review symlink points into emw3-dashboard-login-release, which is retained for rollback. Runtime release records live in /home/ubuntu/.local/share/emw3-production/current.json. Never promote the entire staging branch merely to change login or version metadata.
 
 ## Verification
 
@@ -62,3 +62,14 @@ The server accepts bounded raster data only, rejects SVG/fake signatures and exc
 Unread/Read reuses the existing shared resolved boolean internally (false/true) to retain existing records; UI wording describes reading, with yellow/green badges and mark-read/mark-unread actions. Author identity still comes exclusively from login. API responses compute canDelete per viewer; it is not accepted from clients or stored as authority.
 
 Only matching author sub or configured STAGING_ADMIN_EMAILS (default bintian.feng@elle-media.com) may delete. DELETE requires the existing same-origin check and reviewer authentication. Deletion privately archives the note and image under notes/.deleted; normal listing and image access stop immediately. Backups include the archive; no automatic permanent purge is installed.
+
+
+## Verified manual publication
+
+- Production AI artifact: f0f98dcb9066e1935b39e18024fb5f06e1d72fd7, manual run 41763264562, ZIP SHA-256 52c52d7217be5b644808e4ebf1f9615f252df021fe9558404b9868fcdf280f46. Candidate checks passed before the production process was switched; temporary candidate removed afterwards. Existing production credentials/data/worker integration were preserved.
+- Staging artifact: 8012d6523ab5987f6dcad1a7b5b4243443451044, manual run 41763277377, ZIP SHA-256 7ecef3a94ce1f15cde1fe0366bb01014b10d26224bd9774bde2a498928d726af. The staging checkout/dependency/artifact check and startup health check passed; durable notes and prior build retained.
+- AI tool changes were approved for direct production publication and deliberately omitted from the staging summary and change catalog. Staging still has pending Testing business/review changes, so its status remains pending. The version record now identifies production f0f98dc and preview business base de4139e.
+- The bottom-left entry/return controls preserve path, query and fragment. Cross-environment Testing links add the existing shared=1 marker so document navigation retains the selected reporting period; staging consumes that marker after loading.
+- Verified 21 staging tests, production backport tests, TypeScript/lint, hosted builds, authenticated public AI pages/font, 8 rendered staging reporting routes with no streamed errors, handoff/replay rejection, private screenshot save/read/delete, trusted authors, cross-origin denial, reviewer denial and production notes isolation. Real Bintian browser navigation verified production Google Search to staging Google Search and back with the same period. Temporary verification notes/images were removed.
+
+Build workflows remain manually triggered and never upload/deploy by themselves. Source pushes do not publish. Production's release branch contains isolated presentation dependencies to preserve the existing Testing UI; main retains the canonical shared-component implementation for future reviewed releases.
