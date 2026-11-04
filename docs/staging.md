@@ -7,7 +7,7 @@ Production entry: https://emw3-dashboard.win/staging-review
 
 Initial reviewers: bintian.feng@elle-media.com, ivan.he@elle-media.com, fiona.deng@elle-media.com. Both hosts configure the exact email allowlist in STAGING_REVIEW_EMAILS. Reviewers use the ordinary production Google login; no extra Google callback is required. Production displays Review staging only to these accounts. Staging starts a browser-bound handoff through production, which issues a signed 60-second, single-use ticket. Staging verifies audience, issuer, expiry, nonce and reviewer before creating a separate host-only session. Both hosts share a dedicated STAGING_HANDOFF_SECRET, while AUTH_SECRET remains distinct. Never log ticket query strings or commit keys.
 
-Staging remains available between releases as a team feedback website. Team notes supports point annotations and keyboard-accessible page notes, captured context, resolve/reopen, and shared updates every 30 seconds while visible. Google identity supplies the author; the client cannot choose a name or email. Notes attach to a pathname without query strings. Changed content retains its note/context without placing a pin on unrelated content. Report errors retain the global notes control.
+Staging remains available between releases as a team feedback website. Team notes supports point annotations and keyboard-accessible page notes, captured context, shared unread/read state, and shared updates every 30 seconds while visible. Google identity supplies the author; the client cannot choose a name or email. Notes attach to a pathname without query strings. Changed content retains its note/context without placing a pin on unrelated content. Report errors retain the global notes control.
 
 Durable storage: /home/ubuntu/.local/share/emw3-staging/{notes,preferences,handoff-receipts}. Notes use one atomic JSON file per ID. Back up these directories independently; deployments preserve them.
 
@@ -51,3 +51,14 @@ Production currently uses the minimal login overlay built on the deployed 8afdfc
 ## Verification
 
 Run staging unit tests, relevant snapshot memory/publication regression tests, analytics tests, TypeScript and targeted ESLint. The manual hosted build must pass. Check real Google-to-staging login, trusted author identity, shared note persistence, point annotations, mobile layout, forbidden origins/mutations, single-use handoff and reviewer rejection. Fetch rendered reporting pages and check streamed error markers as well as HTTP status; Next server-rendered errors can retain status 200.
+
+
+## Screenshot notes, reading and deletion
+
+Capture a region freezes the current viewport locally and supports mouse/touch rectangle selection. Review the cropped image and enter a note before Save; cancel does not upload an image. Page note remains the keyboard-accessible alternative. Captures use html2canvas-pro for modern CSS colors and scrolled containers (the existing html-to-image dependency does not preserve container scroll). External resources unsupported by browser CORS may be absent; the preview allows inspection before saving. No screen-sharing permission or external screenshot service is used.
+
+The server accepts bounded raster data only, rejects SVG/fake signatures and excessive pixels, and normalizes captures to at most 1280×960 WebP without metadata. Note JSON contains dimensions only; the authenticated staging-only /api/staging/notes/image endpoint serves the image. Polling does not embed image bytes. The private image file lives beside its note and survives deployment.
+
+Unread/Read reuses the existing shared resolved boolean internally (false/true) to retain existing records; UI wording describes reading, with yellow/green badges and mark-read/mark-unread actions. Author identity still comes exclusively from login. API responses compute canDelete per viewer; it is not accepted from clients or stored as authority.
+
+Only matching author sub or configured STAGING_ADMIN_EMAILS (default bintian.feng@elle-media.com) may delete. DELETE requires the existing same-origin check and reviewer authentication. Deletion privately archives the note and image under notes/.deleted; normal listing and image access stop immediately. Backups include the archive; no automatic permanent purge is installed.

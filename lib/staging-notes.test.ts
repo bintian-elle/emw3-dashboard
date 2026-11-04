@@ -17,6 +17,7 @@ test('concurrent notes persist with trusted authors; resolution is shared and du
   assert.equal(new Set(notes.map(n=>n.id)).size,12);
   assert.equal((await listNotes(dir,input.page)).length,12);
   assert.equal((await listNotes(dir,'/other')).length,0);
+  await createNote(dir,{page:'/other',text:'Another page'},user);assert.equal((await listNotes(dir)).length,13);
   assert.deepEqual(notes[0].author,user);
   await resolveNote(dir,notes[0].id,true,user);
   assert.equal((await listNotes(dir,input.page)).find(n=>n.id===notes[0].id)?.resolvedBy?.sub,user.sub);
