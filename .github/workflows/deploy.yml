@@ -1,26 +1,16 @@
-name: Deploy dashboard
+name: Build staging (manual only)
 
 on:
-  push:
-    branches: [codex/staging]
   workflow_dispatch:
-    inputs:
-      target:
-        description: Environment to deploy
-        type: choice
-        options: [staging, production]
-        default: staging
-        required: true
 
 permissions:
   contents: read
 concurrency:
-  group: dashboard-deploy-${{ github.event.inputs.target || 'staging' }}
+  group: staging-manual-build
   cancel-in-progress: false
 
 jobs:
-  staging:
-    if: github.event_name == 'push' || inputs.target == 'staging'
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -30,7 +20,7 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - name: Build staging away from the production server
+      - name: Check and build staging
         env:
           DEPLOYMENT_ENV: staging
           NEXT_DISABLE_BUILD_CACHE: 'true'
@@ -43,40 +33,9 @@ jobs:
           node --experimental-strip-types --test lib/staging-access.test.ts lib/staging-notes.test.ts
           npm run build
           git rev-parse HEAD > .next/.staging-build-commit
-          tar -C .next -czf "staging-build-${GITHUB_SHA}.tgz" .
-      - name: Upload the staging build
-        uses: appleboy/scp-action@v1
+          tar -C .next -czf staging-build.tgz .
+      - uses: actions/upload-artifact@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: staging-build-${{ github.sha }}.tgz
-          target: /home/ubuntu/.local/share/emw3-staging/incoming
-      - name: Deploy isolated staging
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 20m
-          script: |
-            export PATH=/opt/node-v24.21.0-linux-x64/bin:/home/ubuntu/.local/bin:$PATH
-            cd /home/ubuntu/work/bintian/emw3-dashboard-staging
-            git fetch origin codex/staging
-            git reset --hard origin/codex/staging
-            ./deploy-staging.sh /home/ubuntu/.local/share/emw3-staging/incoming/staging-build-${{ github.sha }}.tgz
-  production:
-    if: github.event_name == 'workflow_dispatch' && inputs.target == 'production' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy production explicitly
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 20m
-          script: |
-            export PATH=/opt/node-v24.21.0-linux-x64/bin:/home/ubuntu/.local/bin:$PATH
-            cd /home/ubuntu/work/bintian/emw3-dashboard
-            ./deploy.sh
+          name: staging-build
+          path: staging-build.tgz
+          retention-days: 3
