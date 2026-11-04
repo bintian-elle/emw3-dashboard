@@ -1,3 +1,4 @@
+import {readStagingDataSnapshot} from './staging-data-snapshots';
 import 'server-only';
 import {Pool} from 'pg';
 import {testingDataSnapshotKey,type TestingDataChannel,type TestingDataInput} from './testing-data-cache-contract';
@@ -9,6 +10,7 @@ export {TestingDataRefreshBusy,TestingDataRefreshRateLimit} from './testing-data
 export type TestingDataSnapshot<T=unknown>={payload:T;updatedAt:string};
 let pool:Pool|undefined;
 let unavailableUntil=0;
+function stagingDirectory(){return process.env.DEPLOYMENT_ENV==='staging'?process.env.STAGING_DATA_SNAPSHOT_DIR:undefined;}
 type SnapshotMemoryState={scoped:VersionedSnapshotMemory<TestingDataSnapshot>;latest:VersionedSnapshotMemory<TestingDataSnapshot>;timer?:ReturnType<typeof setInterval>;checking?:Promise<void>;versions:Map<string,Promise<(string|null)[]>>;loads:Map<string,Promise<TestingDataSnapshot|null>>;emptyLatest:Set<string>};
 declare global {var emw3TestingSnapshotMemoryV2:SnapshotMemoryState|undefined;}
 const memory:SnapshotMemoryState=globalThis.emw3TestingSnapshotMemoryV2??={scoped:new VersionedSnapshotMemory<TestingDataSnapshot>(),latest:new VersionedSnapshotMemory<TestingDataSnapshot>(),versions:new Map(),loads:new Map(),emptyLatest:new Set()};
@@ -29,6 +31,7 @@ function database(){
  return pool??=new Pool({connectionString,ssl:{rejectUnauthorized:false},max:4,connectionTimeoutMillis:5000});
 }
 async function loadScope<T>(channel:TestingDataChannel,scope:string):Promise<TestingDataSnapshot<T>|null>{
+ const directory=stagingDirectory();if(directory)return readStagingDataSnapshot<T>(directory,channel,scope);
  const key=JSON.stringify([channel,scope]),existing=memory.loads.get(key);
  if(existing)return existing as Promise<TestingDataSnapshot<T>|null>;
  const request=(async()=>{
@@ -40,6 +43,7 @@ async function loadScope<T>(channel:TestingDataChannel,scope:string):Promise<Tes
  return request;
 }
 async function loadLatest<T>(channel:TestingDataChannel):Promise<TestingDataSnapshot<T>|null>{
+ const directory=stagingDirectory();if(directory)return readStagingDataSnapshot<T>(directory,channel,'latest',true);
  const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 order by updated_at desc limit 1',[channel]);
  const row=result.rows[0];return row?{payload:row.payload,updatedAt:new Date(row.updated_at).toISOString()}:null;
 }
@@ -89,6 +93,7 @@ export function readRememberedSnapshotVersions(scopes:readonly TestingSnapshotVe
 /** A single lightweight query covers exact scopes and the latest scope per channel. */
 export async function readTestingSnapshotVersions(scopes:readonly TestingSnapshotVersionScope[]):Promise<(string|null)[]>{
  if(!scopes.length)return [];
+ const directory=stagingDirectory();if(directory)return Promise.all(scopes.map(async({channel,input,latest})=>(await readStagingDataSnapshot(directory,channel,latest?'latest':testingDataSnapshotKey(channel,input),latest))?.updatedAt??null));
  const normalized=scopes.map(({channel,input,latest})=>({channel,scope:testingDataSnapshotKey(channel,input),latest:Boolean(latest)}));
  const requestKey=JSON.stringify(normalized),pending=memory.versions.get(requestKey);
  if(pending)return pending;
@@ -119,7 +124,7 @@ export async function readTestingSnapshotVersions(scopes:readonly TestingSnapsho
 
 /** One unref'ed timer per process checks only cached scopes; errors keep cached data. */
 function ensureSnapshotCheck(){
- if(memory.timer)return;
+ if(stagingDirectory()||memory.timer)return;
  memory.timer=setInterval(()=>{
   if(memory.checking)return;
   const exact=memory.scoped.keys().flatMap(key=>{

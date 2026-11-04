@@ -26,3 +26,5 @@ Staging pushes build and run notes/handoff tests on the GitHub Ubuntu runner, us
 
 ## Final deployment policy (user override)
 Automatic deployment is disabled. The user reported repeated previous failures and requested manual publication. deploy.yml now has workflow_dispatch only: it checks/builds staging and uploads a build artifact; it contains no SSH upload, no deployment job and no push trigger. A person explicitly deploys staging with deploy-staging.sh, then separately publishes production after review. Existing EC2 secrets were not changed and no new deployment credentials were shared.
+
+Database isolation verification found RLS hides all shared snapshots from a new role even when table SELECT has been granted. Apply the idempotent ops/staging/read-only-cache-policies.sql only to the four published-report/cache tables. Do not open the AI job queue or account preferences. Verify nonzero readable snapshot rows and false INSERT/UPDATE privileges before browser QA; otherwise pages can fall back to unavailable live API credentials.
