@@ -1,0 +1,19 @@
+[Unit]
+Description=Isolated staging Prompts insight previews
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard-staging
+Environment=DEPLOYMENT_ENV=staging
+Environment=NODE_ENV=production
+Environment=PYTHONPATH=/home/ubuntu/work/anc-slack-bridge/src
+Environment=STAGING_PROMPTS_RUN_DIR=/home/ubuntu/.local/share/emw3-staging/prompt-runs
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node --experimental-strip-types scripts/prompt-lab/worker.mjs
+Restart=on-failure
+RestartSec=15
+Nice=15
+UMask=0077
+[Install]
+WantedBy=multi-user.target

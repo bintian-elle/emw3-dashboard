@@ -6,7 +6,7 @@ import TestingLink from "./testing-link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Dialog } from "radix-ui";
-import { Archive, ChevronLeft, ChevronRight, FlaskConical, LayoutDashboard, Menu, PanelLeft, X } from "lucide-react";
+import { Archive, ChevronLeft, ChevronRight, FlaskConical, FileText, LayoutDashboard, Menu, PanelLeft, X } from "lucide-react";
 import type { TestingInventory, TestingInventoryChannel } from "@/lib/testing-inventory-model";
 import { configuredTestingCampaignCount } from "@/lib/testing-campaign-counts";
 import { concludedCampaignCount } from "@/lib/concluded-tests";
@@ -38,7 +38,7 @@ function InventoryCount({channel,badge=false}:{channel?:TestingInventoryChannel;
  return <span className={badge?styles.navBadge:styles.navCount} aria-label={`${count} ${count===1?"campaign":"campaigns"}`}>{count}</span>;
 }
 
-export function NovaPreviewShell({children,account}:{children:ReactNode;account:{name:string;email:string;picture?:string}|null;inventory:Promise<TestingInventory>}) {
+export function NovaPreviewShell({children,account,promptsEnabled=false}:{children:ReactNode;account:{name:string;email:string;picture?:string}|null;inventory:Promise<TestingInventory>;promptsEnabled?:boolean}) {
  const {language}=useSiteLanguage();
  const zh=language==='zh';
  const {collapsed,setCollapsed}=useTestingSidebarState();
@@ -58,6 +58,7 @@ export function NovaPreviewShell({children,account}:{children:ReactNode;account:
    {!compact&&<p className={styles.navLabel}>{zh?'工作区':'Workspace'}</p>}
    <nav aria-label={zh?'工作区':'Workspace'} className={styles.nav}>
     {workspaceLinks.map(([label,href,Icon])=>{const active=!concludedContext&&pathname===href;const name=zh?(label==='Overview'?'总览':'测试清单'):label;return <TestingLink key={href} href={`${href}${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={name} title={compact?name:undefined}><span className={styles.iconSlot}><Icon/></span>{!compact&&<><span>{name}</span>{label==="Test inventory"&&<InventoryCount badge/>}</>}</TestingLink>;})}
+   {promptsEnabled&&<Link href="/bluevua/testing/prompts" onClick={onNavigate} className={`${styles.navItem} ${pathname==='/bluevua/testing/prompts'?styles.active:''}`} aria-current={pathname==='/bluevua/testing/prompts'?'page':undefined} aria-label="Prompts" title={compact?'Prompts':undefined}><span className={styles.iconSlot}><FileText/></span>{!compact&&<span>Prompts</span>}</Link>}
    </nav>
    {!compact&&<p className={`${styles.navLabel} ${styles.channelsLabel}`}>{zh?'渠道':'Channels'}</p>}
    <nav aria-label={zh?"内容测试渠道":"Content testing channels"} className={styles.nav}>{channels.map(([label,href,channel])=>{const active=!concludedContext&&(pathname===href||pathname.startsWith(`${href}/`)||(label==="Google Search"&&pathname==="/bluevua/testing/google"));const displayLabel=label==="Google Demand Gen"?"Demand Gen":label;return <Link key={href} href={`${href}${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={label} title={compact?label:undefined}><span className={styles.iconSlot}><TestingChannelBrand name={label} eager={!!onNavigate}/></span>{!compact&&<><span>{displayLabel}</span>{channel&&<InventoryCount channel={channel}/>}</>}</Link>;})}</nav>

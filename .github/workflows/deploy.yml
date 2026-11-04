@@ -30,7 +30,7 @@ jobs:
           AUTH_URL: https://staging.emw3-dashboard.win
         run: |
           npm ci --include=dev --no-audit --no-fund
-          node --experimental-strip-types --test lib/staging-*.test.ts
+          node --experimental-strip-types --test lib/staging-*.test.ts lib/testing-prompts-contract.test.ts
           npm run build
           git rev-parse HEAD > .next/.staging-build-commit
           tar -C .next -czf staging-build.tgz .

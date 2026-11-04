@@ -73,3 +73,13 @@ Only matching author sub or configured STAGING_ADMIN_EMAILS (default bintian.fen
 - Verified 21 staging tests, production backport tests, TypeScript/lint, hosted builds, authenticated public AI pages/font, 8 rendered staging reporting routes with no streamed errors, handoff/replay rejection, private screenshot save/read/delete, trusted authors, cross-origin denial, reviewer denial and production notes isolation. Real Bintian browser navigation verified production Google Search to staging Google Search and back with the same period. Temporary verification notes/images were removed.
 
 Build workflows remain manually triggered and never upload/deploy by themselves. Source pushes do not publish. Production's release branch contains isolated presentation dependencies to preserve the existing Testing UI; main retains the canonical shared-component implementation for future reviewed releases.
+
+## Prompts workspace
+
+`/bluevua/testing/prompts` is staging-only. Its allowlisted POST endpoint is the sole new mutation exception; existing advertising refresh and Ask AI restrictions remain. The catalog includes master/channel/Overview/Readability/manual/translation/Ask AI prompts and their consumers. Search analysis and Readability-only trials are the first supported generation modes.
+
+`STAGING_PROMPTS_DATABASE_URL` uses the narrowly privileged `emw3_staging_prompts` login. Only the new `staging_testing_prompt_versions` and `staging_testing_prompt_runs` tables are writable. Existing staging report readers and all production report/cache permissions remain unchanged. Versions are insert-only for this login; optimistic parent checks are serialized per prompt. Restoring creates another version. No production activation is offered in this rollout.
+
+The `emw3-staging-prompts` service reads this isolated queue, resumes the existing Bluevua Content Testing Insights conversation serially, and stores results only in the staging run table. It records captured prompts, exact Campaign/date/language, frozen data hash and native turn. Readability reuses a completed analysis and its analytical prompt versions. A queued analysis can reuse fixed data for a fair comparison. No daily generator, Slack delivery or production cache publisher is invoked.
+
+Install schema from `ops/staging/prompts-schema.sql`, grant only SELECT/INSERT on versions and SELECT/INSERT/UPDATE on runs to the dedicated role, and add role-specific RLS policies. Keep its connection private in staging `.env.local`. Install `ops/staging/emw3-staging-prompts.service`; the standard staging deployment keeps the service and its durable `/home/ubuntu/.local/share/emw3-staging/prompt-runs` directory. Preview HTML is validated and rendered in a script-free, network-restricted iframe.
