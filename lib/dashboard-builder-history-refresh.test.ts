@@ -40,3 +40,16 @@ test('empty reports refresh without queries and failed hydration leaves original
  const full={...newEditor(workspace()),defaultPeriod:old};const frozen=JSON.stringify(full);
  await assert.rejects(refreshEditorReportingPeriod(full,target,async()=>{throw Error('failed');}));assert.equal(JSON.stringify(full),frozen);
 });
+
+test('manual period selection rebases component history and keeps the automatic week separate',async()=>{
+ const {selectEditorReportingPeriod}=await import('./dashboard-builder-history-refresh.ts');
+ const base={...newEditor(workspace()),defaultPeriod:old};
+ const edited=commitEditor(base,{...base.current,hidden:['spend']},'Delete');
+ const result=await selectEditorReportingPeriod(edited,target,hydrator([]));
+ assert.deepEqual(result.defaultPeriod,old);
+ assert.deepEqual(result.current.report.range,target);
+ assert.deepEqual(undoEditor(result).current.report.range,target);
+ assert.equal(undoEditor(result).current.report.widgets[0].rows[0].spend,42);
+ assert.deepEqual(result.current.hidden,['spend']);
+ assert.deepEqual(result.history.map(e=>e.label),['Delete']);
+});
