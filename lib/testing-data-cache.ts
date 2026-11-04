@@ -1,4 +1,4 @@
-import {readStagingDataSnapshot,requireStagingDataSnapshot} from './staging-data-snapshots';
+import {readStagingDataSnapshot,clipStagingRedditDaily} from './staging-data-snapshots';
 import 'server-only';
 import {Pool} from 'pg';
 import {testingDataSnapshotKey,type TestingDataChannel,type TestingDataInput} from './testing-data-cache-contract';
@@ -11,11 +11,12 @@ export type TestingDataSnapshot<T=unknown>={payload:T;updatedAt:string};
 let pool:Pool|undefined;
 let unavailableUntil=0;
 function stagingDirectory(){return process.env.DEPLOYMENT_ENV==='staging'?process.env.STAGING_DATA_SNAPSHOT_DIR:undefined;}
-type SnapshotMemoryState={scoped:VersionedSnapshotMemory<TestingDataSnapshot>;latest:VersionedSnapshotMemory<TestingDataSnapshot>;timer?:ReturnType<typeof setInterval>;checking?:Promise<void>;versions:Map<string,Promise<(string|null)[]>>;loads:Map<string,Promise<TestingDataSnapshot|null>>;emptyLatest:Set<string>};
+type SnapshotMemoryState={scoped:VersionedSnapshotMemory<TestingDataSnapshot>;latest:VersionedSnapshotMemory<TestingDataSnapshot>;timer?:ReturnType<typeof setInterval>;checking?:Promise<void>;versions:Map<string,Promise<(string|null)[]>>;loads:Map<string,Promise<TestingDataSnapshot|null>>;emptyLatest:Set<string>;seeded:Set<string>};
 declare global {var emw3TestingSnapshotMemoryV2:SnapshotMemoryState|undefined;}
-const memory:SnapshotMemoryState=globalThis.emw3TestingSnapshotMemoryV2??={scoped:new VersionedSnapshotMemory<TestingDataSnapshot>(),latest:new VersionedSnapshotMemory<TestingDataSnapshot>(),versions:new Map(),loads:new Map(),emptyLatest:new Set()};
+const memory:SnapshotMemoryState=globalThis.emw3TestingSnapshotMemoryV2??={scoped:new VersionedSnapshotMemory<TestingDataSnapshot>(),latest:new VersionedSnapshotMemory<TestingDataSnapshot>(),versions:new Map(),loads:new Map(),emptyLatest:new Set(),seeded:new Set()};
 memory.loads??=new Map();
 memory.emptyLatest??=new Set();
+memory.seeded??=new Set();
 const memoryKey=(channel:TestingDataChannel,input:TestingDataInput)=>JSON.stringify([channel,testingDataSnapshotKey(channel,input)]);
 function remember<T>(channel:TestingDataChannel,input:TestingDataInput,snapshot:TestingDataSnapshot<T>|null,knownLatest=true){
  const key=memoryKey(channel,input);
@@ -28,24 +29,24 @@ function remember<T>(channel:TestingDataChannel,input:TestingDataInput,snapshot:
 function database(){
  const connectionString=process.env.KLAVIYO_DATABASE_URL?.trim();
  if(!connectionString)throw Error('Shared data cache is not configured.');
- return pool??=new Pool({connectionString,ssl:{rejectUnauthorized:false},max:4,connectionTimeoutMillis:5000});
+ return pool??=new Pool({connectionString,ssl:{rejectUnauthorized:false},max:4,connectionTimeoutMillis:process.env.DEPLOYMENT_ENV==='staging'?30000:5000});
 }
-async function loadScope<T>(channel:TestingDataChannel,scope:string):Promise<TestingDataSnapshot<T>|null>{
- const directory=stagingDirectory();if(directory)return requireStagingDataSnapshot<T>(directory,channel,scope);
+async function loadScope<T>(channel:TestingDataChannel,scope:string,livePublished=false):Promise<TestingDataSnapshot<T>|null>{
+ const directory=stagingDirectory(),seedKey=JSON.stringify([channel,scope]);if(directory&&!livePublished&&!memory.seeded.has(seedKey)){memory.seeded.add(seedKey);const seed=await readStagingDataSnapshot<T>(directory,channel,scope);if(seed)return seed;}
  const key=JSON.stringify([channel,scope]),existing=memory.loads.get(key);
  if(existing)return existing as Promise<TestingDataSnapshot<T>|null>;
  const request=(async()=>{
   const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 and scope_key=$2',[channel,scope]);
-  const row=result.rows[0];return row?{payload:row.payload,updatedAt:new Date(row.updated_at).toISOString()}:null;
+  const row=result.rows[0];return row?{payload:(stagingDirectory()&&channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
  })();
  memory.loads.set(key,request);
  void request.finally(()=>{if(memory.loads.get(key)===request)memory.loads.delete(key);}).catch(()=>{});
  return request;
 }
-async function loadLatest<T>(channel:TestingDataChannel):Promise<TestingDataSnapshot<T>|null>{
- const directory=stagingDirectory();if(directory)return requireStagingDataSnapshot<T>(directory,channel,'latest',true);
+async function loadLatest<T>(channel:TestingDataChannel,livePublished=false):Promise<TestingDataSnapshot<T>|null>{
+ const directory=stagingDirectory(),seedKey='latest:'+channel;if(directory&&!livePublished&&!memory.seeded.has(seedKey)){memory.seeded.add(seedKey);const seed=await readStagingDataSnapshot<T>(directory,channel,'latest',true);if(seed)return seed;}
  const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 order by updated_at desc limit 1',[channel]);
- const row=result.rows[0];return row?{payload:row.payload,updatedAt:new Date(row.updated_at).toISOString()}:null;
+ const row=result.rows[0];return row?{payload:(stagingDirectory()&&channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
 }
 
 /** Return process memory immediately; cold misses wait for the shared snapshot. */
@@ -54,12 +55,14 @@ export async function readTestingDataSnapshot<T=unknown>(channel:TestingDataChan
  if(Date.now()<unavailableUntil)return null;
  try{
   const snapshot=await memory.scoped.read(key,()=>loadScope(channel,testingDataSnapshotKey(channel,input)));
+  if(stagingDirectory()&&!snapshot)throw Error('This reporting period has not been published yet. Choose another reporting period.');
   if(snapshot)ensureSnapshotCheck();
   return snapshot as TestingDataSnapshot<T>|null;
  }catch(error){if(stagingDirectory())throw error;unavailableUntil=Date.now()+10000;return memory.scoped.get(key) as TestingDataSnapshot<T>??null;}
 }
 export async function readRequiredTestingDataSnapshot<T=unknown>(channel:TestingDataChannel,input:TestingDataInput={}):Promise<TestingDataSnapshot<T>|null>{
  const key=memoryKey(channel,input),snapshot=await memory.scoped.fetch(key,()=>loadScope(channel,testingDataSnapshotKey(channel,input)));
+ if(stagingDirectory()&&!snapshot)throw Error('This reporting period has not been published yet. Choose another reporting period.');
  if(snapshot)ensureSnapshotCheck();
  return snapshot as TestingDataSnapshot<T>|null;
 }
@@ -67,6 +70,7 @@ export async function readRequiredTestingDataSnapshot<T=unknown>(channel:Testing
 export async function readLatestTestingDataSnapshot<T=unknown>(channel:TestingDataChannel):Promise<TestingDataSnapshot<T>|null>{
  try{
   const snapshot=await memory.latest.read(channel,()=>loadLatest(channel));
+  if(stagingDirectory()&&!snapshot)throw Error('No published report is available for this channel yet.');
   if(snapshot){memory.emptyLatest.delete(channel);ensureSnapshotCheck();}else memory.emptyLatest.add(channel);
   return snapshot as TestingDataSnapshot<T>|null;
  }catch(error){
@@ -94,7 +98,6 @@ export function readRememberedSnapshotVersions(scopes:readonly TestingSnapshotVe
 /** A single lightweight query covers exact scopes and the latest scope per channel. */
 export async function readTestingSnapshotVersions(scopes:readonly TestingSnapshotVersionScope[]):Promise<(string|null)[]>{
  if(!scopes.length)return [];
- const directory=stagingDirectory();if(directory)return Promise.all(scopes.map(async({channel,input,latest})=>(await readStagingDataSnapshot(directory,channel,latest?'latest':testingDataSnapshotKey(channel,input),latest))?.updatedAt??null));
  const normalized=scopes.map(({channel,input,latest})=>({channel,scope:testingDataSnapshotKey(channel,input),latest:Boolean(latest)}));
  const requestKey=JSON.stringify(normalized),pending=memory.versions.get(requestKey);
  if(pending)return pending;
@@ -110,7 +113,7 @@ export async function readTestingSnapshotVersions(scopes:readonly TestingSnapsho
    if(item.latest){if(version===null)memory.emptyLatest.add(item.channel);else memory.emptyLatest.delete(item.channel);}
    if(!old)return;
    const scope=item.latest?rows[index]?.scope:item.scope;
-   await cache.reconcile(key,version,()=>scope?loadScope(item.channel,scope):loadLatest(item.channel));
+   await cache.reconcile(key,version,()=>scope?loadScope(item.channel,scope,true):loadLatest(item.channel,true));
    const current=cache.get(key);
    // Do not report a new version to the browser until the corresponding data is ready.
    if(version&&current===old&&Date.parse(current.updatedAt)!==Date.parse(version))throw Error('Published testing snapshot could not be loaded.');
@@ -125,7 +128,7 @@ export async function readTestingSnapshotVersions(scopes:readonly TestingSnapsho
 
 /** One unref'ed timer per process checks only cached scopes; errors keep cached data. */
 function ensureSnapshotCheck(){
- if(stagingDirectory()||memory.timer)return;
+ if(memory.timer)return;
  memory.timer=setInterval(()=>{
   if(memory.checking)return;
   const exact=memory.scoped.keys().flatMap(key=>{
@@ -151,21 +154,20 @@ async function checkCachedVersions(exact:{channel:TestingDataChannel;scope:strin
   if(cache.get(key)!==observed[index])return;
   if(item.latest){if(version===null)memory.emptyLatest.add(item.channel);else memory.emptyLatest.delete(item.channel);}
   const scope=item.latest?rows[index]?.scope:item.scope;
-  await cache.reconcile(key,version,()=>scope?loadScope(item.channel,scope):loadLatest(item.channel));
+  await cache.reconcile(key,version,()=>scope?loadScope(item.channel,scope,true):loadLatest(item.channel,true));
   const current=cache.get(key);if(current&&!item.latest&&memory.latest.get(item.channel))memory.latest.set(item.channel,current);
  }));
 }
 /** Poll only lightweight metadata, never download the full Google payload just to show its time. */
 export async function readTestingDataSnapshotStatus(channel:TestingDataChannel,input:TestingDataInput={}){
- const directory=stagingDirectory();if(directory){const snapshot=await readStagingDataSnapshot(directory,channel,testingDataSnapshotKey(channel,input));return snapshot?{updatedAt:snapshot.updatedAt,sourceUpdatedAt:null}:null;}
  const key=memoryKey(channel,input),observed=memory.scoped.get(key);
  const result=await database().query<{updated_at:Date|string;captured_at:string|null}>(`select updated_at,case when channel='social' then payload->>'capturedAt' else null end captured_at from testing_data_snapshots where channel=$1 and scope_key=$2`,[channel,testingDataSnapshotKey(channel,input)]);
  const row=result.rows[0];
  // A concurrent local publication wins over the earlier metadata query.
  if(memory.scoped.get(key)!==observed){const current=memory.scoped.get(key);return current?{updatedAt:current.updatedAt,sourceUpdatedAt:null}:null;}
- if(!row){await memory.scoped.reconcile(key,null,()=>loadScope(channel,testingDataSnapshotKey(channel,input)));return null;}
+ if(!row){await memory.scoped.reconcile(key,null,()=>loadScope(channel,testingDataSnapshotKey(channel,input),true));return null;}
  const updatedAt=new Date(row.updated_at).toISOString();
- await memory.scoped.reconcile(key,updatedAt,()=>loadScope(channel,testingDataSnapshotKey(channel,input)));
+ await memory.scoped.reconcile(key,updatedAt,()=>loadScope(channel,testingDataSnapshotKey(channel,input),true));
  const current=memory.scoped.get(key);
  if(current&&current===observed&&Date.parse(current.updatedAt)!==Date.parse(updatedAt))throw Error('Published testing snapshot could not be loaded.');
  if(current&&memory.latest.get(channel))memory.latest.set(channel,current);

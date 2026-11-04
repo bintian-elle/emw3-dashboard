@@ -27,3 +27,10 @@ test('missing frozen scopes fail closed instead of falling through to a live sou
  const directory=await mkdtemp(join(tmpdir(),'staging-required-'));
  try{await assert.rejects(requireStagingDataSnapshot(directory,'meta','unpublished'),/not available in this staging snapshot/);}finally{await rm(directory,{recursive:true,force:true});}
 });
+test('Reddit preview clips only out-of-period daily points without changing headline metrics',async()=>{
+ const {clipStagingRedditDaily}=await import('./staging-data-snapshots.ts');
+ const within={date:'2026-11-02',revenue:3},outside={date:'2026-11-03',revenue:4};
+ const source={data:{period:{start:'2026-10-27',end:'2026-11-02'},revenue:123},daily:{channel:'Reddit',rows:[within,outside],reach:[{date:'2026-11-02',value:8},{date:'2026-11-03',value:9}]}};
+ const result=clipStagingRedditDaily(source) as typeof source;
+ assert.equal(result.data,source.data);assert.equal(result.data.revenue,123);assert.deepEqual(result.daily.rows,[within]);assert.deepEqual(result.daily.reach,[{date:'2026-11-02',value:8}]);assert.equal(source.daily.rows.length,2);
+});
