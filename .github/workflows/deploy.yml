@@ -1,4 +1,4 @@
-name: Build staging (manual only)
+name: Build production (manual only)
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: staging-manual-build
+  group: production-manual-build
   cancel-in-progress: false
 
 jobs:
@@ -15,27 +15,28 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: codex/staging
+          ref: codex/production-design-release
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
-      - name: Check and build staging
+      - name: Check and build production
         env:
-          DEPLOYMENT_ENV: staging
+          DEPLOYMENT_ENV: production
           NEXT_DISABLE_BUILD_CACHE: 'true'
           DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
           KLAVIYO_DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
           AUTH_SECRET: build-only-placeholder-not-a-runtime-secret
-          AUTH_URL: https://staging.emw3-dashboard.win
+          AUTH_URL: https://emw3-dashboard.win
         run: |
           npm ci --include=dev --no-audit --no-fund
-          node --experimental-strip-types --test lib/staging-access.test.ts lib/staging-notes.test.ts
+          node --experimental-strip-types --test lib/dashboard-builder-history-refresh.test.ts lib/staging-access.test.ts lib/staging-navigation.test.ts
+          npm run test:analytics
           npm run build
-          git rev-parse HEAD > .next/.staging-build-commit
-          tar -C .next -czf staging-build.tgz .
+          git rev-parse HEAD > .next/.production-build-commit
+          tar -C .next -czf production-build.tgz .
       - uses: actions/upload-artifact@v4
         with:
-          name: staging-build
-          path: staging-build.tgz
+          name: production-build
+          path: production-build.tgz
           retention-days: 3
