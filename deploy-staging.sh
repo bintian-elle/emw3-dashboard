@@ -9,7 +9,7 @@ git pull --ff-only origin codex/staging
 # This environment file belongs only to this checkout; never source a production file.
 node --input-type=commonjs <<'JS'
 require('@next/env').loadEnvConfig(process.cwd());
-if(process.env.DEPLOYMENT_ENV!=='staging'||!process.env.STAGING_NOTES_DIR||!process.env.AUTH_URL?.startsWith('https://staging.'))throw Error('Staging environment is incomplete');
+if(process.env.DEPLOYMENT_ENV!=='staging'||!process.env.STAGING_NOTES_DIR||!process.env.STAGING_DATA_SNAPSHOT_DIR||!process.env.AUTH_URL?.startsWith('https://staging.'))throw Error('Staging environment is incomplete');
 JS
 export DEPLOYMENT_ENV=staging
 export NEXT_DIST_DIR=".next-release-staging-$(date +%Y%m%d%H%M%S)"

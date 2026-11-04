@@ -1,3 +1,4 @@
+import {assertLiveSourceAllowed} from '@/lib/staging-policy';
 import "server-only";
 import { readTestingDataSnapshot, initializeTestingDataSnapshot } from "@/lib/testing-data-cache";
 import { validRedditSharedSnapshot } from "@/lib/testing-reddit-snapshot";
@@ -24,6 +25,7 @@ let tokenCache:{value:string;expires:number}|null=null;
 async function credentials(){return JSON.parse(await readFile(path.join(process.cwd(),"credentials/reddit.json"),"utf8")) as Credentials;}
 let tokenRefresh:Promise<string>|null=null;
 async function accessToken(){
+  assertLiveSourceAllowed();
   if(tokenCache&&tokenCache.expires>Date.now())return tokenCache.value;
   if(!tokenRefresh)tokenRefresh=refreshAccessToken().finally(()=>{tokenRefresh=null;});
   return tokenRefresh;
@@ -74,7 +76,8 @@ export async function getRedditContentTestingData(input:RedditPeriodInput={}) {
  try{
   const snapshot=await readTestingDataSnapshot("reddit",input)??await initializeTestingDataSnapshot("reddit",input,()=>fetchFreshRedditTestingData(input));
   if(snapshot&&validRedditSharedSnapshot(snapshot.payload,period,label)){sharedDaily.set(snapshot.payload.data,snapshot.payload.daily);return snapshot.payload.data;}
- }catch{/* A missing or unavailable shared cache retains the existing page path. */}
+ }catch(error){if(process.env.DEPLOYMENT_ENV==='staging')throw error;/* Preserve the production fallback path. */}
+ if(process.env.DEPLOYMENT_ENV==='staging')throw Error('This reporting period is not available in this staging snapshot.');
  return getRedditTestingData(input,true);
 }
 

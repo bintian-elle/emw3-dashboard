@@ -27,3 +27,8 @@ test('staging allows page reads and notes, denies generation and upstream mutati
  for(const [method,path] of [['GET','/bluevua/testing'],['POST','/api/staging/notes'],['PATCH','/api/staging/notes'],['POST','/api/klaviyo/dashboard'],['POST','/api/auth/logout']]) assert.equal(stagingRequestAllowed(method,path),true);
  for(const [method,path] of [['POST','/api/klaviyo/ask'],['POST','/api/testing/data-refresh'],['GET','/api/klaviyo/insights/refresh'],['GET','/api/testing/data-refresh']]) assert.equal(stagingRequestAllowed(method,path),false);
 });
+test('live advertising sources are explicitly disabled in staging',async()=>{
+ const {assertLiveSourceAllowed}=await import('./staging-policy.ts');
+ assert.throws(()=>assertLiveSourceAllowed('staging'),/disabled in staging/);
+ assert.doesNotThrow(()=>assertLiveSourceAllowed('production'));
+});

@@ -9,3 +9,8 @@ export async function readStagingDataSnapshot<T=unknown>(directory:string,channe
  if(value.channel!==channel||(!latest&&value.scope!==scope)||!value.payload||typeof value.updatedAt!=='string'||!Number.isFinite(Date.parse(value.updatedAt)))throw Error('Invalid staging report snapshot');
  return {payload:value.payload as T,updatedAt:value.updatedAt};
 }
+export async function requireStagingDataSnapshot<T=unknown>(directory:string,channel:string,scope:string,latest=false){
+ const snapshot=await readStagingDataSnapshot<T>(directory,channel,scope,latest);
+ if(!snapshot)throw Error('This reporting period is not available in this staging snapshot. Choose a published reporting period.');
+ return snapshot;
+}

@@ -1,3 +1,4 @@
+import {assertLiveSourceAllowed} from '@/lib/staging-policy';
 import "server-only";
 import {warehouseFirstDaily} from "@/lib/google-testing-warehouse";
 import {cache} from "react";
@@ -73,6 +74,7 @@ export function apiGoogleSearchReport(data:Snapshot,campaignName:string,period:{
 export function apiGoogleAdArchive(data:Snapshot):GoogleAdPerformanceArchive{return {version:1,range:{start:data.start,end:data.end},days:data.rows.map(row=>({groupId:row.adGroup.id,adId:row.adGroupAd.ad.id,date:row.segments.date,spend:Number(row.metrics.costMicros||0)/1e6,revenue:Number(row.metrics.conversionsValue||0),orders:Number(row.metrics.conversions||0),impressions:Number(row.metrics.impressions||0),clicks:Number(row.metrics.clicks||0)}))};}
 
 export async function queryGoogleTestingApi<T>(query:string):Promise<T[]>{
+ assertLiveSourceAllowed();
  const env=process.env;
  if(!env.GOOGLE_ADS_CLIENT_ID||!env.GOOGLE_ADS_SECRET||!env.GOOGLE_ADS_TOKEN)throw Error("Google Ads OAuth configuration is incomplete");
  const oauth=await fetch("https://oauth2.googleapis.com/token",{method:"POST",body:new URLSearchParams({client_id:env.GOOGLE_ADS_CLIENT_ID,client_secret:env.GOOGLE_ADS_SECRET,refresh_token:env.GOOGLE_ADS_TOKEN,grant_type:"refresh_token"}),signal:AbortSignal.timeout(30000),cache:"no-store"});

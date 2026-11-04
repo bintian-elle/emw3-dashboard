@@ -1,4 +1,4 @@
-import {readStagingDataSnapshot} from './staging-data-snapshots';
+import {readStagingDataSnapshot,requireStagingDataSnapshot} from './staging-data-snapshots';
 import 'server-only';
 import {Pool} from 'pg';
 import {testingDataSnapshotKey,type TestingDataChannel,type TestingDataInput} from './testing-data-cache-contract';
@@ -31,7 +31,7 @@ function database(){
  return pool??=new Pool({connectionString,ssl:{rejectUnauthorized:false},max:4,connectionTimeoutMillis:5000});
 }
 async function loadScope<T>(channel:TestingDataChannel,scope:string):Promise<TestingDataSnapshot<T>|null>{
- const directory=stagingDirectory();if(directory)return readStagingDataSnapshot<T>(directory,channel,scope);
+ const directory=stagingDirectory();if(directory)return requireStagingDataSnapshot<T>(directory,channel,scope);
  const key=JSON.stringify([channel,scope]),existing=memory.loads.get(key);
  if(existing)return existing as Promise<TestingDataSnapshot<T>|null>;
  const request=(async()=>{
@@ -43,7 +43,7 @@ async function loadScope<T>(channel:TestingDataChannel,scope:string):Promise<Tes
  return request;
 }
 async function loadLatest<T>(channel:TestingDataChannel):Promise<TestingDataSnapshot<T>|null>{
- const directory=stagingDirectory();if(directory)return readStagingDataSnapshot<T>(directory,channel,'latest',true);
+ const directory=stagingDirectory();if(directory)return requireStagingDataSnapshot<T>(directory,channel,'latest',true);
  const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 order by updated_at desc limit 1',[channel]);
  const row=result.rows[0];return row?{payload:row.payload,updatedAt:new Date(row.updated_at).toISOString()}:null;
 }
@@ -56,7 +56,7 @@ export async function readTestingDataSnapshot<T=unknown>(channel:TestingDataChan
   const snapshot=await memory.scoped.read(key,()=>loadScope(channel,testingDataSnapshotKey(channel,input)));
   if(snapshot)ensureSnapshotCheck();
   return snapshot as TestingDataSnapshot<T>|null;
- }catch{unavailableUntil=Date.now()+10000;return memory.scoped.get(key) as TestingDataSnapshot<T>??null;}
+ }catch(error){if(stagingDirectory())throw error;unavailableUntil=Date.now()+10000;return memory.scoped.get(key) as TestingDataSnapshot<T>??null;}
 }
 export async function readRequiredTestingDataSnapshot<T=unknown>(channel:TestingDataChannel,input:TestingDataInput={}):Promise<TestingDataSnapshot<T>|null>{
  const key=memoryKey(channel,input),snapshot=await memory.scoped.fetch(key,()=>loadScope(channel,testingDataSnapshotKey(channel,input)));
@@ -69,7 +69,8 @@ export async function readLatestTestingDataSnapshot<T=unknown>(channel:TestingDa
   const snapshot=await memory.latest.read(channel,()=>loadLatest(channel));
   if(snapshot){memory.emptyLatest.delete(channel);ensureSnapshotCheck();}else memory.emptyLatest.add(channel);
   return snapshot as TestingDataSnapshot<T>|null;
- }catch{
+ }catch(error){
+  if(stagingDirectory())throw error;
   if(memory.emptyLatest.has(channel))return null;
   const cached=memory.latest.get(channel);if(cached)return cached as TestingDataSnapshot<T>;
   const candidates=memory.scoped.keys().flatMap(key=>{try{if(JSON.parse(key)[0]!==channel)return [];const value=memory.scoped.get(key);return value?[value]:[];}catch{return [];}});
@@ -156,6 +157,7 @@ async function checkCachedVersions(exact:{channel:TestingDataChannel;scope:strin
 }
 /** Poll only lightweight metadata, never download the full Google payload just to show its time. */
 export async function readTestingDataSnapshotStatus(channel:TestingDataChannel,input:TestingDataInput={}){
+ const directory=stagingDirectory();if(directory){const snapshot=await readStagingDataSnapshot(directory,channel,testingDataSnapshotKey(channel,input));return snapshot?{updatedAt:snapshot.updatedAt,sourceUpdatedAt:null}:null;}
  const key=memoryKey(channel,input),observed=memory.scoped.get(key);
  const result=await database().query<{updated_at:Date|string;captured_at:string|null}>(`select updated_at,case when channel='social' then payload->>'capturedAt' else null end captured_at from testing_data_snapshots where channel=$1 and scope_key=$2`,[channel,testingDataSnapshotKey(channel,input)]);
  const row=result.rows[0];
@@ -171,17 +173,20 @@ export async function readTestingDataSnapshotStatus(channel:TestingDataChannel,i
 }
 /** The transaction lock works with transaction-pooled Postgres connections across app instances. */
 export async function publishTestingDataSnapshot<T>(channel:TestingDataChannel,input:TestingDataInput,load:()=>Promise<T>,options?:TestingDataPublishOptions):Promise<TestingDataSnapshot<T>&{skipped:boolean}>{
+ if(process.env.DEPLOYMENT_ENV==='staging')throw Error('Data refresh is disabled in staging.');
  const client=await database().connect();
  try{const result=await publishTestingData((sql,values)=>client.query(sql,values),channel,testingDataSnapshotKey(channel,input),load,options);const snapshot={payload:result.payload as T,updatedAt:result.updatedAt,skipped:result.skipped};remember(channel,input,snapshot,!result.skipped);return snapshot;}
  finally{client.release();}
 }
 export async function isTestingDataRefreshRunning(channel:TestingDataChannel,input:TestingDataInput={}):Promise<boolean>{
+ if(stagingDirectory())return false;
  const client=await database().connect(),key=testingDataSnapshotKey(channel,input);
  try{await client.query('begin');const result=await client.query<{locked:boolean}>('select pg_try_advisory_xact_lock(hashtext($1),hashtext($2)) as locked',[`testing-data:${channel}`,key]);await client.query('commit');return !result.rows[0]?.locked;}catch(error){await client.query('rollback').catch(()=>{});throw error;}finally{client.release();}
 }
 
 /** All Google channel refresh controls publish the same atomic batch. */
 export async function publishGoogleTestingSnapshots(load:(channel:'google-search'|'google-pmax'|'google-demand-gen')=>Promise<unknown>){
+ if(process.env.DEPLOYMENT_ENV==='staging')throw Error('Data refresh is disabled in staging.');
  const {publishGoogleTestingData}=await import('./testing-data-publication');
  const client=await database().connect();
  try{const loaded=new Map<'google-search'|'google-pmax'|'google-demand-gen',unknown>();const result=await publishGoogleTestingData((sql,values)=>client.query(sql,values),async channel=>{const payload=await load(channel);loaded.set(channel,payload);return payload;});for(const [channel,payload] of loaded)remember(channel,{}, {payload,updatedAt:result.updatedAt});return result;}finally{client.release();}
@@ -189,6 +194,7 @@ export async function publishGoogleTestingSnapshots(load:(channel:'google-search
 
 /** Fill a missing scope once, recording only a complete, uncached source read. */
 export async function initializeTestingDataSnapshot<T>(channel:TestingDataChannel,input:TestingDataInput,load:()=>Promise<T>):Promise<TestingDataSnapshot<T>|null>{
+ if(stagingDirectory())return readTestingDataSnapshot<T>(channel,input);
  let sourceStarted=false;
  try{return await publishTestingDataSnapshot(channel,input,async()=>{sourceStarted=true;return load();},{reuseExisting:true});}
  catch(error){if(sourceStarted)throw error;return readTestingDataSnapshot<T>(channel,input);}

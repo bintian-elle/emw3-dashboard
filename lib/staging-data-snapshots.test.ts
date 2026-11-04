@@ -22,3 +22,8 @@ test('snapshot filenames never expose raw scopes or accept path traversal',()=>{
  assert.match(stagingSnapshotFile('../channel','../../private'),/^[a-f0-9]{64}\.json$/);
  assert.notEqual(stagingSnapshotFile('meta','a'),stagingSnapshotFile('meta','b'));
 });
+test('missing frozen scopes fail closed instead of falling through to a live source',async()=>{
+ const {requireStagingDataSnapshot}=await import('./staging-data-snapshots.ts');
+ const directory=await mkdtemp(join(tmpdir(),'staging-required-'));
+ try{await assert.rejects(requireStagingDataSnapshot(directory,'meta','unpublished'),/not available in this staging snapshot/);}finally{await rm(directory,{recursive:true,force:true});}
+});

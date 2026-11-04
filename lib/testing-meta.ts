@@ -1,3 +1,4 @@
+import {assertLiveSourceAllowed} from '@/lib/staging-policy';
 import "server-only";
 import {metaTestingAdInventory,META_TESTING_BASIS} from "@/lib/meta-testing-ad-scope";
 import { resolveMetaCreativeLinks,isOptionalMetaLinkPermissionError } from "@/lib/meta-creative-links";
@@ -20,7 +21,7 @@ export type MetaCampaignTest={periodLabel:string;period:{start:string;end:string
 export type MetaTestingSnapshot={metricBasis?:string;data:MetaCampaignTest;daily:OverviewDailySource;history?:Awaited<ReturnType<typeof metaTestingHistory>>;currency?:string};
 const snapshotDaily=new WeakMap<MetaCampaignTest,OverviewDailySource>();
 
-function token(){const value=process.env.META_ACCESS_TOKEN;if(!value)throw new Error("Meta credentials are not configured.");return value;}
+function token(){assertLiveSourceAllowed();const value=process.env.META_ACCESS_TOKEN;if(!value)throw new Error("Meta credentials are not configured.");return value;}
 async function graph<T>(path:string,params:Record<string,string>,fresh=false):Promise<T>{const query=new URLSearchParams({...params,access_token:token()});const response=await fetch(`https://graph.facebook.com/${META_API_VERSION}/${path}?${query}`,fresh?{cache:"no-store",headers:{"Cache-Control":"no-cache"}}:{next:{revalidate:86400}});if(!response.ok){const body=await response.text();let code:number|undefined;try{code=JSON.parse(body)?.error?.code;}catch{/* Non-JSON errors remain generic. */}if(response.status===429||(code!=null&&[4,17,32,613].includes(code)))throw new Error("Meta API rate limit (HTTP 429). Please try again later.");throw new Error(`Meta API request failed for ${path} (${response.status}): ${body.slice(0,300)}`);}return response.json() as Promise<T>;}
 type MetaGraph = <T>(path:string,params:Record<string,string>)=>Promise<T>;
 async function graphCollection<T>(read:MetaGraph,path:string,params:Record<string,string>):Promise<{data:T[]}>{
