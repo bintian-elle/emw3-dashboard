@@ -2,9 +2,9 @@
 
 import type { ClipboardEventHandler, CSSProperties, FormEvent, Ref } from 'react';
 import { ArrowUp, Paperclip, Square } from 'lucide-react';
-import { Button } from './release-button';
 import type {ComponentProps} from 'react';
-function NovaButton({variant,size,...props}:Omit<ComponentProps<typeof Button>,'variant'|'size'> & {variant?:'default'|'outline'|'ghost';size?:'icon'}){return <Button {...props} variant={variant==='outline'?'secondary':variant==='ghost'?'ghost':'primary'} iconOnly={size==='icon'}/>;}
+import buttonStyles from './release-button.module.css';
+function NovaButton({variant='default',size='default',className,...props}:ComponentProps<'button'>&{variant?:'default'|'outline'|'ghost';size?:'default'|'icon'}){return <button data-slot="button" data-variant={variant} data-size={size} className={[buttonStyles.button,className].filter(Boolean).join(' ')} {...props}/>;}
 import styles from './nova-ai-composer.module.css';
 
 type Props = {
