@@ -1,4 +1,5 @@
-import {loadEnvConfig} from '@next/env';
+import nextEnv from '@next/env';
+const {loadEnvConfig}=nextEnv;
 import pg from 'pg';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
