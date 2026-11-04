@@ -10,7 +10,7 @@ export {isStagingReviewer} from './staging-review-policy.ts';
 import {isStagingReviewer} from './staging-review-policy.ts';
 function config():Config{return {secret:process.env.STAGING_HANDOFF_SECRET||'',emails:process.env.STAGING_REVIEW_EMAILS||''};}
 function key(settings:Config){if(settings.secret.length<32)throw Error('Staging handoff is not configured');return new TextEncoder().encode(settings.secret);}
-function safePage(value:unknown){return typeof value==='string'&&/^\/(?!\/)/.test(value)&&!/[\\\x00-\x1f]/.test(value)&&!/^\/(?:api|access|staging-review)(?:[/?]|$)/.test(value)&&value.length<=2000?value:'/';}
+import {safeStagingPage as safePage} from './staging-navigation.ts';
 export async function createStagingTicket(user:SiteUser,nonce:string,returnTo:string,settings=config()){
  if(!isStagingReviewer(user.email,settings.emails)||!/^[-\w]{32,128}$/.test(nonce))throw Error('Staging access denied');
  return new SignJWT({user,nonce,returnTo:safePage(returnTo)}).setProtectedHeader({alg:'HS256'}).setIssuer(PRODUCTION_ORIGIN).setAudience('staging-login').setJti(randomUUID()).setIssuedAt().setExpirationTime('60s').sign(key(settings));
