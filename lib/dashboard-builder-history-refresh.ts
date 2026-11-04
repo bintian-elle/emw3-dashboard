@@ -59,3 +59,10 @@ export async function refreshEditorReportingPeriod(editor:EditorDocument,targetR
  if(JSON.stringify(next)===JSON.stringify(original))return original;
  return {...next,revision:editor.revision+1};
 }
+
+/** User-selected dates refresh presentation history without becoming an undoable component edit. */
+export async function selectEditorReportingPeriod(editor:EditorDocument,target:Period,hydrate:(spec:ReportSpec)=>Promise<DashboardReport>):Promise<PeriodEditor>{
+ const original=editor as PeriodEditor;
+ const selected=await refreshEditorReportingPeriod({...original,defaultPeriod:original.current.report.range} as PeriodEditor,target,hydrate);
+ return {...selected,defaultPeriod:original.defaultPeriod};
+}
