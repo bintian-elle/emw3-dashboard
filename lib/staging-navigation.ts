@@ -1,3 +1,4 @@
 export function safeStagingPage(value:unknown){return typeof value==='string'&&/^\/(?!\/)/.test(value)&&!/[\\\x00-\x1f]/.test(value)&&!/^\/(?:api|access|staging-review)(?:[/?#]|$)/.test(value)&&value.length<=2000?value:'/';}
 export function stagingReviewHref(pathname:string,search='',hash=''){const query=search.replace(/^\?/,'');return '/staging-review?'+new URLSearchParams({returnTo:safeStagingPage(pathname+(query?'?'+query:'')+hash)}).toString();}
 export function stagingStartHref(page:unknown){const url=new URL('/api/auth/staging/start','https://staging.emw3-dashboard.win');url.searchParams.set('returnTo',safeStagingPage(page));return url.href;}
+export function productionPageHref(pathname:string,search='',hash=''){const query=search.replace(/^\?/,'');return 'https://emw3-dashboard.win'+safeStagingPage(pathname+(query?'?'+query:'')+hash);}

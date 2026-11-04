@@ -1,6 +1,6 @@
 "use client";
 import Image from 'next/image';
-import { useCallback, useEffect, useState,type MouseEvent } from 'react';
+import { Suspense,useCallback, useEffect, useState,type MouseEvent } from 'react';
 import { usePathname } from 'next/navigation';
 import { Dialog } from 'radix-ui';
 import { MessageSquare, MapPin, Plus, X, Check, RefreshCw, Trash2, Camera } from 'lucide-react';
@@ -10,6 +10,7 @@ import type { StagingReleaseState, StagingReleaseSummary } from '@/lib/staging-r
 import type { NoteAnchor, PageNote } from '@/lib/staging-notes';
 import {reviewChanges,reviewChangeHref,type StagingReviewChange} from '@/lib/staging-review-changes';
 import {ScreenshotCapture,type RegionCapture} from './screenshot-capture';
+import {ProductionReturnButton} from './review-button';
 import {ReleaseHighlight} from './release-highlight';
 import styles from './page-notes.module.css';
 function selectorFor(element:Element){
@@ -60,6 +61,7 @@ function PageNotesPage({name}:{name:string}){
  function goToNote(event:MouseEvent<HTMLAnchorElement>,note:PageNote){if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;setOpen(false);if(note.page===page){event.preventDefault();history.pushState(null,'',note.page+'#review-note='+note.id);setTimeout(()=>window.dispatchEvent(new HashChangeEvent('hashchange')),0);}}
  const startCapture=()=>{setOpen(false);setDraft(false);setSelecting(true);setActive(null);};
  return <>
+  <div data-page-notes className={styles.exitStaging}><Suspense fallback={null}><ProductionReturnButton language={language}/></Suspense></div>
   <ReleaseHighlight changes={changes} notes={notes} onOpenNote={id=>{setActive(id);setDraft(false);setOpen(true);}}/>
   <div data-page-notes data-review-target="team-feedback" className={styles.toolbar}><button type="button" className={styles.releaseButton} aria-label={zh?'查看本次修改':'View release changes'} onClick={()=>setOpen(true)} title={zh?"测试站始终可以批注；版本标记根据实际发布记录判断。":"Team notes are always available. Version status follows the recorded published release."}>Staging · {releaseLabel}{summary&&<small className={styles.releaseSummary} title={summary}>{summary}</small>}{changes.length>0&&<strong className={styles.changeEntry}>{zh?'查看修改':'View changes'} · {changes.length} <span aria-hidden="true">→</span></strong>}</button><Button variant="secondary" size="small" leadingIcon={MessageSquare} onClick={()=>setOpen(true)}>{zh?'团队批注':'Team notes'}{loaded?` · ${notes.filter(n=>!n.resolved).length}`:''}</Button></div>
   {selecting&&<ScreenshotCapture onCancel={()=>{setSelecting(false);setDraft(Boolean(capture)||Boolean(text.trim()));setOpen(true);}} onCapture={(image,element,point)=>{setCapture(image);if(element&&selectorFor(element)&&!element.closest('[data-page-notes]')){const rect=element.getBoundingClientRect();setAnchor({selector:selectorFor(element),x:Math.max(0,Math.min(1,(point.x-rect.left)/(rect.width||1))),y:Math.max(0,Math.min(1,(point.y-rect.top)/(rect.height||1))),context:(element.textContent||'').replace(/\s+/g,' ').trim().slice(0,180)});}else setAnchor(null);setSelecting(false);setDraft(true);setOpen(true);}}/>}

@@ -9,3 +9,8 @@ test('staging review preserves the current page and filters through the initial 
  assert.equal(start.origin,'https://staging.emw3-dashboard.win');assert.equal(start.pathname,'/api/auth/staging/start');assert.equal(start.searchParams.get('returnTo'),page+'?'+search);
  assert.equal(safeStagingPage('//evil.example'),'/');assert.equal(safeStagingPage('/api/auth/logout'),'/');
 });
+test('exit staging returns to the production counterpart with filters and location',async()=>{
+ const {productionPageHref}=await import('./staging-navigation.ts');
+ assert.equal(productionPageHref('/bluevua/testing/social','?period=lastWeek','#post-2'),'https://emw3-dashboard.win/bluevua/testing/social?period=lastWeek#post-2');
+ assert.equal(productionPageHref('//evil.example'),'https://emw3-dashboard.win/');
+});
