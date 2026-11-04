@@ -1,7 +1,8 @@
+import {reviewChanges,type StagingReviewChange} from './staging-review-changes.ts';
 import {readFile} from 'node:fs/promises';
 export type StagingReleaseState='synced'|'pending'|'unknown';
 export type StagingReleaseSummary={zh?:string;en?:string};
-export type StagingReleaseStatus={state:StagingReleaseState;summary?:StagingReleaseSummary};
+export type StagingReleaseStatus={state:StagingReleaseState;summary?:StagingReleaseSummary;changes?:StagingReviewChange[]};
 export async function readStagingReleaseStatus(file:string):Promise<StagingReleaseStatus>{
  try{
   const value=JSON.parse(await readFile(file,'utf8'));
@@ -10,6 +11,7 @@ export async function readStagingReleaseStatus(file:string):Promise<StagingRelea
   if(state!=='pending')return {state};
   const summary:StagingReleaseSummary={};
   for(const language of ['zh','en'] as const){const copy=value.summary?.[language];if(typeof copy==='string'&&copy.trim()&&copy.trim().length<=240)summary[language]=copy.trim();}
-  return Object.keys(summary).length?{state,summary}:{state};
+  const changes=reviewChanges(value.changeIds);
+  return {state,...(Object.keys(summary).length?{summary}:{}),...(changes.length?{changes}:{})};
  }catch{return {state:'unknown'};}
 }

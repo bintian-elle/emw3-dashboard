@@ -25,3 +25,12 @@ test('pending release exposes a bounded plain-text bilingual summary only while 
   await writeFile(file,JSON.stringify({...value,summary:{zh:'x'.repeat(241),en:42}}));assert.deepEqual(await readStagingReleaseStatus(file),{state:'pending'});
  }finally{await rm(directory,{recursive:true,force:true});}
 });
+
+test('review destinations are published only for pending known changes',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'staging-links-')),file=join(directory,'status.json');
+ try{
+  const value={productionRevision:'a'.repeat(40),previewRevision:'b'.repeat(40),changeIds:['social-post-order','https://evil.example']};
+  await writeFile(file,JSON.stringify(value));assert.deepEqual((await readStagingReleaseStatus(file)).changes?.map(change=>change.id),['social-post-order']);
+  await writeFile(file,JSON.stringify({...value,previewRevision:value.productionRevision}));assert.equal((await readStagingReleaseStatus(file)).changes,undefined);
+ }finally{await rm(directory,{recursive:true,force:true});}
+});

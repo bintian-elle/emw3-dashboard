@@ -18,10 +18,10 @@ The toolbar distinguishes same production content/no pending updates, updates re
 After checking the actual published and preview content commits, run in the isolated staging checkout:
 
 ```sh
-node ops/staging/set-release-status.mjs <production-content-commit> <preview-content-commit> "中文更新说明" "English release summary"
+node ops/staging/set-release-status.mjs <production-content-commit> <preview-content-commit> "中文更新说明" "English release summary" "testing-layout,creative-previews,social-post-order,team-feedback"
 ```
 
-The optional Chinese/English summaries are plain text, each at most 240 characters. Pending releases show a two-line toolbar preview and the full description inside Team notes. Matching/unknown versions hide old summaries. Review each summary against the actual content diff when publishing.
+The optional Chinese/English summaries are plain text, each at most 240 characters. Pending releases show a two-line toolbar preview and the full description inside Team notes. Matching/unknown versions hide old summaries. Review each summary against the actual content diff when publishing. The optional final argument lists unique known change IDs from lib/staging-review-changes.ts. The pending release exposes only canonical local links and semantic targets from this catalog. Selecting an item navigates to its page, waits for streamed content, optionally opens the existing analysis expander, and highlights the visible target for 15 seconds. Missing targets report unavailable after 20 seconds, with no substitute target. The status text opens the linked change list; notes remain accessible.
 
 Record equal commits only after the reviewed content has actually been published and both sites use that content. Do not switch the badge alone. Initially production is based on 8afdfc1 with the minimal login overlay; preview contains unshipped business changes through de4139e, so the accurate initial state is pending. Publishing and aligning future content remains manual.
 
