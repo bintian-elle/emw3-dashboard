@@ -1,11 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isStagingReviewer } from "@/lib/staging-review-policy";
+import { stagingRequestAllowed } from "@/lib/staging-policy";
 import { SESSION_COOKIE, readSession, safeReturnPath } from "@/lib/site-auth";
 import { testingDocumentPeriodRedirect } from "@/lib/testing-navigation";
 
 import {CODEX_SITE_COOKIE,codexReadPath,validCodexSiteToken} from "@/lib/codex-site-access";
 
 const crawlerPattern = /(?:googlebot|bingbot|duckduckbot|baiduspider|yandexbot|gptbot|chatgpt-user|oai-searchbot|claudebot|claude-web|anthropic-ai|ccbot|perplexitybot|google-extended|bytespider|amazonbot|applebot-extended|cohere-ai|meta-externalagent|meta-externalfetch)/i;
-const publicPaths = new Set(["/access", "/api/auth/login", "/api/auth/google", "/api/auth/google/callback", "/robots.txt", "/brand/emw3-logo.gif"]);
+const publicPaths = new Set(["/access", "/api/auth/login", "/api/auth/google", "/api/auth/google/callback", "/api/auth/staging/start", "/api/auth/staging/callback", "/robots.txt", "/brand/emw3-logo.gif"]);
 
 function blockedResponse() {
   return new NextResponse("Automated crawling is not permitted.", {
@@ -25,6 +27,7 @@ function resetTestingDocumentPeriod(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  if (process.env.DEPLOYMENT_ENV === "staging" && !stagingRequestAllowed(request.method, pathname)) return NextResponse.json({ error: "This action is disabled in staging. Production data is read-only." }, { status: 403 });
   // Local-only AI tools preview; production authentication is unchanged.
   // Bundled open-source font files are static assets, not protected report data.
   if (/^\/fonts\/overpass\/(?:overpass-(?:400|500|600|700|800)\.ttf|OFL\.txt)$/.test(pathname)) return NextResponse.next();
@@ -53,6 +56,7 @@ export async function proxy(request: NextRequest) {
     }
   }
   const authorized = await readSession(request.cookies.get(SESSION_COOKIE)?.value);
+  if (authorized && process.env.DEPLOYMENT_ENV === "staging" && !isStagingReviewer(authorized.email)) return new NextResponse("Your account is not on the staging review list.", { status: 403 });
   if (authorized) return resetTestingDocumentPeriod(request) ?? NextResponse.next();
 
   if (pathname.startsWith("/api/")) {

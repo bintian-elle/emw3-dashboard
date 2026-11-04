@@ -1,3 +1,5 @@
+import { StagingReviewLink } from "@/components/application/staging/review-link";
+import { PageNotes } from "@/components/application/staging/page-notes";
 import {THEME_BOOTSTRAP} from '@/lib/theme-policy';
 import {ThemeInitializer} from '@/components/application/theme/theme-toggle';
 import { Suspense } from "react";
@@ -27,5 +29,5 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await currentSiteUser();
   const language = user ? await readUserLanguage(user.sub).catch(() => "en" as const) : "en";
-  return <html data-insight-cache-owner={user?.sub} lang={language === "zh" ? "zh-CN" : "en"} className={geist.variable} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:THEME_BOOTSTRAP}}/></head><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><ThemeInitializer/><Suspense><AccountHeader/></Suspense>{children}<FloatingTableHeaders/></SiteLanguageProvider></body></html>;
+  return <html data-insight-cache-owner={user?.sub} lang={language === "zh" ? "zh-CN" : "en"} className={geist.variable} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:THEME_BOOTSTRAP}}/></head><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><ThemeInitializer/><Suspense><AccountHeader/></Suspense>{children}<FloatingTableHeaders/>{user && <StagingReviewLink email={user.email} language={language}/>}{process.env.DEPLOYMENT_ENV === "staging" && user && <Suspense><PageNotes key={user.sub} name={user.name}/></Suspense>}</SiteLanguageProvider></body></html>;
 }

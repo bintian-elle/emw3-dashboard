@@ -8,6 +8,7 @@ import styles from "../workspace-entry.module.css";
 export default async function AccessPage({ searchParams }: { searchParams: Promise<{ returnTo?: string | string[]; error?: string }> }) {
   const params = await searchParams;
   const returnTo = safeReturnPath(Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo);
+  if(process.env.DEPLOYMENT_ENV==='staging')redirect('/api/auth/staging/start?'+new URLSearchParams({returnTo}));
   // A failed or stale OAuth attempt must not strand an already signed-in user.
   if (await currentSiteUser()) {
     const target = new URL(returnTo, "http://local.invalid");

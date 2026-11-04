@@ -43,3 +43,10 @@ Existing implementation references:
 - `styles/globals.css`: shared styles.
 
 - AI 渠道总分析标题明确标注“渠道分析 / Channel analysis”，Social Media 的选定帖子分析标注“Post 分析 · 10 条 Instagram Posts”。分析内素材引用优先显示真实名称，悬停或点击名称展示预览、原始 ID 和素材链接；缺失名称或预览时明确保留可核对标识，不猜测素材。元数据只读已发布缓存，不因语言切换请求广告 API。同一素材的旧“ID / 名称”标签合并为一次名称引用，表头使用素材名称或格式名称；不同 ID 的同名素材保持独立。
+
+## Staging review
+
+- Only `DEPLOYMENT_ENV=staging` exposes the fixed Staging / Team notes control. Reuse Nova buttons, Radix Dialog focus trapping, semantic theme tokens and Lucide icons. Company Google login supplies immutable author identity; team notes are shared and durable.
+- Support point annotations and keyboard-accessible general page notes, saved page context, resolve/reopen, visible loading/error states, bilingual copy and responsive panels. If anchored content changes, preserve the note and context rather than pinning it to unrelated content. Hide review controls in print.
+
+- 测试环境入口仅向指定的已登录验收账号显示；复用正式站 Google 身份，通过短时、一次性且绑定浏览器的交接进入测试站，不增加新的 Google 回调。正式环境不显示批注工具。
