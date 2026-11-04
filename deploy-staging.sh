@@ -22,7 +22,15 @@ if [[ ! -x node_modules/.bin/next || ! -f "$stamp" ]] || [[ "$(cat "$stamp")" !=
 else
   echo 'Staging dependencies unchanged; reusing installed packages.'
 fi
-nice -n 15 npm run build
+archive=${1:-}
+if [[ -n "$archive" ]]; then
+  [[ "$archive" == /home/ubuntu/.local/share/emw3-staging/incoming/staging-build-*.tgz && -f "$archive" ]] || { echo 'Invalid staging artifact path.' >&2; exit 1; }
+  mkdir "$NEXT_DIST_DIR"
+  tar xzf "$archive" -C "$NEXT_DIST_DIR"
+  [[ -f "$NEXT_DIST_DIR/BUILD_ID" && "$(cat "$NEXT_DIST_DIR/.staging-build-commit")" == "$(git rev-parse HEAD)" ]] || { echo 'Staging artifact does not match checked-out source.' >&2; exit 1; }
+else
+  nice -n 15 npm run build
+fi
 # Keep the old service alive until the new build has succeeded.
 previous_build=$(pm2 jlist | node -e 'let data="";process.stdin.on("data",chunk=>data+=chunk).on("end",()=>{const app=JSON.parse(data).find(p=>p.name==="emw3-dashboard-staging");console.log(app?.pm2_env?.NEXT_DIST_DIR||"");})')
 pm2 describe emw3-dashboard-staging >/dev/null 2>&1 && pm2 delete emw3-dashboard-staging
@@ -41,6 +49,7 @@ for attempt in {1..30}; do
   sleep 1
 done
 pm2 save
+[[ -z "$archive" ]] || rm -- "$archive"
 # Keep current and previous timestamped staging builds only. Never touch production
 # builds or durable .state/notes, and never follow directory symlinks.
 node --input-type=commonjs <<'JS'

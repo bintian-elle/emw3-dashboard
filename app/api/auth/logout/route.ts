@@ -3,7 +3,7 @@ import { SESSION_COOKIE, OAUTH_COOKIE, authCookieOptions, authOrigin } from "@/l
 
 export async function POST(request: Request) {
   if (request.headers.get("origin") !== authOrigin(request.url)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const response = NextResponse.redirect(new URL("/access", authOrigin(request.url)), 303);
+  const response = NextResponse.redirect(new URL(process.env.DEPLOYMENT_ENV === "staging" ? "/access?signedOut=1" : "/access", authOrigin(request.url)), 303);
   for (const name of [SESSION_COOKIE, OAUTH_COOKIE, "emw3_access"]) response.cookies.set(name, "", authCookieOptions(0));
   response.headers.set("Cache-Control", "no-store");
   return response;
