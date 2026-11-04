@@ -1,21 +1,41 @@
-name: Deploy to EC2
+name: Build production AI tools (manual only)
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: production-ai-manual-build
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
+      - uses: actions/checkout@v7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd /home/ubuntu/emw3-dashboard
-            ./deploy.sh
+          ref: codex/production-ai-tools
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Check and build production AI tools
+        env:
+          DEPLOYMENT_ENV: production
+          NEXT_DISABLE_BUILD_CACHE: 'true'
+          DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
+          KLAVIYO_DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
+          AUTH_SECRET: build-only-placeholder-not-a-runtime-secret
+          AUTH_URL: https://emw3-dashboard.win
+        run: |
+          npm ci --include=dev --no-audit --no-fund
+          node --experimental-strip-types --test lib/dashboard-builder-history-refresh.test.ts lib/staging-access.test.ts lib/staging-navigation.test.ts
+          npm run build
+          git rev-parse HEAD > .next/.production-build-commit
+          tar -C .next -czf production-build.tgz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-build
+          path: production-build.tgz
+          retention-days: 3

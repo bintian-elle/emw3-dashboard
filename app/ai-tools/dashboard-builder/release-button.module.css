@@ -1,0 +1,34 @@
+/* Source-owned adaptation of the reference dashboard's shadcn Nova button. */
+/* Declare Tailwind's canonical order before the component layer. This also
+   protects it when the module is loaded before the global stylesheet. */
+@layer theme, base, components, utilities;
+@layer components {
+  .button { display:inline-flex; flex-shrink:0; align-items:center; justify-content:center; gap:.375rem; height:2rem; padding:0 .625rem; border:1px solid transparent; border-radius:.5rem; background:transparent; color:var(--nova-foreground,#1a1d22); font:inherit; font-size:.875rem; font-weight:500; line-height:1; white-space:nowrap; user-select:none; cursor:pointer; transition:background-color .15s,color .15s,border-color .15s,transform .15s; }
+  .button[data-variant="default"],.primary { background:var(--nova-foreground,#1a1d22); color:var(--nova-surface,#fff); }
+  .button[data-variant="default"]:hover,.primary:hover { background:color-mix(in srgb,var(--nova-foreground,#1a1d22) 85%,var(--nova-surface,#fff)); }
+  .button[data-variant="outline"],.secondary { background:var(--nova-surface,#fff); color:var(--nova-foreground,#1a1d22); border-color:var(--nova-border,#e1e4e8); }
+  .button[data-variant="outline"]:hover,.button[data-variant="ghost"]:hover,.button[data-variant="outline"][aria-expanded="true"],.button[data-variant="ghost"][aria-expanded="true"] { background:var(--nova-soft,#f0f2f4); }
+  .ghost { background:transparent; color:var(--nova-foreground,#1a1d22); }
+  .button[data-variant="destructive"],.danger { background:color-mix(in srgb,#dc2626 10%,transparent); color:#dc2626; }
+  .button[data-variant="destructive"]:hover { background:color-mix(in srgb,#dc2626 20%,transparent); }
+  .medium { height:2rem; }
+  .button[data-size="sm"],.small { height:1.75rem; font-size:.8rem; }
+  .button[data-size="xs"],.xs { height:1.5rem; gap:.25rem; padding:0 .5rem; font-size:.75rem; }
+  .button[data-icon-only="true"],.button[data-size="icon"],.iconOnly { width:2rem; padding:0; }
+  .button[data-icon-only="true"][data-size="sm"] { width:1.75rem; }
+  .button[data-icon-only="true"][data-size="xs"] { width:1.5rem; }
+  .button[data-size="xs"][data-close-size="2xs"] { width:1rem; height:1rem; }
+  .button[data-size="xs"][data-close-size="xs"] { width:1.25rem; height:1.25rem; }
+  .button[data-size="xs"][data-close-size="sm"] { width:1.5rem; height:1.5rem; }
+  .button[data-size="xs"][data-close-size="md"] { width:2rem; height:2rem; }
+  .button:focus-visible { outline:2px solid var(--nova-ring,#76808b); outline-offset:2px; }
+  .button:active:not([aria-haspopup]) { transform:translateY(1px); }
+  .button:disabled,.button[aria-disabled="true"] { pointer-events:none; opacity:.5; }
+  .button svg { flex-shrink:0; width:1rem; height:1rem; pointer-events:none; }
+  .button[data-size="xs"] svg { width:.75rem; height:.75rem; }
+  .button[data-close-size="2xs"] svg { width:.5rem; height:.5rem; }
+  .button[data-close-size="sm"] svg { width:.875rem; height:.875rem; }
+  .button[data-close-size="md"] svg { width:1rem; height:1rem; }
+  :global(.dark) .button { --nova-foreground:#f1f2f3; --nova-surface:#232529; --nova-border:#3b3e43; --nova-ring:#aeb6c1; --nova-soft:#303338; }
+  @media (prefers-reduced-motion:reduce) { .button { transition:none; } }
+}

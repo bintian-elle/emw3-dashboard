@@ -1,5 +1,18 @@
-import Link from 'next/link';
-import {RiArrowLeftLine,RiArrowRightLine,RiBarChartBoxLine,RiDatabase2Line,RiSparkling2Line} from '@remixicon/react';
-import {Emw3Logo} from '@/components/brand/emw3-logo';
-import {ButtonLink} from '@/components/base/buttons/button';
-export default function AiTools(){return <main className="min-h-screen bg-background-secondary-default px-5 py-8 sm:px-10"><div className="mx-auto max-w-6xl"><header className="flex items-center justify-between"><Link href="/" aria-label="EMW3 home"><Emw3Logo className="w-44"/></Link><ButtonLink href="/" variant="ghost" leadingIcon={RiArrowLeftLine}>All workspaces</ButtonLink></header><section className="py-16"><span className="inline-flex items-center gap-2 text-caption-1-semibold text-status-purple-text"><RiSparkling2Line className="size-4"/>EMW3 AI TOOLS</span><h1 className="mt-4 text-display-2-semibold text-text-primary">Your data. A better starting point.</h1><p className="mt-5 max-w-2xl text-title-3-regular text-text-secondary">A workspace for our AI tools. Start with a question, explore your marketing data, and build a dashboard that answers it.</p></section><div className="grid gap-6 lg:grid-cols-2"><Link href="/ai-tools/dashboard-builder" className="group rounded-3xl border border-border-button-default bg-background-primary-default p-8 shadow-card transition hover:border-border-button-hover focus-visible:ring-2 focus-visible:ring-border-focus-ring"><div className="flex items-start justify-between"><span className="rounded-2xl bg-status-purple-background p-4 text-status-purple-text"><RiBarChartBoxLine className="size-8"/></span></div><h2 className="mt-8 text-title-1-semibold text-text-primary">Dashboard Builder</h2><p className="mt-3 text-body-regular text-text-secondary">Describe the report you need. Turn your marketing data into metric cards, trends and tables, then refine it through conversation.</p><div className="mt-6 flex items-center gap-2 text-caption-1-medium text-text-tertiary"><RiDatabase2Line className="size-4"/>Bluevua · Biceek · RingConn</div><span className="mt-8 inline-flex items-center gap-2 text-body-medium text-status-purple-text">Open Dashboard Builder<RiArrowRightLine className="size-5 transition-transform group-hover:translate-x-1"/></span></Link><section className="flex flex-col justify-center rounded-3xl border border-dashed border-border-button-default p-8"><p className="text-caption-1-semibold text-text-tertiary">BUILT TO GROW</p><h2 className="mt-3 text-title-2-semibold text-text-primary">One place for what comes next.</h2><p className="mt-3 max-w-md text-body-regular text-text-secondary">New tools will live here alongside Dashboard Builder, with a shared workspace and familiar data.</p></section></div></div></main>;}
+"use client";
+
+import Link from "next/link";
+import { ArrowLeft, ArrowRight, LayoutDashboard } from "lucide-react";
+import styles from "../workspace-entry.module.css";
+import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
+
+export default function AiTools() {
+  const { language } = useSiteLanguage();
+  const t = (en: string, zh: string) => language === "zh" ? zh : en;
+  return <main className={styles.page}><div className={styles.container}>
+    <div className={styles.topline}><p className={styles.eyebrow}>{t("Workspace", "工作区")}</p><Link href="/" className={styles.back}><ArrowLeft size={15}/> {t("All workspaces", "所有工作区")}</Link></div>
+    <h1 className={styles.heading}>{t("AI Tools", "AI 工具")}</h1><p className={styles.description}>{t("Explore your marketing data and build reports through conversation.", "通过对话探索营销数据并创建报告。")}</p>
+    <section className={styles.section} aria-labelledby="tools-heading"><h2 id="tools-heading" className={styles.sectionTitle}>{t("Tools", "工具")}</h2><div className={styles.grid}>
+      <Link href="/ai-tools/dashboard-builder" className={styles.card}><div className={styles.cardTop}><span className={styles.icon}><LayoutDashboard size={18}/></span><ArrowRight size={16}/></div><h3 className={styles.cardTitle}>{t("Dashboard Builder", "仪表盘生成器")}</h3><p className={styles.cardText}>{t("Turn your marketing data into metric cards, trends and tables, then refine them through conversation.", "将营销数据转化为指标卡片、趋势图和表格，并通过对话持续调整。")}</p><span className={styles.cardLink}>{t("Open Dashboard Builder", "打开仪表盘生成器")} <ArrowRight size={14}/></span></Link>
+    </div></section>
+  </div></main>;
+}

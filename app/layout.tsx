@@ -1,3 +1,4 @@
+import { StagingReviewLink } from "@/components/application/staging/review-link";
 import {THEME_BOOTSTRAP} from '@/lib/theme-policy';
 import {ThemeInitializer} from '@/components/application/theme/theme-toggle';
 import { Suspense } from "react";
@@ -28,5 +29,5 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await currentSiteUser();
   const language = user ? await readUserLanguage(user.sub).catch(() => "en" as const) : "en";
-  return <html lang={language === "zh" ? "zh-CN" : "en"} className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:THEME_BOOTSTRAP}}/></head><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><ThemeInitializer/><Suspense><AccountHeader/></Suspense>{children}<FloatingTableHeaders/></SiteLanguageProvider></body></html>;
+  return <html lang={language === "zh" ? "zh-CN" : "en"} className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:THEME_BOOTSTRAP}}/></head><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><ThemeInitializer/><Suspense><AccountHeader/></Suspense>{children}<FloatingTableHeaders/>{user && <StagingReviewLink email={user.email} language={language}/>}</SiteLanguageProvider></body></html>;
 }
