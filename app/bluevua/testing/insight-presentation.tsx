@@ -30,7 +30,7 @@ export function usePmaxPresentation(){
 }
 
 const markerLabel=(label:string)=>label.replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*|^\d+[.、)]\s*/, '');
-const palette=['var(--insight-series-1,#4b5563)','var(--insight-series-2,#059669)','#d97706','#6366f1','#0891b2','#dc2626'];
+const palette=['var(--insight-series-1,#2563eb)','var(--insight-series-2,#059669)','#d97706','#6366f1','#0891b2','#dc2626'];
 const names:Record<string,string>={spend:'Spend',revenue:'Revenue',orders:'Orders',clicks:'Clicks',roas:'ROAS',cpa:'CPA',cvr:'CVR',cpc:'CPC',ctr:'CTR',impressions:'Impressions'};
 function format(value:number,unit:string){if(unit==='USD')return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(value);if(unit==='fraction')return `${(value*100).toFixed(1)}%`;if(unit==='ratio')return `${value.toFixed(2)}×`;return new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(value);}
 function Chart({spec,dataset}:{spec:PresentationChart;dataset:PresentationDataset}){
@@ -70,7 +70,7 @@ function FreeComposition({block,report}:{block:PresentationBlock;report:PmaxRead
   root.replaceChildren(base,fragment);
   for(const target of root.querySelectorAll('[data-insight-chart]'))target.setAttribute('role','group');
   setSlots([...root.querySelectorAll('[data-insight-chart]')].map(target=>({id:target.getAttribute('data-insight-chart')!,element:target})));
-  const syncTheme=()=>{const dark=document.documentElement.classList.contains('dark');const colors=dark?{surface:'#18181b',foreground:'#f4f4f5',muted:'#a1a1aa',border:'#3f3f46',accent:'#34d399',soft:'#27272a'}:{surface:'#fff',foreground:'#20242a',muted:'#707680',border:'#e4e4e7',accent:'#059669',soft:'#f4f4f5'};for(const [key,value]of Object.entries(colors))element.style.setProperty(`--${key}`,value);for(const key of ['surface','foreground','muted','border'])element.style.setProperty(`--nova-${key}`,colors[key as keyof typeof colors]);element.style.setProperty('--insight-series-1',colors.foreground);element.style.setProperty('--insight-series-2',colors.accent);};
+  const syncTheme=()=>{const dark=document.documentElement.classList.contains('dark');const colors=dark?{surface:'#18181b',foreground:'#f4f4f5',muted:'#a1a1aa',border:'#3f3f46',accent:'#34d399',soft:'#27272a'}:{surface:'#fff',foreground:'#20242a',muted:'#707680',border:'#e4e4e7',accent:'#059669',soft:'#f4f4f5'};for(const [key,value]of Object.entries(colors))element.style.setProperty(`--${key}`,value);for(const key of ['surface','foreground','muted','border'])element.style.setProperty(`--nova-${key}`,colors[key as keyof typeof colors]);element.style.setProperty('--insight-series-1',dark?'#60a5fa':'#2563eb');element.style.setProperty('--insight-series-2',colors.accent);};
   syncTheme();const observer=new MutationObserver(syncTheme);observer.observe(document.documentElement,{attributes:true,attributeFilter:['class']});return()=>observer.disconnect();
  },[documentHtml,report.media_url_base]);
  return <><div ref={host} className={styles.freeComposition} data-composition={block.id} aria-label={block.title}/>{slots.map(slot=>{const item=block.charts?.find(chart=>chart.id===slot.id);return item?createPortal(<Chart spec={item.spec} dataset={report.datasets[item.spec.dataset_ref]}/>,slot.element,slot.id):null;})}<details className={styles.details}><summary>{language==='en'?'View presentation and data basis':'查看表达与数据依据'}</summary><p>{block.design_reason}</p></details></>;

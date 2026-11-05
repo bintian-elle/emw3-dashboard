@@ -4,7 +4,7 @@ export type PresentationMarker={x:number;y:number;width:number;height:number;lab
 export type PresentationChart={chart_type:string;dataset_ref:string;x_key:string;y_keys:string[];reason:string;annotations:{category:string;label:string}[]};
 export type PresentationSection={id:string;title:string};
 export type PresentationBlock={id:string;scope:string;section_id?:string;type:'highlight'|'chart'|'creative'|'actions'|'text'|'document';html?:string;charts?:{id:string;spec:PresentationChart}[];dataset_refs?:string[];media_keys?:string[];design_reason?:string;title:string;text:string;chart:PresentationChart|null;creative:{asset_id:string;media_key:string;markers:PresentationMarker[]}|null;actions:{priority:string;target:string;action:string;evidence:string;validation:string}[]};
-export type InsightPresentation={schema_version:'insight-presentation-v1'|'insight-presentation-v2'|'insight-presentation-v3';title:string;summary:string;sections?:PresentationSection[];blocks:PresentationBlock[]};
+export type InsightPresentation={schema_version:'insight-presentation-v1'|'insight-presentation-v2'|'insight-presentation-v3';title:string;summary:string;sections?:PresentationSection[];styles_per_scope?:boolean;blocks:PresentationBlock[]};
 export type PmaxReadableReport={run_id:string;media_url_base?:string;channel?:string;currency?:string|null;language?:string;scope?:string;source_urls?:string[];period:{start:string;end:string};comparison:{start:string;end:string};totals:Record<string,number|null>;comparison_totals?:Record<string,number|null>;datasets:Record<string,PresentationDataset>;media:PresentationMedia[];presentation:InsightPresentation;analysis:{executive_summary:string;campaigns:{test_id:string;summary:string;detail_markdown:string}[]}};
 export const presentationUnit=(unit:string)=>['count','views','reach','impressions','clicks','orders','likes','comments','shares','saves','follows'].includes(unit)?'count':unit;
 export const presentationCharts=['line','area','bar','column','pie','scatter','composed','radar','funnel','treemap'] as const;
@@ -35,7 +35,7 @@ export function validateInsightPresentation(value:InsightPresentation,packet:Pic
    }
    for(const key of block.media_keys)if(!packet.media.some(m=>m.key===key&&(block.scope==='channel'||m.campaigns.includes(block.scope))))throw Error('Unverified composition media');
    for(const match of block.html.matchAll(/\bsrc\s*=\s*["']([^"']+)["']/gi))if(!packet.media.some(m=>block.media_keys!.includes(m.key)&&match[1]===`/api/testing/presentation/media/${m.key}?v=${m.sha256.slice(0,12)}`))throw Error('Unverified composition image');
-   for(const match of block.html.matchAll(/\bhref\s*=\s*["']([^"']+)["']/gi)){const href=match[1].replaceAll('&amp;','&');if(href.startsWith('#'))continue;const url=new URL(href);if(url.protocol!=='https:'||!(packet.source_urls?.includes(href)||packet.media.some(m=>m.url&&new URL(m.url).origin===url.origin&&new URL(m.url).pathname===url.pathname&&new URL(m.url).searchParams.get('v')===url.searchParams.get('v'))))throw Error('Unverified composition link');}
+   for(const match of block.html.matchAll(/\bhref\s*=\s*["']([^"']+)["']/gi)){const href=match[1].replaceAll('&amp;','&');if(href.startsWith('#'))continue;if(/^\/bluevua\/testing\/[a-zA-Z0-9_/-]+$/.test(href)&&!href.includes('//')&&packet.source_urls?.includes(href))continue;const url=new URL(href);if(url.protocol!=='https:'||!(packet.source_urls?.includes(href)||packet.media.some(m=>m.url&&new URL(m.url).origin===url.origin&&new URL(m.url).pathname===url.pathname&&new URL(m.url).searchParams.get('v')===url.searchParams.get('v'))))throw Error('Unverified composition link');}
   }
   if(block.type==='chart'){
    const chart=block.chart,dataset=chart&&packet.datasets[chart.dataset_ref];
@@ -58,7 +58,7 @@ export function validateInsightPresentation(value:InsightPresentation,packet:Pic
 
 /** Each isolated document receives the AI report's shared stylesheet, without imposing a layout. */
 export function presentationDocumentHtml(presentation:InsightPresentation,block:PresentationBlock){
- const shared=presentation.blocks.filter(item=>item.type==='document').flatMap(item=>item.html?.match(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi)??[]).join('\n');
+ const shared=presentation.blocks.filter(item=>item.type==='document'&&(!presentation.styles_per_scope||item.scope===block.scope)).flatMap(item=>item.html?.match(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi)??[]).join('\n');
  // A body container also prevents the HTML parser dropping leading style elements.
  return `<div>${shared}${(block.html??'').replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi,'')}</div>`;
 }

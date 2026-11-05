@@ -1,8 +1,9 @@
 """Remote-only controller: existing native thread, serial turns, file results only."""
-import argparse,asyncio,hashlib,json,os,re,time
+import argparse,asyncio,hashlib,json,os,re,time,shutil
 from pathlib import Path
 
 from anc_bridge.sdk import SafeCodex,native_config,NativeControlResult
+from daily_staged import campaign_packet,channel_packet,merge_channel
 
 BRAND=Path('/home/ubuntu/work/emw3-anc/bluevua')
 LEGACY_THREAD='01a11931-c326-7553-8526-c1edf3e9e9a5'
@@ -27,7 +28,7 @@ def schema(packet):
     return obj({'schema_version':{'type':'string','enum':['channel-prompt-preview-v1']},'report_id':{'type':'string','enum':[packet['report_id']]},'language':{'type':'string','enum':[packet.get('language','zh-CN')]},'title':text,'executive_summary':text,'sections':{'type':'array','items':section,'minItems':len(packet['required_sections']),'maxItems':len(packet['required_sections'])},'campaigns':{'type':'array','items':campaign},'data_gaps':{'type':'array','items':text},'sources':{'type':'array','items':text}})
 
 
-def decode(raw,packet):
+def decode(raw,packet,staged=False):
     raw=re.sub(r'^```(?:json)?\s*|\s*```$','',raw.strip())
     report=json.loads(raw)
     assert report['schema_version']=='channel-prompt-preview-v1' and report['report_id']==packet['report_id']
@@ -42,11 +43,12 @@ def decode(raw,packet):
         assert len(actual)==len(set(actual)) and set(actual)<=known,'Unknown Campaign in Overview'
         # Campaign cards use their channel reports; preserve the raw answer separately.
         report['campaigns']=[]
-        totals=packet['overview_display_totals']
-        if 'reach' not in report['executive_summary'].lower() and '触达' not in report['executive_summary']:
-            reach=totals.get('totalReach')
-            if reach is not None:
-                report['executive_summary']=(f'Recorded Total Reach is {reach:,.0f}. ' if packet.get('language')=='en' else f'已记录的 Total Reach 为 {reach:,.0f}。')+report['executive_summary']
+        if not staged:
+            totals=packet['overview_display_totals']
+            if 'reach' not in report['executive_summary'].lower() and '触达' not in report['executive_summary']:
+                reach=totals.get('totalReach')
+                if reach is not None:
+                    report['executive_summary']=(f'Recorded Total Reach is {reach:,.0f}. ' if packet.get('language')=='en' else f'已记录的 Total Reach 为 {reach:,.0f}。')+report['executive_summary']
     else:
         assert len(actual)==len(set(actual)) and set(actual)==expected,'Campaign identity coverage mismatch'
     assert all(c['summary'].strip() and c['detail_markdown'].strip() for c in report['campaigns'])
@@ -54,7 +56,31 @@ def decode(raw,packet):
     return report
 
 
-async def run(root,only=None):
+async def run_daily_staged(root):
+    manifest=json.loads((root/'manifest.json').read_text())
+    for entry in manifest['reports']:
+        rid=entry['report_id'];target=root/'results'/f'{rid}.json'
+        if target.exists():continue
+        packet=json.loads((root/'inputs'/f'{rid}.json').read_text());reports=[]
+        async def generate_stage(index,stage_packet):
+            folder=root/'stages'/rid/f'{index:03d}'
+            folder.mkdir(parents=True,exist_ok=True,mode=0o700)
+            result=folder/'results'/f'{rid}.json'
+            if not result.exists():
+                shutil.copytree(root/'prompts',folder/'prompts',dirs_exist_ok=True)
+                save(folder/'manifest.json',{**manifest,'reports':[entry],'status':'prepared'})
+                save(folder/'inputs'/f'{rid}.json',stage_packet)
+                await run(folder,only=rid,staged_context=True)
+            return json.loads(result.read_text())
+        for index,test in enumerate(packet['tests']):
+            reports.append(await generate_stage(index,campaign_packet(packet,test['test_id'])))
+        channel=await generate_stage(len(reports),channel_packet(packet,reports))
+        save(target,merge_channel(channel,reports))
+    await run(root,only='overview',staged_context=True)
+
+
+async def run(root,only=None,staged=False,staged_context=False):
+    if staged:return await run_daily_staged(root)
     manifest=json.loads((root/'manifest.json').read_text())
     routing=json.loads((root/'target-thread.json').read_text()) if (root/'target-thread.json').exists() else {'thread_id':THREAD,'thread_name':'Bluevua · Content Testing Insights'}
     target_thread=routing['thread_id']
@@ -63,7 +89,7 @@ async def run(root,only=None):
     master=(root/'prompts/master.md').read_text()
     state_path=root/'state.json';state=json.loads(state_path.read_text()) if state_path.exists() else {'thread_id':THREAD,'turns':{},'status':'prepared'}
     order=[only] if only else [r['report_id'] for r in manifest['reports']]+['overview']
-    assert not only or only in {r['report_id'] for r in manifest['reports']},'Unknown report selection'
+    assert not only or only=='overview' or only in {r['report_id'] for r in manifest['reports']},'Unknown report selection'
     async with SafeCodex(native_config(BRAND,host_requests=True)) as sdk:
         await sdk._ensure_initialized()
         metadata=(await sdk._client.request('thread/read',{'threadId':target_thread,'includeTurns':False},response_model=NativeControlResult)).model_dump()['thread']
@@ -104,7 +130,7 @@ async def run(root,only=None):
                         if item.get('type')=='agentMessage' and item.get('phase')=='final_answer':finals.append(item['text'])
                     cursor=chunk.get('nextCursor')
                     if not cursor:break
-                report=decode('\n'.join(finals),packet)
+                report=decode('\n'.join(finals),packet,staged_context)
                 save(result_path,report)
                 (root/'results'/f'{report_id}.md').write_text('# '+report['title']+'\n\n'+'\n\n'.join('## '+x['title']+'\n\n'+x['markdown'] for x in report['sections']))
                 existing.update(status='completed',completed_at=time.time(),duration_seconds=round(time.time()-existing['started_at'],2));save(state_path,state)
@@ -115,6 +141,12 @@ async def run(root,only=None):
                 await asyncio.sleep(10)
                 metadata=(await sdk._client.request('thread/read',{'threadId':target_thread,'includeTurns':False},response_model=NativeControlResult)).model_dump()['thread']
             instructions=master+'\n\n# 本轮渠道唯一正文\n'+prompt+'\n\n'+packet.get('prompt_precedence','')
+            if staged_context:instructions+='\n\n# Readability, applied during the same analysis\n'+(root/'prompts/readability.md').read_text()
+            stage=packet.get('generation_stage')
+            if stage and stage['kind']=='campaign':
+                instructions+='\nSTAGE OVERRIDE: Analyze only the selected Campaign in tests. Return its individual record in campaigns and its complete findings in detail_markdown. Apply channel and readability instructions together. Do not analyze other Campaigns.'
+            elif stage and stage['kind']=='channel':
+                instructions+='\nSTAGE OVERRIDE: Synthesize the channel from completed_campaign_reports and authoritative channel_tests and other frozen evidence. Return channel-level sections and campaigns=[]; do not regenerate individual Campaign reports. Apply channel and readability instructions together.'
             if packet.get('language')=='en':instructions+='\nPRODUCTION LANGUAGE OVERRIDE: Write all public titles, summaries, section headings and Markdown in English. Preserve IDs, names, figures and links. This is the English source for a separate Chinese translation. Keep channel chapter order and campaign-specific detail routing. Do not publish or modify anything; the controller persists results.'
             thread=await sdk.dashboard_thread(BRAND,instructions,thread_id=target_thread)
             request={'current_prompt':instructions,'presentation_priority':packet.get('presentation_instructions','本轮current_prompt为最新规则。章节、详略、表格及逐Campaign深度以它和required_sections为准，不沿用历史回答或其他轮次的字数/表格限制。'),'run_id':manifest['run_id'],'task':'本地中文预览；只分析当前渠道；按自己的 prompt 完整生成。' if report_id!='overview' else '全部渠道已完成；现在按 Overview prompt 汇总本轮报告。','input_file':str(root/'inputs'/f'{report_id}.json'),'instructions':'先读取 input_file，核对指定日期、scope、required_sections、tests 和缺口；按需要读取 Bluevua 项目背景与对应素材 Markdown，也可联网查官方/竞品/公开内容。只返回 schema JSON。sections 必须按 required_sections 顺序完整回应；摘要和逐 Campaign 短评可供页面直接显示。不要创建对话/agent、修改项目文件、写数据库/缓存或发 Slack。先看真实内容再提具体行动，不可编造已看过素材。'}
@@ -137,7 +169,7 @@ async def run(root,only=None):
             assert completed and finals,'Native turn missing a completed final result'
             raw='\n'.join(finals);(root/'results').mkdir(exist_ok=True,mode=0o700)
             raw_path=root/'results'/f'{report_id}.raw.txt';raw_path.write_text(raw);raw_path.chmod(0o600)
-            report=decode(raw,packet)
+            report=decode(raw,packet,staged_context)
             save(result_path,report)
             markdown='# '+report['title']+'\n\n'+'\n\n'.join('## '+s['title']+'\n\n'+s['markdown'] for s in report['sections'])
             (root/'results'/f'{report_id}.md').write_text(markdown)
@@ -148,4 +180,4 @@ async def run(root,only=None):
         print(json.dumps({'status':'completed','reports':len(order),'thread_id':target_thread}),flush=True)
 
 if __name__=='__main__':
-    args=argparse.ArgumentParser();args.add_argument('--root',type=Path,required=True);args.add_argument('--report');parsed=args.parse_args();asyncio.run(run(parsed.root.resolve(),parsed.report))
+    args=argparse.ArgumentParser();args.add_argument('--root',type=Path,required=True);args.add_argument('--report');args.add_argument('--staged',action='store_true');parsed=args.parse_args();asyncio.run(run(parsed.root.resolve(),parsed.report,parsed.staged))

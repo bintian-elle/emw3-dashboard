@@ -1,8 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authOrigin, allowedGoogleUser, safeReturnPath, signAuthPayload, readSession, verifyAuthPayload } from "./site-auth.ts";
+import { authOrigin, allowedGoogleUser, safeReturnPath, signAuthPayload, readSession, verifyAuthPayload, shouldUseStagingHandoff } from "./site-auth.ts";
 
 process.env.AUTH_SECRET = "synthetic-test-secret-at-least-32-characters";
+test("local staging uses Google login while deployed staging keeps the handoff",()=>{
+ assert.equal(shouldUseStagingHandoff("staging","development","localhost:3000"),false);
+ assert.equal(shouldUseStagingHandoff("staging","development","127.0.0.1:3000"),false);
+ assert.equal(shouldUseStagingHandoff("staging","development","staging.example.com"),true);
+ assert.equal(shouldUseStagingHandoff("staging","production","localhost:3000"),true);
+ assert.equal(shouldUseStagingHandoff("production","development","localhost:3000"),false);
+});
 test("only verified company Workspace users are admitted", () => {
   const user = {sub:"123",email:"Member@elle-media.com",name:"Member",email_verified:true,hd:"elle-media.com"};
   assert.equal(allowedGoogleUser(user)?.email,"member@elle-media.com");

@@ -65,6 +65,16 @@ export function authOrigin(requestUrl?:string) {
   return url.origin;
 }
 
+export function shouldUseStagingHandoff(deployment: string | undefined, environment: string | undefined, host: string | null) {
+  if (deployment !== "staging") return false;
+  if (environment !== "development") return true;
+  try {
+    return !["localhost", "127.0.0.1", "[::1]"].includes(new URL(`http://${host}`).hostname);
+  } catch {
+    return true;
+  }
+}
+
 export function googleCredentials() {
   return {
     clientId: (process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_LOGIN_CLIENT_ID)?.trim(),

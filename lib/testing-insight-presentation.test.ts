@@ -1,6 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {validateInsightPresentation,insightPresentationGroups,presentationDocumentHtml,presentationPop,type InsightPresentation} from './testing-insight-presentation.ts';
+test('independently generated scopes keep their own styles',()=>{
+ const presentation={schema_version:'insight-presentation-v3',title:'Test',summary:'Test',styles_per_scope:true,blocks:[{id:'a',scope:'A',type:'document',html:'<style>.card{color:red}</style><div>A</div>'},{id:'b',scope:'B',type:'document',html:'<style>.card{color:blue}</style><div>B</div>'}]} as unknown as InsightPresentation;
+ const html=presentationDocumentHtml(presentation,presentation.blocks[0]);assert.match(html,/color:red/);assert.doesNotMatch(html,/color:blue/);
+});
+import {insightSourceUrls} from './testing-insight-sources.ts';
 const source={datasets:{'channel.daily':{id:'channel.daily',xKey:'date',columns:{date:'category',revenue:'USD',orders:'orders'},rows:[{date:'2026-10-27',revenue:12,orders:1}]}},media:[{key:'frame',asset_id:'asset-1',name:'Original video',kind:'frame' as const,timestamp_seconds:2,width:1920,height:1080,file:'frame.webp',sha256:'digest',campaigns:['Campaign A']}],analysis:{executive_summary:'One purchase',campaigns:[{test_id:'Campaign A',summary:'Validate',detail_markdown:'Evidence'}]}};
 function report():InsightPresentation{return {schema_version:'insight-presentation-v1',title:'Validate repeatability',summary:'Only one order',blocks:[{id:'trend',scope:'channel',type:'chart',title:'Revenue by day',text:'One day',chart:{chart_type:'column',dataset_ref:'channel.daily',x_key:'date',y_keys:['revenue'],reason:'Daily concentration',annotations:[]},creative:null,actions:[]}]};}
 test('AI chooses chart types while data stays bound to registered sources',()=>{for(const type of ['line','column','area','bar']){const value=report();value.blocks[0].chart!.chart_type=type;assert.equal(validateInsightPresentation(value,source),value);}});
@@ -36,6 +41,14 @@ test('isolated report blocks retain shared AI layout and annotation CSS',()=>{
  const value=structuredReport();value.blocks[0].type='document';value.blocks[0].html='<style>.source{position:relative}.mark{position:absolute}</style><article>First</article>';
  const later={...value.blocks[1],type:'document' as const,html:'<article><div class="source"><img/><div class="mark">1</div></div></article>'};value.blocks[1]=later;
  const html=presentationDocumentHtml(value,later);assert.ok(html.startsWith('<div><style>'));assert.ok(html.includes('.mark{position:absolute}'));assert.ok(html.includes(later.html));assert.equal((html.match(/<style>/g)||[]).length,1);
+});
+
+test('allows registered local creative links while rejecting unregistered or unsafe links',()=>{
+ const allowed='/bluevua/testing/google/pmax/6760717525';
+ assert.ok(insightSourceUrls({url:allowed}).has(allowed));
+ const value=structuredReport();value.schema_version='insight-presentation-v3';value.blocks=value.blocks.filter(b=>b.scope==='channel').map(b=>({...b,type:'document' as const,html:`<a href="${allowed}">Creative</a>`,dataset_refs:[],media_keys:[],design_reason:'Registered source'}));
+ const packet={...source,analysis:{...source.analysis,campaigns:[]},sections,source_urls:[allowed]};assert.equal(validateInsightPresentation(value,packet),value);
+ for(const href of ['/bluevua/testing/google/pmax/unregistered','//evil.test/path','/\\evil.test']){const bad=structuredClone(value);bad.blocks[0].html=`<a href="${href}">Creative</a>`;assert.throws(()=>validateInsightPresentation(bad,packet));}
 });
 
 test('shares and saves are comparable counts without a forced second axis',()=>{const value=report();value.blocks[0].chart!.y_keys=['shares','saves'];const packet={...source,datasets:{'channel.daily':{id:'channel.daily',xKey:'date',columns:{date:'category',shares:'shares',saves:'saves'},rows:[{date:'2026-10-27',shares:2,saves:3}]}}};assert.equal(validateInsightPresentation(value,packet),value);});

@@ -51,6 +51,7 @@ async function nativePreview(job,root){
  await exec('scp',[join(root,'input.json'),remote+':'+target+'/input.json']);
  if(job.frozen_input.visual_context)await exec('scp',['-r',join(root,'media'),remote+':'+target+'/']);
  await exec('scp',['scripts/prompt-lab/native-preview.py',remote+':'+target+'/native-preview.py']);
+ await exec('scp',['scripts/prompt-lab/staged_generation.py',remote+':'+target+'/staged_generation.py']);
  try{await streamCommand('ssh',['-o','ConnectTimeout=15',remote,'env','PYTHONPATH=/home/ubuntu/work/anc-slack-bridge/src',python,target+'/native-preview.py','--root',target],job);}
  finally{try{const {stdout}=await exec('ssh',['-o','ConnectTimeout=15',remote,'cat',target+'/native-state.json'],{maxBuffer:100000});await writeFile(join(root,'native-state.json'),stdout,{mode:0o600});}catch{/* A later recovery reads the same remote turn. */}}
  const {stdout}=await exec('ssh',['-o','ConnectTimeout=15',remote,'cat',target+'/result.json'],{maxBuffer:2000000});
