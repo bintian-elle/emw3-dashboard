@@ -1,4 +1,5 @@
 import 'server-only';
+import {promptRunRouting} from './testing-prompt-run-policy';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {readIntegratedReports,integratedReportDirectory} from './testing-integrated-reports.server';
@@ -7,7 +8,7 @@ import {localStagingReadoutDirectory,readStagingReadoutSnapshot} from './staging
 import type {OverviewInsightSource} from './testing-overview-trial-sources';
 import type {PromptRun} from './testing-prompts-contract';
 export function overviewTrialSources(rows:Array<PromptRun&{frozen_input:{comparison?:{start:string;end:string};visual_context?:{scope?:string}}}>):OverviewInsightSource[]{
- return rows.flatMap(row=>{if(row.status!=='completed'||!row.result||row.campaign!=='all'||row.mode!=='analysis')return [];const content=row.result.reports?.en??row.result.report??row.result;return [{channel:row.period.channel??'google-search',kind:'trial' as const,id:row.id,created_at:String(row.updated_at),period:row.period,comparison:row.frozen_input.comparison,scope:row.frozen_input.visual_context?.scope,content}];});
+ return rows.flatMap(row=>{if(!promptRunRouting(row.period.channel??'google-search',row.frozen_input,false).visibleTrial||row.status!=='completed'||!row.result||row.campaign!=='all'||row.mode!=='analysis')return [];const content=row.result.reports?.en??row.result.report??row.result;return [{channel:row.period.channel??'google-search',kind:'trial' as const,id:row.id,created_at:String(row.updated_at),period:row.period,comparison:row.frozen_input.comparison,scope:row.frozen_input.visual_context?.scope,content}];});
 }
 export async function savedOverviewSources(period:{start:string;end:string}):Promise<OverviewInsightSource[]>{
  const bundle=await readIntegratedReports(),root=await integratedReportDirectory();let turns:Record<string,{completed_at?:number}>={};if(root)try{turns=JSON.parse(await readFile(path.join(root,'state.json'),'utf8')).turns??{};}catch{/* Older saved bundles may not record generation times. */}const sources:OverviewInsightSource[]=Object.entries(bundle?.reports??{}).filter(([channel])=>!['overview','reddit-lifetime'].includes(channel)).map(([channel,value])=>({channel,kind:'saved',id:value.en.run_id,created_at:turns[channel]?.completed_at?new Date(turns[channel].completed_at!*1000).toISOString():'',priority:1,period:value.en.period,comparison:value.en.comparison,scope:value.en.scope,content:value.en}));
