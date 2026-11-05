@@ -31,7 +31,7 @@
 - 缓存与 API 补充数据须使用相同范围、日期、时区、币种和归因口径，记录来源与采集时间，核对后形成一致快照。不同批次冲突时，对受影响的完整对比范围重新获取并核对，或说明不可比；不混用不同批次的分子与分母。
 - 明确渠道大盘与三个 Campaign、各 Ad Group 以及两组 Messaging 的覆盖关系。下钻范围与大盘不完全一致时，给出已覆盖贡献和剩余范围，不将部分测试总量冒称全部 Search，也不为了对齐强行添加非测试投放。
 - 三个 Campaign 均须逐一回应。名称变化通过稳定 ID 和已确认映射核对；实体不存在、无法读取或未投放时明确说明，不能擅自用其他 Campaign 替代。
-- 每个纳入范围的 Ad Group 均应在表格或诊断清单中出现。现已暂停但报告期有投放的实体仍需纳入；零投放、低样本、已有点击未转化分别标记。
+- 每个纳入范围的 Ad Group 均应在分析中出现。现已暂停但报告期有投放的实体仍需纳入；零投放、低样本、已有点击未转化分别标记。
 - 聚合先合计原始量，再计算 ROAS = Revenue / Spend、CPA = Spend / Orders、CVR = Orders / Clicks、CPC = Spend / Clicks、CTR = Clicks / Impressions，不平均广告组、广告或每日比率。
 - 沿用 Dashboard 已确认的 Orders 定义和精度；转化 / 点击定义与上述公式不同时明确说明并沿用确认口径。ROAS 不是 ROI 或利润率，没有利润 / 成本数据不声称盈利。
 - 分母为零标记 N/A，缺失不当作零；基期为零不计算相对增长率。百分率绝对差使用百分点（pp），相对变化使用百分比（%），金额注明币种。
@@ -40,7 +40,7 @@
 
 ## 分析与输出要求（Analysis & Output Requirements）
 
-输出 Markdown 报告，严格按以下四部分组织。优先使用任务指定语言；未指定时先输出英文，中文由后续步骤翻译，翻译不重新分析。
+输出报告，保留以下四部分的分析方向与顺序，方向内部的表达由 AI 根据 readability 自主编排。优先使用任务指定语言；未指定时先输出英文，中文由后续步骤翻译，翻译不重新分析。
 
 开头用一行注明本期、前期、数据截止日期、采集时间、时区、币种和渠道覆盖范围；未知项标记未提供。
 
@@ -56,13 +56,13 @@
 
 ### 2.1 整体业务与效率指标
 
-用表格呈现前期、本期和差异：Total Spend、Revenue、Orders、ROAS、CPA、CVR、CPC、Impressions、Clicks、CTR，重点解释 Spend、Revenue、ROAS、CPA、CVR 的联动。
+呈现前期、本期和差异：Total Spend、Revenue、Orders、ROAS、CPA、CVR、CPC、Impressions、Clicks、CTR，重点解释 Spend、Revenue、ROAS、CPA、CVR 的联动。
 
 说明渠道覆盖范围及下钻数据与大盘的覆盖关系，评价收入集中度、规模增长与效率变化。有业务目标时对照判断，未提供时不自创达标线。不要在此列出底层广告组表格或提前逐组解释。
 
 ### 2.2 Messaging 方向整体对比
 
-用聚合表格对比 Better You Can Feel 与 Protection That Matters 的 Spend、Revenue、Orders、Impressions、Clicks、CTR、CVR、CPC、ROAS、CPA，注明映射覆盖和有意义的差异。
+聚合对比 Better You Can Feel 与 Protection That Matters 的 Spend、Revenue、Orders、Impressions、Clicks、CTR、CVR、CPC、ROAS、CPA，注明映射覆盖和有意义的差异。
 
 - 重点判断哪组整体点击率、转化率、ROAS、CPA 更优，以及是否存在一致且充分的优胜证据；不为了回答“绝对胜负”而强行选出通用赢家。
 - 区分规模赢家与效率赢家，检查高 CTR 低 CVR、低 CTR 高 CVR，以及 CPC 与 CVR 的取舍。
@@ -80,7 +80,7 @@
 
 ## 3. 各 Campaign 与广告组深度下钻（Campaign & Ad Group Micro Deep Dive）
 
-本部分按 Campaign 独立成模块，逐一解剖底层广告组问题，不重复第 2 部分的整张渠道总览或整体 Messaging 表。每个 Campaign 先列本身的整体指标与作用，再列所有已确认范围内 Ad Groups 的对比表：Ad Group / ID｜Messaging 覆盖｜Spend｜Impressions｜Clicks｜CTR｜CPC｜Orders｜Revenue｜ROAS｜CPA｜CVR｜前后期变化｜诊断。
+本部分按 Campaign 独立成模块，逐一解剖底层广告组问题，不重复第 2 部分的渠道总览或整体 Messaging 分析。每个 Campaign 先列本身的整体指标与作用，再列所有已确认范围内 Ad Groups 的比较，覆盖：Ad Group / ID｜Messaging 覆盖｜Spend｜Impressions｜Clicks｜CTR｜CPC｜Orders｜Revenue｜ROAS｜CPA｜CVR｜前后期变化｜诊断。
 
 ### 3.1 EM-Search-Nonbrand-Purchase-Apr26
 
@@ -104,7 +104,7 @@
 
 ## 4. 下一步行动建议与优先级（Actionable Opportunities · P1 / P2）
 
-使用结构化表格：优先级｜对象（Campaign / Ad Group / 广告名称与链接）｜具体改动｜数据依据（Spend、Clicks、Orders、Revenue 等）｜判断有效的标准｜观察窗口 / 限制。
+行动建议需包含：优先级｜对象（Campaign / Ad Group / 广告名称与链接）｜具体改动｜数据依据（Spend、Clicks、Orders、Revenue 等）｜判断有效的标准｜观察窗口 / 限制。
 
 - P1：优先处理已确认的高成本低效流量、数据 / 映射缺口，及足以影响预算决策的关键验证；P2：文案、查询结构、产品与落地页匹配的进一步迭代和扩展测试。按实际业务影响排序，不为每个对象强行制造紧急问题。
 - 具体动作可包括：按真实查询拆分需求、验证关键词匹配与否词候选、固定产品与页面测试 Messaging、明确 Headline / Description 的利益点或证明方式、调整实际可控制层级的预算。必须关联实际证据；没有真实查询时先获取查询，不凭名称直接给否词清单。
@@ -121,3 +121,7 @@
 - 名称来自已提供的素材元数据、真实标题或实际文案。缺失名称时，可用已核验内容的简短描述；未核验内容时写“名称待补全的图片 / 视频 / 广告”，不可猜测画面或编造名称、预览图、链接。缺少可验证链接时保留名称并将缺口放入 data_gaps，不伪造 URL。
 - 引用名称需能与 creative catalogue 中的具体对象对应。同名素材用真实 Campaign / Asset Group / 格式补充区分。Post 使用页面相同编号并附原帖链接。页面负责悬停预览，报告中不用重复罗列图片库。
 - 以上规则优先于其他章节中“列出 ID / 保留每个 ID”等旧展示要求；完整素材覆盖仍须保留，但以名称与链接呈现。
+
+## 表达方式
+
+本文件约束分析内容与方向，不强制使用表格、固定组件、指定图型或固定版式。具体呈现统一遵循 readability，由 AI 选择最能解释当前发现的可读表达。若自主选择表格，对象仍使用真实名称与链接。

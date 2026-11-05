@@ -1,0 +1,3 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {insightSourceUrls} from './testing-insight-sources.ts';
+test('registered links inside original Markdown and HTML remain usable evidence',()=>{const urls=insightSourceUrls({body:'Read [product](https://example.com/?utm_content=known) here.',html:'<img src="https://cdn.example.com/original.png">',url:'https://example.com/source'});assert.ok(urls.has('https://example.com/?utm_content=known'));assert.ok(urls.has('https://cdn.example.com/original.png'));assert.ok(urls.has('https://example.com/source'));assert.ok(!urls.has('https://invented.example/'));});

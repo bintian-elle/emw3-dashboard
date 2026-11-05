@@ -1,0 +1,416 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "report_id": {
+      "type": "string"
+    },
+    "en": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "presentation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "schema_version": {
+              "type": "string",
+              "enum": [
+                "insight-presentation-v3"
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "sections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title"
+                ]
+              }
+            },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string"
+                  },
+                  "section_id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "document"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "html": {
+                    "type": "string"
+                  },
+                  "dataset_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "media_keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "design_reason": {
+                    "type": "string"
+                  },
+                  "charts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "chart_type": {
+                              "type": "string"
+                            },
+                            "dataset_ref": {
+                              "type": "string"
+                            },
+                            "x_key": {
+                              "type": "string"
+                            },
+                            "y_keys": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "reason": {
+                              "type": "string"
+                            },
+                            "annotations": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "category": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "category",
+                                  "label"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "chart_type",
+                            "dataset_ref",
+                            "x_key",
+                            "y_keys",
+                            "reason",
+                            "annotations"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "spec"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "scope",
+                  "section_id",
+                  "type",
+                  "title",
+                  "html",
+                  "dataset_refs",
+                  "media_keys",
+                  "design_reason",
+                  "charts"
+                ]
+              }
+            }
+          },
+          "required": [
+            "schema_version",
+            "title",
+            "summary",
+            "sections",
+            "blocks"
+          ]
+        },
+        "campaigns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "test_id": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "detail_markdown": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "test_id",
+              "summary",
+              "detail_markdown"
+            ]
+          }
+        }
+      },
+      "required": [
+        "presentation",
+        "campaigns"
+      ]
+    },
+    "zh": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "presentation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "schema_version": {
+              "type": "string",
+              "enum": [
+                "insight-presentation-v3"
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "sections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title"
+                ]
+              }
+            },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string"
+                  },
+                  "section_id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "document"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "html": {
+                    "type": "string"
+                  },
+                  "dataset_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "media_keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "design_reason": {
+                    "type": "string"
+                  },
+                  "charts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "chart_type": {
+                              "type": "string"
+                            },
+                            "dataset_ref": {
+                              "type": "string"
+                            },
+                            "x_key": {
+                              "type": "string"
+                            },
+                            "y_keys": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "reason": {
+                              "type": "string"
+                            },
+                            "annotations": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "category": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "category",
+                                  "label"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "chart_type",
+                            "dataset_ref",
+                            "x_key",
+                            "y_keys",
+                            "reason",
+                            "annotations"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "spec"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "scope",
+                  "section_id",
+                  "type",
+                  "title",
+                  "html",
+                  "dataset_refs",
+                  "media_keys",
+                  "design_reason",
+                  "charts"
+                ]
+              }
+            }
+          },
+          "required": [
+            "schema_version",
+            "title",
+            "summary",
+            "sections",
+            "blocks"
+          ]
+        },
+        "campaigns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "test_id": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "detail_markdown": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "test_id",
+              "summary",
+              "detail_markdown"
+            ]
+          }
+        }
+      },
+      "required": [
+        "presentation",
+        "campaigns"
+      ]
+    }
+  },
+  "required": [
+    "report_id",
+    "en",
+    "zh"
+  ]
+}

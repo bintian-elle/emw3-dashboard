@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {promptId,validatePromptEdit,validatePromptRun,validateTrialResult} from './testing-prompts-contract.ts';
+import {currentPromptVersion,type PromptVersion,promptId,validatePromptEdit,validatePromptRun,validateTrialResult} from './testing-prompts-contract.ts';
 test('catalog paths cannot be provided by a caller',()=>{assert.equal(promptId('google-search'),'google-search');assert.throws(()=>promptId('../../.env.local'));});
 test('save requires a parent and meaningful change note',()=>{assert.throws(()=>validatePromptEdit({id:'meta',content:'x',note:'',parent:'base'}));assert.deepEqual(validatePromptEdit({id:'meta',content:'new',note:' Explain change ',parent:'source-ab'}),{id:'meta',content:'new',note:'Explain change',parent:'source-ab'});});
 const run={mode:'analysis',start:'2026-10-27',end:'2026-11-02',campaign:'all',language:'zh',versions:{master:'source-a','google-search':'source-b',manual:'source-c',readability:'source-d'}};
@@ -14,3 +14,5 @@ test('every channel captures its own prompt and rejects mismatched scopes',()=>{
  assert.throws(()=>validatePromptRun({...run,prompt:'meta',channel:'google-search'}));
  assert.throws(()=>validatePromptRun({...run,compareStart:'2026-02-30',compareEnd:'2026-03-01'}));
 });
+
+test('a new source baseline supersedes an older saved revision without losing history',()=>{const source={id:'source-new',created_at:'2026-11-05T00:00:00Z'} as PromptVersion,saved={id:'saved-old',created_at:'2026-11-04T00:00:00Z'} as PromptVersion;assert.equal(currentPromptVersion(source,saved).id,'source-new');assert.equal(currentPromptVersion(source,{...saved,created_at:'2026-11-05T01:00:00Z'}).id,'saved-old');});

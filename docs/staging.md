@@ -128,3 +128,25 @@ Prompts trials accept Search, PMAX, Demand Gen, Meta, Reddit, EDM, Social lifeti
 The combined release is authorized for staging only. Period comparison is now enabled in built staging as well as local development. The completed `20261104-lastweek` bilingual report bundle is transferred separately and activated with `STAGING_CONTENT_TESTING_REPORT_DIR`; it does not replace production AI caches. The isolated Prompt worker is installed with its dedicated database credential and uses the existing native Insights thread. Release contents are recorded in `docs/releases/2026-11-04-staging.md`; the staging review status/catalog point to these changes. Prior local-only instructions above describe the trials before this release approval.
 
 Prompts page Ask AI is routed through the same dedicated staging database and native worker, not the production bridge or ai_job_queue. The captured chat question, page content and user-specific history live in the isolated run table and are excluded from the preview list. The worker recognizes chat jobs, returns a concise answer and interrupts the recorded native turn when a user stops it. Other staging chat contexts remain blocked.
+
+### Local readability correction (not deployed)
+
+`20261104-lastweek-readable-v2` preserves the original analyses, adds exact prior-week Reddit testing-ad data and reconciled comparison datasets, and recomposes only presentation. Reusable interactive chart slots live inside freely composed HTML; the host owns event handlers, with generated scripts still disabled. The original batch and artifact remain available for audit. No production cache write or deployment is involved.
+
+### Local shared-renderer trials
+
+Development staging runs use `.state/prompt-runs-local/` and the same `insight-presentation-v3` report contract, frozen datasets, media references and `InsightPresentation` renderer as channel pages. Both languages are generated together with the selected channel prompt plus readability. Existing legacy previews are marked as legacy; they do not emulate interactive charts through an iframe.
+
+Start one isolated local consumer with `DEPLOYMENT_ENV=staging STAGING_PROMPTS_LOCAL_QUEUE=1 STAGING_PROMPTS_REMOTE=EMW3_ANC_AI node --experimental-strip-types scripts/prompt-lab/worker.mjs`. Its queue and lock are local; it does not consume the shared staging queue or require a remote service update. Captured media is copied into each trial before submission and served through the authenticated staging trial-media route.
+
+Overview freezes the newest completed, full-channel trial matching the reporting/comparison ranges, falling back to the saved channel Insight. Source provenance is displayed with the result. Social lifetime is explicit; Reddit lifetime is excluded from weekly paid totals. Unavailable sources are not replaced with unrelated periods or re-analyzed channels.
+
+Readability's old stored revision was explicitly removed at the user's request; the current file is the only retained Readability baseline. Trial credentials remain insert-only for prompt versions: this one-time cleanup used an existing maintenance connection without changing grants. A newly deployed source baseline is offered ahead of older saved revisions; explicit selected versions remain bound to each submitted run.
+
+### Current staging-only readable report rollout
+
+The active bilingual bundle is `20261104-all-direct-v3`: Search, Demand Gen, Meta, Reddit weekly/lifetime, EDM, Social and Overview were regenerated with channel prompt + current readability in one turn; the accepted latest direct PMax result is retained. The bundle is standalone, includes reconciled prior-week values and verified media/source links, and replaces the earlier staging report directories. No AI runs during deployment.
+
+New preview records use the same validated report envelope and renderer as channel Insights. Overview reuses matching completed trials before saved channel Insights and records seven source selections. The retained account preview is `c490cf4f-1b6b-4ca7-a7b4-4d73b2ccb7b1`; its completed result and author identity remain in the dedicated staging table. Old-format/old-readability trial rows are removed without deleting private Ask AI conversations or production published readouts.
+
+This rollout intentionally does not update `release-status.json` or the pending-review change catalog. Production services, source checkouts, release records and analysis caches remain untouched.

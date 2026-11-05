@@ -67,3 +67,5 @@ next-env.d.ts
 /.next-readable-staging/
 
 /.next-readable-input/
+
+/.next-readable-qa/

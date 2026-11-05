@@ -53,6 +53,6 @@
 .embedded .chapter { gap:0; }
 @media(max-width:520px) { .chapter { scroll-margin-top:17rem; } }
 
-.freeComposition { display:block; width:100%; border:0; min-width:0; height:600px; color-scheme:normal; }
+.freeComposition { display:block; width:100%; border:0; min-width:0; height:auto; color-scheme:normal; }
 
 .pop { display:block; width:fit-content; margin:.45rem 0 .3rem; padding:.15rem .4rem; border-radius:.25rem; background:var(--nova-soft,#f4f4f5); color:var(--nova-foreground,#20242a); font-size:.75rem; font-weight:600; font-variant-numeric:tabular-nums; }

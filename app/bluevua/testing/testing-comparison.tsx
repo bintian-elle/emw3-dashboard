@@ -71,10 +71,13 @@ export function TestingComparisonControls({children}:{children:ReactNode}){
 }
 function ComparisonStatus(){const state=useContext(Context),{language}=useSiteLanguage(),zh=language==='zh';if(!state.loading&&!state.error&&!state.packet?.unavailable.length)return null;return <span className={styles.status} role="status">{state.loading?(zh?'正在加载对比数据…':'Loading comparison…'):state.error?(zh?'对比数据暂不可用':'Comparison unavailable'):`${zh?'对比期暂无数据':'No published comparison data'}: ${state.packet?.unavailable.join(', ')}`}</span>;}
 export function ComparisonDelta({entity,metric,value}:{entity:string;metric:string;value:number|null|undefined}){
- const state=useContext(Context),{language}=useSiteLanguage();
+ const state=useContext(Context);
  if(!state.enabled)return null;
- const previous=state.packet?.rows[entity]?.[metric],delta=periodOnPeriod(value,previous);
- const label=state.loading?'… PoP':delta==null?'--% PoP':`${delta>=0?'↑':'↓'} ${Math.abs(delta*100).toFixed(1)}% PoP`;
+ return <ComparisonValueDelta metric={metric} value={value} previous={state.packet?.rows[entity]?.[metric]} loading={state.loading}/>;
+}
+export function ComparisonValueDelta({metric,value,previous,loading=false}:{metric:string;value:number|null|undefined;previous:number|null|undefined;loading?:boolean}){
+ const {language}=useSiteLanguage(),delta=periodOnPeriod(value,previous);
+ const label=loading?'… PoP':delta==null?'--% PoP':`${delta>=0?'↑':'↓'} ${Math.abs(delta*100).toFixed(1)}% PoP`;
  const inverse=['cpa','cpc','cpm','costPerReach','costPerThousandReach'].includes(metric),good=delta!=null&&(inverse?delta<=0:delta>=0);
  const previousDisplay=previous==null?'—':new Intl.NumberFormat('en-US',['ctr','cvr','hookRate','openRate','clickRate','secondModuleClickRate','Click Rate','Open Rate','Module 2 CTR'].includes(metric)?{style:'percent',maximumFractionDigits:2}:['spend','revenue','cpa','cpc','cpm','aov','costPerReach','Total Revenue'].includes(metric)?{style:'currency',currency:'USD',maximumFractionDigits:2}:{maximumFractionDigits:2}).format(previous);
  return <div className={styles.delta}><Badge variant={delta==null?'secondary':good?'success':'danger'} title={language==='zh'?`对比期: ${previousDisplay}`:`Comparison: ${previousDisplay}`}>{label}</Badge></div>;

@@ -1,4 +1,10 @@
 import 'server-only';
+import {insightSourceUrls} from './testing-insight-sources';
+import {readFile} from 'node:fs/promises';
+import {trialMetricRows} from './testing-prompt-trial-report';
+import {testingPromptCatalog} from './testing-prompts-contract';
+import type {PresentationDataset} from './testing-insight-presentation';
+import {captureIntegratedPromptTrial} from './testing-prompts-presentation.server';
 import {readGoogleSearchSharedSnapshot,apiGoogleAdArchive} from './google-testing-api';
 import {getGoogleContentTests} from './testing-google';
 import {aggregateGoogleAdPerformance} from './google-ad-performance';
@@ -46,7 +52,18 @@ async function channelPacket(channel:string,input:TrialInput){
  return {channel,period,comparison,campaigns:names,current,previous:(before.campaigns??[]).filter(c=>names.includes(name(c))),metric_contract:'Use selected testing ads, including paused ads with historical delivery. Rates are recomputed from sums. EDM CTR uses unique clicks/delivered. Do not sum reach across days.'};
 }
 export async function capturePromptTrial(input:TrialInput):Promise<unknown>{
- if(input.channel!=='overview')return channelPacket(input.channel,input);
- const channels=await Promise.all(['google-search','google-pmax','google-demand-gen','meta','reddit','edm'].map(channel=>channelPacket(channel,{...input,channel,campaign:'all'})));
- return {channel:'overview',period:{start:input.start,end:input.end},comparison:input.comparison??comparisonRange(input,'previousPeriod',input.end),campaigns:[...new Set(channels.flatMap(c=>c.campaigns))],channels,instructions:'Analyze each channel using its captured prompt first; then synthesize Overview from those findings. Exclude Social from paid overview totals. Use testing Dashboard scope only.'};
+ const integrated=await captureIntegratedPromptTrial(input);if(integrated)return integrated;
+ if(input.channel!=='overview')return withVisualContext(await channelPacket(input.channel,input),input);
+ const packets=await Promise.allSettled(['google-search','google-pmax','google-demand-gen','meta','reddit','edm'].map(channel=>channelPacket(channel,{...input,channel,campaign:'all'})));
+ const channels=packets.flatMap(result=>result.status==='fulfilled'?[result.value]:[]);
+ return withVisualContext({channel:'overview',period:{start:input.start,end:input.end},comparison:input.comparison??comparisonRange(input,'previousPeriod',input.end),campaigns:[],channels,instructions:'Synthesize frozen completed_channel_reports and overview_sources; never re-run channel analysis. Cached Dashboard numbers supplement evidence only where available. Exclude Organic from paid totals; missing cached inputs do not authorize fresh API calls or fabricated totals.'},input);
+}
+
+async function withVisualContext(packet:Awaited<ReturnType<typeof channelPacket>>|Record<string,unknown>,input:TrialInput){
+ const campaigns=packet.campaigns as string[],entry=testingPromptCatalog.find(p=>p.id===input.channel)!;const prompt=await readFile(entry.file,'utf8');const sections=[...prompt.matchAll(/^##\s+\d+\.\s+(.+)$/gm)].slice(1).map((m,i)=>({id:`${input.channel}-${i+2}`,title:m[1]}));
+ const datasets:Record<string,PresentationDataset>={input:{id:'input',scopes:['channel',...campaigns],xKey:'category',columns:{category:'category'},rows:[]}};
+ const current=Array.isArray(packet.current)?packet.current:[];
+ for(const name of campaigns){const item=current.find((c:Record<string,unknown>)=>c.name===name||c.campaignName===name);const rows=trialMetricRows(item??(campaigns.length===1?packet.current:null));if(!rows.length)continue;const columns:Record<string,string>={category:'category'};for(const row of rows)for(const key of Object.keys(row))if(key!=='category')columns[key]=['spend','revenue','cpc','cpa','cpm'].includes(key)?'USD':['ctr','cvr'].includes(key)?'fraction':key==='roas'?'ratio':key;const id=name+'.entities';datasets[id]={id,scopes:[name,'channel'],xKey:'category',columns,rows};}
+ const period={start:input.start,end:input.end},comparison=packet.comparison??{start:'',end:''};const names=input.channel==='overview'?[]:campaigns;const urls=insightSourceUrls(packet);
+ return {...packet,campaigns:names,tests:names.map((name)=>({test_id:name,data:current.find((c:Record<string,unknown>)=>c.name===name||c.campaignName===name)??packet.current})),sections,presentation_datasets:datasets,media_index:[],visual_context:{run_id:'trial',channel:packet.channel,scope:input.channel==='social-media'?'lifetime':'period',period,comparison,currency:null,totals:{},datasets,source_urls:[...urls],media:[],sections}};
 }

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {validateInsightPresentation,insightPresentationGroups,presentationPop,type InsightPresentation} from './testing-insight-presentation.ts';
+import {validateInsightPresentation,insightPresentationGroups,presentationDocumentHtml,presentationPop,type InsightPresentation} from './testing-insight-presentation.ts';
 const source={datasets:{'channel.daily':{id:'channel.daily',xKey:'date',columns:{date:'category',revenue:'USD',orders:'orders'},rows:[{date:'2026-10-27',revenue:12,orders:1}]}},media:[{key:'frame',asset_id:'asset-1',name:'Original video',kind:'frame' as const,timestamp_seconds:2,width:1920,height:1080,file:'frame.webp',sha256:'digest',campaigns:['Campaign A']}],analysis:{executive_summary:'One purchase',campaigns:[{test_id:'Campaign A',summary:'Validate',detail_markdown:'Evidence'}]}};
 function report():InsightPresentation{return {schema_version:'insight-presentation-v1',title:'Validate repeatability',summary:'Only one order',blocks:[{id:'trend',scope:'channel',type:'chart',title:'Revenue by day',text:'One day',chart:{chart_type:'column',dataset_ref:'channel.daily',x_key:'date',y_keys:['revenue'],reason:'Daily concentration',annotations:[]},creative:null,actions:[]}]};}
 test('AI chooses chart types while data stays bound to registered sources',()=>{for(const type of ['line','column','area','bar']){const value=report();value.blocks[0].chart!.chart_type=type;assert.equal(validateInsightPresentation(value,source),value);}});
@@ -25,3 +25,17 @@ test('free compositions preserve directions and may combine verified periods wit
 test('PoP distinguishes increase, decline, unchanged, zero baseline and missing data',()=>{
  assert.equal(presentationPop(57.74,48.8),'PoP ↑ +18.3%');assert.equal(presentationPop(108.2,340.5),'PoP ↓ −68.2%');assert.equal(presentationPop(1,1),'PoP 持平');assert.equal(presentationPop(1,0),'PoP 前期为 0');assert.equal(presentationPop(1,null),'PoP 不可用');
 });
+
+test('free layout chart slots require verified interactive data and matching placement',()=>{
+ const value=structuredReport();value.schema_version='insight-presentation-v3';value.blocks=value.blocks.map(block=>({...block,type:'document' as const,html:'<div data-insight-chart="evidence"></div>',dataset_refs:['channel.daily'],media_keys:[],design_reason:'Source bound',charts:[{id:'evidence',spec:{chart_type:'column',dataset_ref:'channel.daily',x_key:'date',y_keys:['revenue'],reason:'Compare',annotations:[]}}]}));
+ value.blocks=value.blocks.filter(b=>b.scope==='channel');const packet={...source,analysis:{...source.analysis,campaigns:[]},sections};assert.equal(validateInsightPresentation(value,packet),value);
+ const wrong=structuredClone(value);wrong.blocks[0].charts![0].spec.dataset_ref='invented';assert.throws(()=>validateInsightPresentation(wrong,packet));const missing=structuredClone(value);missing.blocks[0].html='<div></div>';assert.throws(()=>validateInsightPresentation(missing,packet));
+});
+
+test('isolated report blocks retain shared AI layout and annotation CSS',()=>{
+ const value=structuredReport();value.blocks[0].type='document';value.blocks[0].html='<style>.source{position:relative}.mark{position:absolute}</style><article>First</article>';
+ const later={...value.blocks[1],type:'document' as const,html:'<article><div class="source"><img/><div class="mark">1</div></div></article>'};value.blocks[1]=later;
+ const html=presentationDocumentHtml(value,later);assert.ok(html.startsWith('<div><style>'));assert.ok(html.includes('.mark{position:absolute}'));assert.ok(html.includes(later.html));assert.equal((html.match(/<style>/g)||[]).length,1);
+});
+
+test('shares and saves are comparable counts without a forced second axis',()=>{const value=report();value.blocks[0].chart!.y_keys=['shares','saves'];const packet={...source,datasets:{'channel.daily':{id:'channel.daily',xKey:'date',columns:{date:'category',shares:'shares',saves:'saves'},rows:[{date:'2026-10-27',shares:2,saves:3}]}}};assert.equal(validateInsightPresentation(value,packet),value);});
