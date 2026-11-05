@@ -1,6 +1,9 @@
 """Transport separately generated campaign and channel reports without rewriting them."""
 from copy import deepcopy
 
+def analysis_prompt_contents(versions, channel):
+    return [versions[key]['content'] for key in (channel, 'readability')]
+
 
 def generation_plan(job):
     packet = job['frozen_input']

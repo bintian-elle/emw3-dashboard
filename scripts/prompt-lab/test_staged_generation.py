@@ -8,6 +8,7 @@ import unittest
 from unittest import mock
 from pathlib import Path
 from staged_generation import generation_plan, stage_input, merge_reports
+import staged_generation
 
 
 def report(scope, marker):
@@ -20,6 +21,10 @@ def report(scope, marker):
 
 
 class StagedGenerationTests(unittest.TestCase):
+    def test_analysis_uses_only_channel_and_readability_even_with_old_trial_versions(self):
+        versions = {key: {'content': key} for key in ('master', 'manual', 'google-pmax', 'meta', 'readability')}
+        self.assertEqual(staged_generation.analysis_prompt_contents(versions, 'google-pmax'), ['google-pmax', 'readability'])
+
     def setUp(self):
         self.job = {'mode': 'analysis', 'versions': {'readability': {}}, 'frozen_input': {
             'visual_context': {}, 'campaigns': ['A', 'B'], 'tests': [{'test_id': 'A'}, {'test_id': 'B'}]}}
