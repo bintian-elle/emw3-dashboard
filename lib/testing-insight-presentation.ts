@@ -30,7 +30,8 @@ export function validateInsightPresentation(value:InsightPresentation,packet:Pic
    for(const ref of block.dataset_refs)if(!packet.datasets[ref]||block.scope!=='channel'&&!ref.startsWith(block.scope+'.')&&!packet.datasets[ref].scopes?.includes(block.scope))throw Error('Unverified composition data');
    const chartIds=new Set<string>();
    for(const item of block.charts??[]){
-    if(!/^[a-zA-Z0-9_-]+$/.test(item.id)||chartIds.has(item.id)||!new RegExp(`data-insight-chart\\s*=\\s*(["'])${item.id}\\1`).test(block.html))throw Error('Invalid interactive chart slot');chartIds.add(item.id);
+    const slotIds=[...block.html.matchAll(/\bdata-insight-chart\s*=\s*(["'])(.*?)\1/g)].map(match=>match[2]);
+    if(!item.id||item.id.length>256||/[\u0000-\u001f\u007f]/.test(item.id)||chartIds.has(item.id)||!slotIds.includes(item.id))throw Error('Invalid interactive chart slot');chartIds.add(item.id);
     validateInsightPresentation({schema_version:'insight-presentation-v1',title:value.title,summary:value.summary,blocks:[{...block,type:'chart',chart:item.spec}]},packet);
    }
    for(const key of block.media_keys)if(!packet.media.some(m=>m.key===key&&(block.scope==='channel'||m.campaigns.includes(block.scope))))throw Error('Unverified composition media');
@@ -44,7 +45,7 @@ export function validateInsightPresentation(value:InsightPresentation,packet:Pic
    if(new Set(chart.y_keys.map(key=>presentationUnit(dataset.columns[key]))).size>1&&chart.chart_type!=='composed')throw Error('Mixed chart units require explicit dual axes');
    if(chart.chart_type==='pie'&&chart.y_keys.length!==1)throw Error('Pie chart needs one metric');
    if(chart.annotations.some(note=>!dataset.rows.some(row=>String(row[chart.x_key])===note.category)))throw Error('Unknown chart annotation category');
-   if(block.scope!=='channel'&&!chart.dataset_ref.startsWith(block.scope+'.'))throw Error('Campaign chart points to a different scope');
+   if(block.scope!=='channel'&&!chart.dataset_ref.startsWith(block.scope+'.')&&!dataset.scopes?.includes(block.scope))throw Error('Campaign chart points to a different scope');
   }
   if(block.type==='creative'){
    const creative=block.creative,media=creative&&packet.media.find(m=>m.key===creative.media_key&&m.asset_id===creative.asset_id);

@@ -37,6 +37,14 @@ test('free layout chart slots require verified interactive data and matching pla
  const wrong=structuredClone(value);wrong.blocks[0].charts![0].spec.dataset_ref='invented';assert.throws(()=>validateInsightPresentation(wrong,packet));const missing=structuredClone(value);missing.blocks[0].html='<div></div>';assert.throws(()=>validateInsightPresentation(missing,packet));
 });
 
+test('interactive chart slot IDs may contain campaign names and regex characters',()=>{
+ const value=structuredReport();value.schema_version='insight-presentation-v3';
+ const id='campaign/volume.(A)+1';
+ value.blocks=value.blocks.filter(b=>b.scope==='channel').map(block=>({...block,type:'document' as const,html:`<div data-insight-chart="${id}"></div>`,dataset_refs:['channel.daily'],media_keys:[],design_reason:'Source bound',charts:[{id,spec:{chart_type:'column',dataset_ref:'channel.daily',x_key:'date',y_keys:['revenue'],reason:'Compare',annotations:[]}}]}));
+ const packet={...source,analysis:{...source.analysis,campaigns:[]},sections};assert.equal(validateInsightPresentation(value,packet),value);
+ const wrong=structuredClone(value);wrong.blocks[0].html='<div data-insight-chart="campaign/volumeX(A)+1"></div>';assert.throws(()=>validateInsightPresentation(wrong,packet));
+});
+
 test('isolated report blocks retain shared AI layout and annotation CSS',()=>{
  const value=structuredReport();value.blocks[0].type='document';value.blocks[0].html='<style>.source{position:relative}.mark{position:absolute}</style><article>First</article>';
  const later={...value.blocks[1],type:'document' as const,html:'<article><div class="source"><img/><div class="mark">1</div></div></article>'};value.blocks[1]=later;
@@ -52,3 +60,9 @@ test('allows registered local creative links while rejecting unregistered or uns
 });
 
 test('shares and saves are comparable counts without a forced second axis',()=>{const value=report();value.blocks[0].chart!.y_keys=['shares','saves'];const packet={...source,datasets:{'channel.daily':{id:'channel.daily',xKey:'date',columns:{date:'category',shares:'shares',saves:'saves'},rows:[{date:'2026-10-27',shares:2,saves:3}]}}};assert.equal(validateInsightPresentation(value,packet),value);});
+test('a dataset explicitly verified for a Campaign can support its chart',()=>{
+ const value=report();value.blocks[0].scope='Campaign A';
+ const packet={...source,datasets:{'channel.daily':{...source.datasets['channel.daily'],scopes:['channel','Campaign A']}}};
+ assert.equal(validateInsightPresentation(value,packet),value);
+ const wrong={...packet,datasets:{'channel.daily':{...packet.datasets['channel.daily'],scopes:['channel']}}};assert.throws(()=>validateInsightPresentation(value,wrong));
+});
