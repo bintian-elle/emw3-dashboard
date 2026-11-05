@@ -9,3 +9,9 @@ test('release links accept only known IDs and local canonical destinations',()=>
  assert.equal(reviewChangeFromHash('#review-change=https://evil.example'),undefined);
  assert.deepEqual(reviewChanges(null),[]);
 });
+
+test('bilingual insight review links target analysis, separately from business metrics',()=>{
+ const analysis=reviewChangeFromHash('#review-change=testing-integrated-insights')!;
+ const metrics=reviewChangeFromHash('#review-change=testing-layout')!;
+ assert.equal(analysis.target,'testing-analysis');assert.notEqual(analysis.target,metrics.target);assert.equal(analysis.reveal,'analysis');
+});

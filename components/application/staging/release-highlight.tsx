@@ -32,6 +32,8 @@ export function ReleaseHighlight({changes,notes,onOpenNote}:{changes:StagingRevi
     let targets:HTMLElement[]=[];try{targets=Array.from(document.querySelectorAll<HTMLElement>(change.note?.anchor?.selector||`[data-review-target="${change.target}"]`));}catch{/* Keep the note when its old selector is invalid. */}
     const target=targets.find(candidate=>{const rect=candidate.getBoundingClientRect(),context=change.note?.anchor?.context;return rect.width>0&&rect.height>0&&getComputedStyle(candidate).visibility!=='hidden'&&(!context||(candidate.textContent||'').replace(/\s+/g,' ').trim().startsWith(context));});
     if(target){
+     const reveal=change.reveal==='analysis'?target.querySelector<HTMLButtonElement>('[data-review-reveal="analysis"][aria-expanded="false"]'):null;
+     if(reveal&&!reveal.disabled){reveal.click();return;}
      clearInterval(poll);element=target;const margin=target.style.scrollMarginTop;target.style.scrollMarginTop=innerWidth<=600?'176px':'96px';target.scrollIntoView({behavior:'instant',block:target.getBoundingClientRect().height>innerHeight/2?'start':'center',inline:'nearest'});
      const previous=target.getAttribute('tabindex');if(previous===null)target.setAttribute('tabindex','-1');target.focus({preventScroll:true});restoreFocus=()=>{if(previous===null)target.removeAttribute('tabindex');target.style.scrollMarginTop=margin;};
      update();observer=new ResizeObserver(update);observer.observe(target);expiry=setTimeout(()=>{clear();setHighlight(null);},15000);return;
