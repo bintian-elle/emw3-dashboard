@@ -50,17 +50,17 @@
 
 结构化返回时，第 1 部分放在 `executive_summary`，其余部分按下列标题与顺序放入 `sections`，不得重复摘要。需要逐 Campaign 短评时只覆盖任务指定对象，短评不复制渠道报告；Overview 不返回逐 Campaign 短评。展示数字适当取整，比较与增幅使用原始精度；近似归因转化不冒称去重实际订单。
 
+**阅读主次（适用于本渠道全部章节）**
+
+完整分析所有必要指标与素材，但默认可见内容只保留核心判断、少量关键证据、影响判断的样本限制与下一步动作。每个可见区块先说结论，优先用简短的素材画面 / 方向对比及相邻解读说明差异；完整对象清单、次要数据、重复说明和细节证据后置或默认折叠。避免把图表数字再用长段落逐一复述；不隐藏关键反例或决策条件，不凭缺失数据宣告赢家。由 AI 自主选择图文与布局，不固定套版。
+
 ## 1. 核心结论摘要（Executive Summary）
 
 总结 Reddit 的整体目标表现和核心胜出要素；有明确业务优先级与可比证据时指出优先 Objective。Awareness 与 Conversion 按各自目标评价，不强行用 ROAS 或 CPM 排成统一赢家。
 
-## 2. 渠道整体大盘对比（Channel-Level Macro Overview）
+## 2. Messaging / 内容候选与判断边界（Messaging & Content Candidates）
 
-只讨论 Objective 聚合、预算匹配与 Round 整体演变，不展开 Angle、Format 或单个广告明细。
-
-- Objective 评估：对比 Awareness 的 Spend、Reach、Impressions、CPM、CTR 与 Conversion 的 Spend、Orders、Revenue、ROAS、CPA、CVR，说明各自业务作用和预算匹配度。
-- 整体趋势：按真实 Round 定义列出各轮日期、目标、投放规模和整体效率；说明预算、受众、格式或方向变化是否限制比较。不将 lifetime 累计与单轮结果直接比较。
-- Round 映射或完整数据不足时，只描述能验证的变化，不根据名称猜测轮次，也不伪造前后测试继承关系。
+先概括本渠道最值得验证的 Messaging、创意或内容候选，以及对照方向；将关键业务证据、样本和适用边界紧邻判断。存在可比对象时优先采用并排对比卡片，用真实名称、关键数字和少量同口径指标帮助快速比较；数据不足时明确尚无赢家。随后展开素材 / 内容证据和渠道表现，避免重复堆砌。
 
 ## 3. 素材与格式深度下钻（Messaging Angles & Ad Formats Micro Deep Dive）
 
@@ -69,7 +69,15 @@
 - Winning Ads：点名高表现 Conversion 广告和高性价比 Awareness 广告，提供 Creative Name 与真实链接、Round、Angle、Format、关键数字及样本限制；同时覆盖优化、替换 / 暂停和继续观察对象。
 - 对比跨 Round 的具体素材 / 组合时，使用已确认身份与投放窗口，区分复用、迭代和全新素材，不将多项同时变化归因于单一 Angle。
 
-## 4. 下一步行动建议（Actionable Recommendations · P1 / P2）
+## 4. 渠道整体大盘对比（Channel-Level Macro Overview）
+
+只讨论 Objective 聚合、预算匹配与 Round 整体演变，不展开 Angle、Format 或单个广告明细。
+
+- Objective 评估：对比 Awareness 的 Spend、Reach、Impressions、CPM、CTR 与 Conversion 的 Spend、Orders、Revenue、ROAS、CPA、CVR，说明各自业务作用和预算匹配度。
+- 整体趋势：按真实 Round 定义列出各轮日期、目标、投放规模和整体效率；说明预算、受众、格式或方向变化是否限制比较。不将 lifetime 累计与单轮结果直接比较。
+- Round 映射或完整数据不足时，只描述能验证的变化，不根据名称猜测轮次，也不伪造前后测试继承关系。
+
+## 5. 下一步行动建议（Actionable Recommendations · P1 / P2）
 
 行动建议需包含：优先级｜对象（Objective / Round / Angle / Format / 广告名称与链接）｜具体改动｜数据依据｜验证标准。
 

@@ -1,10 +1,10 @@
-# Content Testing — 渠道先行、Overview 后置
+# Content Testing — Campaign 先行、渠道汇总、Overview 后置
 
 这是正在测试内容的新编排规则。各渠道正文以本目录对应 Markdown 为准，不继承已经删除的旧总 prompt、checklist、测试目标/假设或旧 JSON 分析章节。已结束测试不在本轮范围。
 
 ## 执行顺序与上下文
 
-- 只使用用户指定的同一个 AI Bluevua 原生对话：`Bluevua · Content Testing Insights`。逐个完成 Google Search、PMax、Demand Gen、Meta、Reddit 同期、Reddit lifetime、EDM、Social lifetime，最后生成 Overview。不创建新对话、不派生 agent、不并行生成渠道，也不使用其他对话的旧结论替代本轮结果。Overview 通过本轮文件读取所有已完成结果，不能借用该对话更早的结论。
+- 只使用用户指定的同一个 AI Bluevua 原生对话：`Bluevua · Content Testing Insights`。各渠道先逐一分析各 Campaign 或对应内容对象，再基于已完成的对象分析和权威渠道数据生成渠道汇总；最后根据各渠道结果生成 Overview。每一步均同时应用对应分析 prompt 和 readability，直接形成易读的分析，不先生成长篇分析再做表达改写。不创建新对话、不派生 agent、不使用该对话更早的结论替代指定输入。Overview 试跑使用调用方明确提供的同口径已完成试跑或已保存渠道结果，缺失时不冒充已有分析。
 - 每个渠道遵守自身 prompt 的分析维度和输出章节。章节数量、表格、诊断对象与建议形式可以不同，以内容完整和可读性为先；禁止为统一 UI 删减内容或硬套“建议＋Delta”。
 - 本轮直接输出简体中文，无英文生成和翻译步骤。保留真实 Campaign / Creative / Messaging 名称。Video4 等编号后须带实际素材名称；没有名称时标注名称待补全，ID 仅保留在结构化追踪元数据，不能编名。
 - 指标使用输入指定的报告期与冻结快照；Social 和 Reddit lifetime 单独标明，不混入报告期总量。逐渠道核对真实投放窗口、币种、范围和缺失值。零投放、零转化、数据缺失分别解释。

@@ -37,18 +37,26 @@
 
 结构化返回时，第 1 部分放在 `executive_summary`，其余部分按下列标题与顺序放入 `sections`，不得重复摘要。需要逐 Campaign 短评时只覆盖任务指定对象，短评不复制渠道报告；Overview 不返回逐 Campaign 短评。展示数字适当取整，比较与增幅使用原始精度；近似归因转化不冒称去重实际订单。
 
+**阅读主次（适用于本渠道全部章节）**
+
+完整分析所有必要指标与素材，但默认可见内容只保留核心判断、少量关键证据、影响判断的样本限制与下一步动作。每个可见区块先说结论，优先用简短的素材画面 / 方向对比及相邻解读说明差异；完整对象清单、次要数据、重复说明和细节证据后置或默认折叠。避免把图表数字再用长段落逐一复述；不隐藏关键反例或决策条件，不凭缺失数据宣告赢家。由 AI 自主选择图文与布局，不固定套版。
+
 ## 1. 核心结论摘要（Executive Summary）
 
 简洁总结本期 RO vs. Pitcher 测试 Module 的点击表现，给出实际 Module Click Rate；有可比基准或版本时说明差异。仅将点击解释为兴趣信号，不据此断定产品偏好或购买效果。
 
-## 2. 模块内容与点击表现（Module Performance & Content Breakdown）
+## 2. Messaging / 内容候选与判断边界（Messaging & Content Candidates）
+
+先概括本渠道最值得验证的 Messaging、创意或内容候选，以及对照方向；将关键业务证据、样本和适用边界紧邻判断。存在可比对象时优先采用并排对比卡片，用真实名称、关键数字和少量同口径指标帮助快速比较；数据不足时明确尚无赢家。后续章节展开表现和证据，避免重复堆砌。
+
+## 3. 模块内容与点击表现（Module Performance & Content Breakdown）
 
 - 明确 Module Click Rate，使用已确认的模块级点击口径；有多版本时列出可比结果，缺少合适基准不虚构高低判断。
 - 拆解实际 Headline、Messaging、Visual、Copy、Value Propositions 与 CTA，结合具体内容解释可支持的吸引点和潜在阻力。
 - 将必要的用户兴趣洞察合并于本节，区分数据事实、内容观察和待验证解释，不另设 Audience Insights 或归因章节。
 - 仅有模块总体点击率时，不断言某个具体元素或 RO / Pitcher 中某一产品已胜出；没有实际素材或链接级证据时，明确对判断的业务影响。
 
-## 3. 下一步优化建议（Actionable Recommendations）
+## 4. 下一步优化建议（Actionable Recommendations）
 
 行动建议需包含：对象（Headline / Visual / Copy / CTA）｜具体改法｜数据 / 内容依据｜对照与处理｜验证指标与成功标准。
 

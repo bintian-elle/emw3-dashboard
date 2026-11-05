@@ -40,9 +40,13 @@
 
 ## 分析与输出要求（Analysis & Output Requirements）
 
-输出报告，保留以下四部分的分析方向与顺序，方向内部的表达由 AI 根据 readability 自主编排。优先使用任务指定语言；未指定时先输出英文，中文由后续步骤翻译，翻译不重新分析。
+输出报告，保留以下五部分的分析方向与顺序，方向内部的表达由 AI 根据 readability 自主编排。优先使用任务指定语言；未指定时先输出英文，中文由后续步骤翻译，翻译不重新分析。
 
-开头用一行注明本期、前期、数据截止日期、采集时间、时区、币种和渠道覆盖范围；未知项标记未提供。
+直接以业务结论开头。页面已有的本期和前期无需在正文重复；数据截止日期、采集时间、时区、币种与覆盖范围用于分析核对，不作为报告头列出。仅在口径或范围影响具体判断时，在相关结论旁简短说明；金额仍须使用正确币种。
+
+**阅读主次（适用于本渠道全部章节）**
+
+完整分析所有必要指标与素材，但默认可见内容只保留核心判断、少量关键证据、影响判断的样本限制与下一步动作。每个可见区块先说结论，优先用简短的素材画面 / 方向对比及相邻解读说明差异；完整对象清单、次要数据、重复说明和细节证据后置或默认折叠。避免把图表数字再用长段落逐一复述；不隐藏关键反例或决策条件，不凭缺失数据宣告赢家。由 AI 自主选择图文与布局，不固定套版。
 
 ## 1. 核心结论摘要（Executive Summary）
 
@@ -50,37 +54,13 @@
 
 用关键数字支持宏观结论，不展开单个广告组的数据、问题或动作。收入集中度需来自可核对的分布或贡献份额；整体结果是否依赖少数实体、日期或订单，应依据实际数据说明。ROAS 不称为利润或 ROI；证据不足时明确暂不能判定统一赢家。
 
-## 2. 渠道整体大盘对比（Channel-Level Macro Overview）
+## 2. Messaging / 内容候选与判断边界（Messaging & Content Candidates）
 
-本部分仅做渠道与 Messaging 的宏观聚合分析，不列单个 Ad Group、真实查询、关键词或具体素材的诊断与优化动作。这些内容集中在第 3 部分；本节发现的集中度或结构风险只概括其整体影响。
-
-### 2.1 整体业务与效率指标
-
-呈现前期、本期和差异：Total Spend、Revenue、Orders、ROAS、CPA、CVR、CPC、Impressions、Clicks、CTR，重点解释 Spend、Revenue、ROAS、CPA、CVR 的联动。
-
-说明渠道覆盖范围及下钻数据与大盘的覆盖关系，评价收入集中度、规模增长与效率变化。有业务目标时对照判断，未提供时不自创达标线。不要在此列出底层广告组表格或提前逐组解释。
-
-### 2.2 Messaging 方向整体对比
-
-聚合对比 Better You Can Feel 与 Protection That Matters 的 Spend、Revenue、Orders、Impressions、Clicks、CTR、CVR、CPC、ROAS、CPA，注明映射覆盖和有意义的差异。
-
-- 重点判断哪组整体点击率、转化率、ROAS、CPA 更优，以及是否存在一致且充分的优胜证据；不为了回答“绝对胜负”而强行选出通用赢家。
-- 区分规模赢家与效率赢家，检查高 CTR 低 CVR、低 CTR 高 CVR，以及 CPC 与 CVR 的取舍。
-- 概括预算、搜索意图、Campaign 构成和落地页分布是否限制可比性；组内差异与具体证据在第 3 部分展开，不在这里逐广告组拆解。
-- 无法可靠拆分 Messaging 时明确缺口，不编造总体数值；继续报告其余可用大盘数据。
-
-### 2.3 时间维度与稳定性
-
-对比前期与本期渠道聚合指标，评估曝光、点击、CTR、CVR、CPC、Spend、Orders、Revenue、ROAS、CPA 的变化。WTD / MTD 使用前周 / 前月对应进度，避免部分周期与完整周期混比；有可比数据时补充 WoW / MoM。
-
-- 使用渠道日级数据检查收入和订单是否跨日期重复、是否集中在单日或单笔高价值订单，以及整体改善是否连续。区分“多日有收入”与“回报率稳定”，不能混为一谈。
-- 没有日级数据时只报告期间变化，不声称跨日稳定；只有两个汇总点不称为持续趋势。量化波动时说明方法、样本数和低订单基数影响。
-- 沿 Clicks = Impressions × CTR、Orders = Clicks × CVR、Revenue = Orders × 每单收入、Spend = Clicks × CPC 解释整体变化；算术驱动不等于已证实业务根因，多个相对变化不能直接相加。
-- 单个 Campaign / Ad Group 的异常日期和具体原因留到第 3 部分，不在本节重复。
+先概括本渠道最值得验证的 Messaging、创意或内容候选，以及对照方向；将关键业务证据、样本和适用边界紧邻判断。存在可比对象时优先采用并排对比卡片，用真实名称、关键数字和少量同口径指标帮助快速比较；数据不足时明确尚无赢家。随后展开素材 / 内容证据和渠道表现，避免重复堆砌。
 
 ## 3. 各 Campaign 与广告组深度下钻（Campaign & Ad Group Micro Deep Dive）
 
-本部分按 Campaign 独立成模块，逐一解剖底层广告组问题，不重复第 2 部分的渠道总览或整体 Messaging 分析。每个 Campaign 先列本身的整体指标与作用，再列所有已确认范围内 Ad Groups 的比较，覆盖：Ad Group / ID｜Messaging 覆盖｜Spend｜Impressions｜Clicks｜CTR｜CPC｜Orders｜Revenue｜ROAS｜CPA｜CVR｜前后期变化｜诊断。
+本部分按 Campaign 独立成模块，逐一解剖底层广告组问题，不重复此前的渠道总览或整体 Messaging 分析。每个 Campaign 先列本身的整体指标与作用，再列所有已确认范围内 Ad Groups 的比较，覆盖：Ad Group / ID｜Messaging 覆盖｜Spend｜Impressions｜Clicks｜CTR｜CPC｜Orders｜Revenue｜ROAS｜CPA｜CVR｜前后期变化｜诊断。
 
 ### 3.1 EM-Search-Nonbrand-Purchase-Apr26
 
@@ -102,7 +82,35 @@
 
 每节均用“实际发现 → 数字 / 内容证据 → 可支持的解释 → 待验证原因与影响”组织结论，明确预算、竞价、搜索词结构和落地页等混杂因素。
 
-## 4. 下一步行动建议与优先级（Actionable Opportunities · P1 / P2）
+## 4. 渠道整体大盘对比（Channel-Level Macro Overview）
+
+本部分仅做渠道与 Messaging 的宏观聚合分析，不列单个 Ad Group、真实查询、关键词或具体素材的诊断与优化动作。这些内容集中在Campaign 与广告组下钻部分；本节发现的集中度或结构风险只概括其整体影响。
+
+### 4.1 整体业务与效率指标
+
+呈现前期、本期和差异：Total Spend、Revenue、Orders、ROAS、CPA、CVR、CPC、Impressions、Clicks、CTR，重点解释 Spend、Revenue、ROAS、CPA、CVR 的联动。
+
+说明渠道覆盖范围及下钻数据与大盘的覆盖关系，评价收入集中度、规模增长与效率变化。有业务目标时对照判断，未提供时不自创达标线。不要在此列出底层广告组表格或提前逐组解释。
+
+### 4.2 Messaging 方向整体对比
+
+聚合对比 Better You Can Feel 与 Protection That Matters 的 Spend、Revenue、Orders、Impressions、Clicks、CTR、CVR、CPC、ROAS、CPA，注明映射覆盖和有意义的差异。
+
+- 重点判断哪组整体点击率、转化率、ROAS、CPA 更优，以及是否存在一致且充分的优胜证据；不为了回答“绝对胜负”而强行选出通用赢家。
+- 区分规模赢家与效率赢家，检查高 CTR 低 CVR、低 CTR 高 CVR，以及 CPC 与 CVR 的取舍。
+- 概括预算、搜索意图、Campaign 构成和落地页分布是否限制可比性；组内差异与具体证据在Campaign 与广告组下钻部分展开，不在这里逐广告组拆解。
+- 无法可靠拆分 Messaging 时明确缺口，不编造总体数值；继续报告其余可用大盘数据。
+
+### 4.3 时间维度与稳定性
+
+对比前期与本期渠道聚合指标，评估曝光、点击、CTR、CVR、CPC、Spend、Orders、Revenue、ROAS、CPA 的变化。WTD / MTD 使用前周 / 前月对应进度，避免部分周期与完整周期混比；有可比数据时补充 WoW / MoM。
+
+- 使用渠道日级数据检查收入和订单是否跨日期重复、是否集中在单日或单笔高价值订单，以及整体改善是否连续。区分“多日有收入”与“回报率稳定”，不能混为一谈。
+- 没有日级数据时只报告期间变化，不声称跨日稳定；只有两个汇总点不称为持续趋势。量化波动时说明方法、样本数和低订单基数影响。
+- 沿 Clicks = Impressions × CTR、Orders = Clicks × CVR、Revenue = Orders × 每单收入、Spend = Clicks × CPC 解释整体变化；算术驱动不等于已证实业务根因，多个相对变化不能直接相加。
+- 单个 Campaign / Ad Group 的异常日期和具体原因留到Campaign 与广告组下钻部分，不在本节重复。
+
+## 5. 下一步行动建议与优先级（Actionable Opportunities · P1 / P2）
 
 行动建议需包含：优先级｜对象（Campaign / Ad Group / 广告名称与链接）｜具体改动｜数据依据（Spend、Clicks、Orders、Revenue 等）｜判断有效的标准｜观察窗口 / 限制。
 

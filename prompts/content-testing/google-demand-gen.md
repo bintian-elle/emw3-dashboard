@@ -35,17 +35,17 @@
 
 结构化返回时，第 1 部分放在 `executive_summary`，其余部分按下列标题与顺序放入 `sections`，不得重复摘要。需要逐 Campaign 短评时只覆盖任务指定对象，短评不复制渠道报告；Overview 不返回逐 Campaign 短评。展示数字适当取整，比较与增幅使用原始精度；近似归因转化不冒称去重实际订单。
 
+**阅读主次（适用于本渠道全部章节）**
+
+完整分析所有必要指标与素材，但默认可见内容只保留核心判断、少量关键证据、影响判断的样本限制与下一步动作。每个可见区块先说结论，优先用简短的素材画面 / 方向对比及相邻解读说明差异；完整对象清单、次要数据、重复说明和细节证据后置或默认折叠。避免把图表数字再用长段落逐一复述；不隐藏关键反例或决策条件，不凭缺失数据宣告赢家。由 AI 自主选择图文与布局，不固定套版。
+
 ## 1. Executive Summary
 
 简洁总结 Demand Gen 测试的核心结论，指出 Better You Can Feel 与 Protection That Matters 的整体优胜证据；规模与效率赢家不同或证据不足时明确说明。
 
-## 2. Channel-Level Macro Overview
+## 2. Messaging / 内容候选与判断边界（Messaging & Content Candidates）
 
-仅做渠道与两组方向的聚合分析，不展开单个素材、格式或 Placement 的详细诊断。
-
-- Output & Efficiency：比较 Orders、Spend、Revenue、ROAS、CPA、CVR、CPC，说明投入规模、贡献、样本与效率取舍。
-- Engagement：比较 Impressions、Clicks、CTR、CPC 及 CVR，判断点击吸引力与流量质量，检查高 CTR 低 CVR。宏观解释格式 / Placement 分布的影响，具体证据留到下一节。
-- 有可比历史时简述整体趋势与稳定性，不凭两个汇总点声称长期趋势。
+先概括本渠道最值得验证的 Messaging、创意或内容候选，以及对照方向；将关键业务证据、样本和适用边界紧邻判断。存在可比对象时优先采用并排对比卡片，用真实名称、关键数字和少量同口径指标帮助快速比较；数据不足时明确尚无赢家。随后展开素材 / 内容证据和渠道表现，避免重复堆砌。
 
 ## 3. Format & Placement Micro Deep Dive
 
@@ -53,7 +53,15 @@
 - 对比同一 Messaging 内格式表现，列出关键 Ad / Asset 名称与链接、实际内容、Rating（如有）及判断，区分格式优势与方向 / 受众构成影响。
 - Placement Analysis：按来源实际返回维度比较流量份额、成本、点击、观看及转化表现；检查同一 Placement 内的方向差异。数据缺失时不推测展示位置，样本不足时不强判赢家或统计显著。
 
-## 4. Actionable Next Steps（P1 / P2）
+## 4. Channel-Level Macro Overview
+
+仅做渠道与两组方向的聚合分析，不展开单个素材、格式或 Placement 的详细诊断。
+
+- Output & Efficiency：比较 Orders、Spend、Revenue、ROAS、CPA、CVR、CPC，说明投入规模、贡献、样本与效率取舍。
+- Engagement：比较 Impressions、Clicks、CTR、CPC 及 CVR，判断点击吸引力与流量质量，检查高 CTR 低 CVR。宏观解释格式 / Placement 分布的影响，具体证据留到下一节。
+- 有可比历史时简述整体趋势与稳定性，不凭两个汇总点声称长期趋势。
+
+## 5. Actionable Next Steps（P1 / P2）
 
 行动建议需包含：优先级｜对象（方向 / 格式 / Placement / Ad / Asset）｜具体改动｜数据依据｜验证标准。
 

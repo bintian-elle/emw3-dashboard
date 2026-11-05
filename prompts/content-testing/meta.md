@@ -36,17 +36,17 @@
 
 结构化返回时，第 1 部分放在 `executive_summary`，其余部分按下列标题与顺序放入 `sections`，不得重复摘要。需要逐 Campaign 短评时只覆盖任务指定对象，短评不复制渠道报告；Overview 不返回逐 Campaign 短评。展示数字适当取整，比较与增幅使用原始精度；近似归因转化不冒称去重实际订单。
 
+**阅读主次（适用于本渠道全部章节）**
+
+完整分析所有必要指标与素材，但默认可见内容只保留核心判断、少量关键证据、影响判断的样本限制与下一步动作。每个可见区块先说结论，优先用简短的素材画面 / 方向对比及相邻解读说明差异；完整对象清单、次要数据、重复说明和细节证据后置或默认折叠。避免把图表数字再用长段落逐一复述；不隐藏关键反例或决策条件，不凭缺失数据宣告赢家。由 AI 自主选择图文与布局，不固定套版。
+
 ## 1. 核心结论摘要（Executive Summary）
 
 总结 Meta 整体最佳 Messaging Direction 与创意格式，给出关键业务证据。Feel It 与 Worth It、图片与视频若在规模和效率上各有优势，分别说明，不强行宣布统一赢家。
 
-## 2. 渠道整体大盘对比（Channel-Level Macro Overview）
+## 2. Messaging / 内容候选与判断边界（Messaging & Content Candidates）
 
-只呈现整体 Messaging 与趋势，不提前列单条广告问题或格式详细诊断。
-
-- Messaging 整体对决：聚合表比较 Feel It / Worth It 的 Orders、Revenue、Spend、ROAS、CPA、Link CTR、CVR，说明贡献集中度与样本充分度。不能由混合方向广告组总量反推两组表现。
-- 趋势与疲劳：比较可比前后期的 Frequency、ROAS、CTR、CVR、CPA，核查频率与效率变化是否同步。Frequency 必须采用对应层级的去重口径；高 Frequency 本身不证明疲劳。
-- 概括受众、预算、版位及格式分布对整体结论的影响，具体广告证据放下一节。
+先概括本渠道最值得验证的 Messaging、创意或内容候选，以及对照方向；将关键业务证据、样本和适用边界紧邻判断。存在可比对象时优先采用并排对比卡片，用真实名称、关键数字和少量同口径指标帮助快速比较；数据不足时明确尚无赢家。随后展开素材 / 内容证据和渠道表现，避免重复堆砌。
 
 ## 3. 创意格式与单广下钻（Creative Format & Ad-Level Micro Deep Dive）
 
@@ -55,7 +55,15 @@
 - 每条输入广告均在保留、扩量候选、优化、暂停或继续观察清单中有归属。零投放与样本不足不自动列为输家；现在已暂停但报告期有投放的广告仍需分析。
 - 结合实际素材内容给出解释，区分直接数据驱动、疲劳证据与待验证原因，不将所有变化归因于创意。
 
-## 4. 下一步行动建议（Actionable Recommendations · P1 / P2）
+## 4. 渠道整体大盘对比（Channel-Level Macro Overview）
+
+只呈现整体 Messaging 与趋势，不提前列单条广告问题或格式详细诊断。
+
+- Messaging 整体对决：聚合表比较 Feel It / Worth It 的 Orders、Revenue、Spend、ROAS、CPA、Link CTR、CVR，说明贡献集中度与样本充分度。不能由混合方向广告组总量反推两组表现。
+- 趋势与疲劳：比较可比前后期的 Frequency、ROAS、CTR、CVR、CPA，核查频率与效率变化是否同步。Frequency 必须采用对应层级的去重口径；高 Frequency 本身不证明疲劳。
+- 概括受众、预算、版位及格式分布对整体结论的影响，具体广告证据放下一节。
+
+## 5. 下一步行动建议（Actionable Recommendations · P1 / P2）
 
 行动建议需包含：优先级｜对象（Messaging / Creative Name / Ad ID）｜具体改动｜数据依据｜验证标准。
 

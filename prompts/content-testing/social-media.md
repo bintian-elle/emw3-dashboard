@@ -48,17 +48,17 @@
 
 结构化返回时，第 1 部分放在 `executive_summary`，其余部分按下列标题与顺序放入 `sections`，不得重复摘要。需要逐 Campaign 短评时只覆盖任务指定对象，短评不复制渠道报告；Overview 不返回逐 Campaign 短评。展示数字适当取整，比较与增幅使用原始精度；近似归因转化不冒称去重实际订单。
 
+**阅读主次（适用于本渠道全部章节）**
+
+完整分析所有必要指标与素材，但默认可见内容只保留核心判断、少量关键证据、影响判断的样本限制与下一步动作。每个可见区块先说结论，优先用简短的素材画面 / 方向对比及相邻解读说明差异；完整对象清单、次要数据、重复说明和细节证据后置或默认折叠。避免把图表数字再用长段落逐一复述；不隐藏关键反例或决策条件，不凭缺失数据宣告赢家。由 AI 自主选择图文与布局，不固定套版。
+
 ## 1. 核心结论摘要（Executive Summary）
 
 总结最受欢迎的 Content Format 与 Topic，明确优势在传播、分享、收藏或关注增长中的哪一项，关联两大 Messaging；不同目标赢家不同时分别说明。
 
-## 2. 渠道整体大盘对比（Channel-Level Macro Overview）
+## 2. Messaging / 内容候选与判断边界（Messaging & Content Candidates）
 
-仅呈现整体表现，不展开 Post Links、单帖诊断或格式 / Topic 详细排名。
-
-- 宏观触达与互动：汇总 Total Views、Reach、Engagement Rate 及可用 Follower Growth，说明整体规模、深度互动和增长信号。
-- 区分平台账号级去重 Reach 与逐帖未去重 Reach 合计，互动率使用已确认分子 / 分母；账号净增粉丝与帖子归因 Follows 不互相替代。
-- 有可比 period 数据时简述前后期变化；只有 lifetime 时不制造 WoW / MoM。概括帖子数、推广与帖子龄的影响，技术核对留在结构化数据中。
+先概括本渠道最值得验证的 Messaging、创意或内容候选，以及对照方向；将关键业务证据、样本和适用边界紧邻判断。存在可比对象时优先采用并排对比卡片，用真实名称、关键数字和少量同口径指标帮助快速比较；数据不足时明确尚无赢家。随后展开素材 / 内容证据和渠道表现，避免重复堆砌。
 
 ## 3. 单帖与内容格式下钻（Post & Content Format Micro Deep Dive）
 
@@ -68,7 +68,15 @@
 - 交叉比较 Better You Can Feel / Protection That Matters 下具体 Topic 与格式，提炼实际可复制的内容元素；只有评论数时不推测评论情绪，未观看视频时不编造开头与旁白。
 - 有可靠历史时讨论格式 / 主题持续性，不能把累计指标直接当作期间表现。
 
-## 4. 创作建议与优化策略（Actionable Recommendations · P1 / P2）
+## 4. 渠道整体大盘对比（Channel-Level Macro Overview）
+
+仅呈现整体表现，不展开 Post Links、单帖诊断或格式 / Topic 详细排名。
+
+- 宏观触达与互动：汇总 Total Views、Reach、Engagement Rate 及可用 Follower Growth，说明整体规模、深度互动和增长信号。
+- 区分平台账号级去重 Reach 与逐帖未去重 Reach 合计，互动率使用已确认分子 / 分母；账号净增粉丝与帖子归因 Follows 不互相替代。
+- 有可比 period 数据时简述前后期变化；只有 lifetime 时不制造 WoW / MoM。概括帖子数、推广与帖子龄的影响，技术核对留在结构化数据中。
+
+## 5. 创作建议与优化策略（Actionable Recommendations · P1 / P2）
 
 行动建议需包含：优先级｜对象（Format / Topic / Messaging / Post）｜具体改动或发布频次｜数据依据｜验证标准。
 
