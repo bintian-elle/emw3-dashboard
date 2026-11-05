@@ -1,5 +1,5 @@
 export type TestingChatChannel = "overview" | "google-search" | "google-pmax" | "google-demand-gen" | "meta" | "reddit" | "edm" | "social" | "concluded";
-export type TestingChatScope = { channel: TestingChatChannel; campaign?: string; period: { label: string; start: string; end: string; concludedTestId?: string }; page: string };
+export type TestingChatScope = { channel: TestingChatChannel; campaign?: string; period: { label: string; start: string; end: string; concludedTestId?: string }; page: string; pageContext?: string };
 export const testingChatChannelNames: Record<TestingChatChannel,string> = {overview:"Overview","google-search":"Google Search","google-pmax":"Google PMAX","google-demand-gen":"Google Demand Gen",meta:"Meta",reddit:"Reddit",edm:"EDM",social:"Social Media",concluded:"Concluded Tests"};
 export function testingChatChannel(path: string): TestingChatChannel {
  if(path.includes('/concluded'))return 'concluded';
@@ -27,5 +27,5 @@ export function testingChatSuggestions(channel:TestingChatChannel,zh:boolean) {
 export function validTestingChatScope(value:unknown):value is TestingChatScope {
  if(!value||typeof value!=='object')return false;
  const s=value as TestingChatScope,p=s.period;
- return Object.hasOwn(testingChatChannelNames,s.channel)&&typeof s.page==='string'&&/^\/bluevua\/testing(?:\/[a-zA-Z0-9_-]+)*$/.test(s.page)&&(!s.campaign||typeof s.campaign==='string'&&s.campaign.length<=250)&&!!p&&typeof p.label==='string'&&p.label.length<120&&/^\d{4}-\d{2}-\d{2}$/.test(p.start)&&/^\d{4}-\d{2}-\d{2}$/.test(p.end)&&Number.isFinite(Date.parse(p.start))&&Number.isFinite(Date.parse(p.end))&&new Date(p.start).toISOString().slice(0,10)===p.start&&new Date(p.end).toISOString().slice(0,10)===p.end&&p.start<=p.end&&(Date.parse(p.end)-Date.parse(p.start))/86400000<=730&&(!p.concludedTestId||/^[a-z0-9-]+$/.test(p.concludedTestId));
+ return (s.pageContext===undefined||(s.page==='/bluevua/testing/prompts'&&typeof s.pageContext==='string'&&s.pageContext.length<=250000))&&Object.hasOwn(testingChatChannelNames,s.channel)&&typeof s.page==='string'&&/^\/bluevua\/testing(?:\/[a-zA-Z0-9_-]+)*$/.test(s.page)&&(!s.campaign||typeof s.campaign==='string'&&s.campaign.length<=250)&&!!p&&typeof p.label==='string'&&p.label.length<120&&/^\d{4}-\d{2}-\d{2}$/.test(p.start)&&/^\d{4}-\d{2}-\d{2}$/.test(p.end)&&Number.isFinite(Date.parse(p.start))&&Number.isFinite(Date.parse(p.end))&&new Date(p.start).toISOString().slice(0,10)===p.start&&new Date(p.end).toISOString().slice(0,10)===p.end&&p.start<=p.end&&(Date.parse(p.end)-Date.parse(p.start))/86400000<=730&&(!p.concludedTestId||/^[a-z0-9-]+$/.test(p.concludedTestId));
 }

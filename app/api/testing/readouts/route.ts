@@ -1,3 +1,4 @@
+import {localStagingReadoutDirectory,readStagingReadoutSnapshot} from "@/lib/staging-readout-snapshots";
 import {readLocalPromptPreview} from "@/lib/testing-prompt-preview.server";
 import {previewReadoutRecords} from "@/lib/testing-prompt-preview";
 import { NextResponse } from "next/server";
@@ -22,11 +23,15 @@ export async function GET(request: Request) {
     const previewLanguage=new URL(request.url).searchParams.get('language')==='zh'?'zh':'en';
     const expected=new URL(request.url).searchParams.get('expected');
     if(expected&&concludedKeys.length){try{if(expected.length>8192)throw Error('Invalid version');await reconcileExpectedTestingPageReadouts(concludedKeys,previewLanguage,JSON.parse(expected));}catch{return NextResponse.json({error:'Published readout unavailable.'},{status:503,headers:{'Cache-Control':'private, no-store'}});}}
-    const concluded=concludedKeys.length?await readTestingPageReadouts(concludedKeys,previewLanguage,true):[];
+    const previewDirectory=localStagingReadoutDirectory();
+    const localConcluded=previewDirectory?await readStagingReadoutSnapshot(previewDirectory,concludedKeys,previewLanguage):null;
+    const concluded=concludedKeys.length?(localConcluded??await readTestingPageReadouts(concludedKeys,previewLanguage,true)):[];
     return NextResponse.json({records:[...previewReadoutRecords(preview.manifest,preview.reports,keys.filter(key=>!key.startsWith('period:manual-'))),...concluded]},{headers:{"Cache-Control":"private, no-store"}});
   }
 
   const language=new URL(request.url).searchParams.get("language") === "zh" ? "zh" : "en";
+  const localDirectory=localStagingReadoutDirectory();
+  if(localDirectory){const records=await readStagingReadoutSnapshot(localDirectory,keys,language);if(records!==null)return NextResponse.json({records},{headers:{"Cache-Control":"private, no-store"}});}
   const expected=new URL(request.url).searchParams.get('expected');
   if(expected){try{if(expected.length>8192)throw Error('Invalid version');await reconcileExpectedTestingPageReadouts(keys,language,JSON.parse(expected));}catch{return NextResponse.json({error:'Published readout unavailable.'},{status:503,headers:{'Cache-Control':'private, no-store'}});}}
   // Generation, publication and reconciliation belong to the scheduled backend.

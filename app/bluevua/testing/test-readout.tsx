@@ -1,4 +1,5 @@
 "use client";
+import {usePmaxPresentation} from "./insight-presentation";
 
 import {fetchTestingReadoutJson} from '@/lib/testing-readout-fetch';
 import {PromptPreviewMarkdown} from "./prompt-preview-report";
@@ -60,6 +61,7 @@ function formatDeltas(test: CachedTestReadout): ReadoutMetric[] {
 export function TestReadout({ channel, testIdentity, period, standalone = false, children, overviewMetrics }: {
   channel?: TestingFrameworkKey; testIdentity?: string; period?: ReadoutPeriod | null; standalone?: boolean; children?: ReactNode; overviewMetrics?: OverviewHeadlineMetrics;
 }) {
+  const readable=usePmaxPresentation();
   const chat=useTestingAiScope(channel,testIdentity,period);
   const hydrated = useSyncExternalStore(subscribeHydration, clientHydration, serverHydration);
   const { language } = useSiteLanguage();
@@ -102,7 +104,9 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   const [generation,setGeneration]=useState(0);
   useEffect(()=>{const refresh=()=>{pendingLoads.clear();setGeneration(value=>value+1);};window.addEventListener('testing-readout-generated',refresh);return()=>window.removeEventListener('testing-readout-generated',refresh);},[]);
   const [cached, setCached] = useState<{ key: string; records: ReadoutRecords } | null>(null);
+  const [loadFailure,setLoadFailure]=useState<string|null>(null);
   useEffect(() => {
+    if(readable)return;
     if (!channel || (!periodKey && channel !== "overview")) return;
     let cancelled = false;
     const load = async () => {
@@ -110,12 +114,13 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
         const records = await loadCachedReadouts([...(channel === "overview" ? [socialKey] : []), ...(manualKey ? [manualKey] : []), ...(periodKey ? [periodKey] : [])], language,version.revision,generation?null:version.expected);
         if (cancelled) return;
         setCached({ key: requestKey, records });
+        setLoadFailure(null);
         if (((!periodKey || records[periodKey]) && (channel !== "overview" || records[socialKey]) && !Object.values(records).some(record => record._translation_pending||record._preview_pending))) return;
-      } catch { if (cancelled) return; }
+      } catch { if (!cancelled)setLoadFailure(requestKey); }
     };
     void load();
     return () => { cancelled = true; };
-  }, [requestKey, periodKey, manualKey, channel, pathname, language,version.revision,version.expected,generation]);
+  }, [requestKey, periodKey, manualKey, channel, pathname, language,version.revision,version.expected,generation,readable]);
   const records = cached?.key === requestKey ? cached.records : undefined;
   const savedPeriodResult = (manualKey ? records?.[manualKey] : undefined) ?? (periodKey ? records?.[periodKey] : undefined);
   const periodResult = currentPmaxReadout(savedPeriodResult,channel) ? savedPeriodResult : undefined;
@@ -167,7 +172,8 @@ export function TestReadout({ channel, testIdentity, period, standalone = false,
   if(isNovaPreview)return <NovaTestReadout
     channel={channel} testIdentity={testIdentity} period={period} standalone={standalone} campaignId={campaignId}
     summary={summary} test={test} overview={overview}
-    socialEdmBrief={socialEdmBrief} deltas={deltas} loading={cached?.key!==requestKey&&!!channel&&!!periodKey}
+    socialEdmBrief={socialEdmBrief} deltas={deltas} loading={cached?.key!==requestKey&&loadFailure!==requestKey&&!!channel&&!!periodKey}
+    loadError={loadFailure===requestKey} onRetry={()=>{pendingLoads.clear();setLoadFailure(null);setGeneration(value=>value+1);}}
     translationPending={!!periodResult?._translation_pending} translationError={!!periodResult?._translation_error}
     ready={hydrated} canAsk={hydrated&&chat.canAsk} ask={chat.ask} open={chat.open}
     expanded={isOverview?expandedOverviewKey===requestKey:expanded}

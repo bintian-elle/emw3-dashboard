@@ -1,3 +1,4 @@
+import {ComparisonDelta} from "./testing-comparison";
 import {testingCampaignAnchor,withTestingReturnTo} from "@/lib/testing-navigation";
 import {MetricSortScope,MetricSortHeader,MetricSortedRows} from "./metric-sorting";
 import { CampaignName } from "./campaign-name";
@@ -28,7 +29,7 @@ export function MetaCampaignSection({data,query="",returnTo}:{data:MetaCampaignT
   <TestReadout channel="meta" testIdentity={campaign.campaignName} period={{label:data.periodLabel,...data.period}}>
    {campaign.adGroups.length?<MetricSortScope defaultRoas><div className={styles.tableWrap}><table className={`${styles.table} ${styles.performanceTable}`} aria-label="Meta ad group performance"><thead><tr><th scope="col">Ad group</th>{metrics.map(item=><MetricSortHeader key={item.key} metric={item.key} label={item.label}/>)}</tr></thead><MetricSortedRows as="tbody" rows={campaign.adGroups.map(group=>{const cover=group.activeAds[0];const href=withTestingReturnTo(`/bluevua/testing/meta/${group.adGroupId}${query?`?${query}`:""}`,returnTo??`/bluevua/testing/meta${query?`?${query}`:""}`);return {id:group.adGroupId,name:group.name,values:Object.fromEntries(metrics.map(item=>[item.key,group[item.key] as number|null])),content:<tr key={group.adGroupId}>
     <td><div className={styles.identity}>{cover?.videoUrl?<VideoLightbox src={cover.videoUrl} thumbnailUrl={highResolutionCreativeUrl(cover.thumbnailUrl)} title={cover.name}/>:<ImageLightbox src={highResolutionCreativeUrl(cover?.thumbnailUrl??null)} alt={group.name}/>}<div className={styles.identityText}><Link href={href}>{group.name}</Link><p className={styles.muted}>{group.activeAds.length} ads</p></div></div></td>
-    {metrics.map(item=><td key={item.key}>{metric(group[item.key] as number|null,item.format)}</td>)}
+    {metrics.map(item=><td key={item.key}>{metric(group[item.key] as number|null,item.format)}<ComparisonDelta entity={`meta:${group.adGroupId}`} metric={item.key} value={group[item.key] as number|null}/></td>)}
    </tr>};})}/></table></div></MetricSortScope>:<p className={styles.empty}>No ad group performance is available for this campaign and period.</p>}
   </TestReadout>
  </article>)}</section>;

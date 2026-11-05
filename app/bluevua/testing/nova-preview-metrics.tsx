@@ -1,5 +1,6 @@
 "use client";
 
+import {ComparisonDelta} from "./testing-comparison";
 import {Suspense, use, useState, type CSSProperties, type ReactNode} from "react";
 import {Tabs, Toggle} from "radix-ui";
 import {useReducedMotion} from "motion/react";
@@ -29,7 +30,8 @@ const showRatio=(value:number|null,suffix="")=>value==null?"—":`${value.toFixe
 
 export function NovaPreviewBusinessPerformance({google,meta,reddit,edm,headlineMetrics,trends}:{google:GoogleSearchTest[];meta:MetaCampaignTest;reddit:RedditTestingData;edm:EdmTestingData;headlineMetrics?:OverviewHeadlineMetrics;trends:Promise<OverviewTrends>}){
   const {language}=useSiteLanguage();
-  const headline=formatOverviewHeadlineMetrics(headlineMetrics??overviewHeadlineMetrics({google,meta,reddit,edm}));
+  const rawHeadline=headlineMetrics??overviewHeadlineMetrics({google,meta,reddit,edm});
+  const headline=formatOverviewHeadlineMetrics(rawHeadline);
   const searchGroups=google.flatMap(test=>test.groups);
   const channels:Record<keyof typeof channelStyle,Metric>={Google:empty(),Meta:empty(),Reddit:empty(),EDM:empty()};
   searchGroups.forEach(row=>add(channels.Google,row));add(channels.Meta,meta.totals);reddit.campaigns.flatMap(campaign=>campaign.groups).flatMap(group=>group.activeAds).forEach(row=>add(channels.Reddit,row));edm.tests.forEach(row=>add(channels.EDM,{spend:0,revenue:row.revenue,orders:row.orders,clicks:row.clicks??0}));
@@ -65,14 +67,14 @@ export function NovaPreviewBusinessPerformance({google,meta,reddit,edm,headlineM
   const channelCounts={Google:google.reduce((sum,test)=>sum+(test.adCount??test.groups.length),0),Meta:meta.adGroups.reduce((sum,group)=>sum+group.activeAds.length,0),Reddit:reddit.campaigns.flatMap(campaign=>campaign.groups).reduce((sum,group)=>sum+group.activeAds.length,0),EDM:edm.tests.length};
   const countSegments:Segment[]=(Object.keys(channelStyle) as Array<keyof typeof channelStyle>).map(label=>({label,value:channelCounts[label],display:number.format(channelCounts[label]),...channelStyle[label]}));
   return <section data-review-target="testing-layout" className={styles.section} aria-labelledby="overview-metrics"><h2 id="overview-metrics" className={styles.sectionTitle}>{language==='zh'?'业务表现':'Business Performance'}</h2><div className={styles.grid}>
-    <NovaMetricCard wide title="Total ROAS" metric="roas" trends={trends} value={headline.roas} valueDetail={`${preciseCurrency.format(paid.revenue)} conversion value / ${preciseCurrency.format(paid.spend)} spend · Google, Meta, Reddit`} caption="Paid conversion value / paid spend" segments={channelRoas} assetSegments={assetRoas}/>
-    <NovaMetricCard wide title="Total Conversion Rate" metric="cvr" trends={trends} value={averageCvr==null?"—":percent.format(averageCvr)} caption="Average asset conversion rate" segments={channelCvr} assetSegments={assetCvr}/>
-    <NovaMetricCard title="Total Number of Assets" metric="assets" trends={trends} value={number.format(Object.values(assetCounts).reduce((a,b)=>a+b,0))} caption="Tested assets" segments={countSegments}/>
-    <NovaMetricCard title="Total Revenue" metric="revenue" trends={trends} value={headline.revenue} caption="Attributed revenue" segments={channelSegments("revenue",currency.format)}/>
-    <NovaMetricCard title="Total Orders" metric="orders" trends={trends} value={headline.orders} caption="Attributed orders" segments={channelSegments("orders",number.format)}/>
-    <NovaMetricCard title="Total Reach" metric="reach" trends={trends} value={headline.totalReach} caption="Reach" segments={reachSegments}/>
-    <NovaMetricCard title="Unique Reach" metric="uniqueReach" trends={trends} value={uniqueReach==null?"—":number.format(uniqueReach)} caption="Unique Reach" segments={uniqueSegments}/>
-    <NovaMetricCard title="CTR" metric="ctr" trends={trends} value={headline.ctr} caption="Ad clicks / ad impressions · excludes PMAX and EDM" segments={ctrSegments}/>
+    <NovaMetricCard wide comparisonValue={rawHeadline.roas} title="Total ROAS" metric="roas" trends={trends} value={headline.roas} valueDetail={`${preciseCurrency.format(paid.revenue)} conversion value / ${preciseCurrency.format(paid.spend)} spend · Google, Meta, Reddit`} caption="Paid conversion value / paid spend" segments={channelRoas} assetSegments={assetRoas}/>
+    <NovaMetricCard wide comparisonValue={averageCvr} title="Total Conversion Rate" metric="cvr" trends={trends} value={averageCvr==null?"—":percent.format(averageCvr)} caption="Average asset conversion rate" segments={channelCvr} assetSegments={assetCvr}/>
+    <NovaMetricCard comparisonValue={Object.values(assetCounts).reduce((a,b)=>a+b,0)} title="Total Number of Assets" metric="assets" trends={trends} value={number.format(Object.values(assetCounts).reduce((a,b)=>a+b,0))} caption="Tested assets" segments={countSegments}/>
+    <NovaMetricCard comparisonValue={rawHeadline.revenue} title="Total Revenue" metric="revenue" trends={trends} value={headline.revenue} caption="Attributed revenue" segments={channelSegments("revenue",currency.format)}/>
+    <NovaMetricCard comparisonValue={rawHeadline.orders} title="Total Orders" metric="orders" trends={trends} value={headline.orders} caption="Attributed orders" segments={channelSegments("orders",number.format)}/>
+    <NovaMetricCard comparisonValue={rawHeadline.totalReach} title="Total Reach" metric="reach" trends={trends} value={headline.totalReach} caption="Reach" segments={reachSegments}/>
+    <NovaMetricCard comparisonValue={uniqueReach} title="Unique Reach" metric="uniqueReach" trends={trends} value={uniqueReach==null?"—":number.format(uniqueReach)} caption="Unique Reach" segments={uniqueSegments}/>
+    <NovaMetricCard comparisonValue={rawHeadline.ctr} title="CTR" metric="ctr" trends={trends} value={headline.ctr} caption="Ad clicks / ad impressions · excludes PMAX and EDM" segments={ctrSegments}/>
   </div></section>;
 }
 
@@ -109,7 +111,7 @@ function NovaDailyChart({trends,metric,segments,highlight,title}:{trends:Promise
   </div>{issues.length>0&&<p className={styles.issues}>{issues.join(" · ")}</p>}</>;
 }
 
-function NovaMetricCard({title,value,valueDetail,caption,segments,assetSegments,metric,trends,wide=false}:{title:string;value:string;valueDetail?:ReactNode;caption:string;segments:Segment[];assetSegments?:Segment[];metric:OverviewTrendMetric;trends:Promise<OverviewTrends>;wide?:boolean}) {
+function NovaMetricCard({comparisonValue,title,value,valueDetail,caption,segments,assetSegments,metric,trends,wide=false}:{comparisonValue?:number|null;title:string;value:string;valueDetail?:ReactNode;caption:string;segments:Segment[];assetSegments?:Segment[];metric:OverviewTrendMetric;trends:Promise<OverviewTrends>;wide?:boolean}) {
   const {language}=useSiteLanguage();
   const [mode,setMode]=useState<"channel"|"asset">("channel");
   const [hovered,setHovered]=useState<string|null>(null);
@@ -125,7 +127,7 @@ function NovaMetricCard({title,value,valueDetail,caption,segments,assetSegments,
     <Suspense fallback={<div className={styles.chartLoading} role="status">{language==='zh'?'正在加载每日趋势…':'Loading daily trend…'}</div>}><NovaDailyChart key={mode} trends={trends} metric={metric} segments={activeSegments} highlight={highlight} title={title}/></Suspense>
   </>;
   return <article className={styles.card} data-wide={wide}>
-    <div className={styles.cardHeading}><div className={styles.cardMetric}><h3 className={styles.cardTitle}>{title}</h3><div className={styles.valueRow}><p className={styles.cardValue}>{value}</p>{valueDetail&&<p className={styles.valueDetail}>{valueDetail}</p>}</div></div>{showDistribution&&<div className={styles.share}><strong>{new Intl.NumberFormat("en-US",{style:"percent",maximumFractionDigits:0}).format(share)}</strong><span>{current?.label}</span></div>}</div>
+    <div className={styles.cardHeading}><div className={styles.cardMetric}><h3 className={styles.cardTitle}>{title}</h3><div className={styles.valueRow}><p className={styles.cardValue}>{value}</p><ComparisonDelta entity="overview:headline" metric={metric} value={comparisonValue}/>{valueDetail&&<p className={styles.valueDetail}>{valueDetail}</p>}</div></div>{showDistribution&&<div className={styles.share}><strong>{new Intl.NumberFormat("en-US",{style:"percent",maximumFractionDigits:0}).format(share)}</strong><span>{current?.label}</span></div>}</div>
     {showDistribution&&<div className={styles.distribution} role="group" aria-label={`${title} selected-period distribution`} onMouseLeave={()=>setHovered(null)}>{total>0?segments.filter(segment=>segment.value>0).map(segment=><Toggle.Root key={segment.label} pressed={selected===segment.label} onPressedChange={pressed=>setSelected(pressed?segment.label:null)} aria-label={`${segment.label}: ${segment.display}, ${Math.round(segment.value/total*100)}% of ${caption}`} onMouseEnter={()=>setHovered(segment.label)} onFocus={()=>setHovered(segment.label)} onBlur={()=>setHovered(null)} className={styles.distributionButton} data-muted={Boolean(highlight&&highlight!==segment.label)} style={{...colorStyle(segment.color),flexGrow:Math.max(segment.value/total*100,2)}}><span/></Toggle.Root>):<span className={styles.distributionEmpty}/>}</div>}
     {assetSegments?<Tabs.Root value={mode} onValueChange={value=>{if(value==="channel"||value==="asset"){setMode(value);setHovered(null);setSelected(null);}}}>
       <Tabs.List className={chartStyles.chartModes} aria-label={language==="zh"?`${title} 图表维度`:`${title} chart breakdown`}>

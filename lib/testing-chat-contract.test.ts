@@ -15,3 +15,9 @@ test('every channel has three local bilingual suggestions without an AI call',()
  }
  assert.notDeepEqual(testingChatSuggestions('meta',false),testingChatSuggestions('edm',false));
 });
+
+test('page content is bounded and restricted to the Prompts workspace',()=>{
+ assert.ok(validTestingChatScope({...scope,page:'/bluevua/testing/prompts',pageContext:'Prompt draft and trial result'}));
+ assert.equal(validTestingChatScope({...scope,pageContext:'not a prompt page'}),false);
+ assert.equal(validTestingChatScope({...scope,page:'/bluevua/testing/prompts',pageContext:'x'.repeat(250001)}),false);
+});

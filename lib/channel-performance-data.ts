@@ -13,6 +13,7 @@ export function channelPerformanceHref(path:string,query:string){
  const valid=['lastWeek','wtd','mtd','ytd','last7','last30','last90','custom'].includes(period??'')?period!:'lastWeek';
  const result=new URLSearchParams({period:valid});
  if(valid==='custom')for(const key of ['start','end']){const value=params.get(key);if(value)result.set(key,value);}
+ for(const key of ["compare","compareStart","compareEnd"]){const value=params.get(key);if(value)result.set(key,value);}
  return `${root}/${path}?${result}`;
 }
 const anchors=(channel:string,names:readonly string[])=>[...new Set(names)].map(name=>`campaign:${channel}:${name}`);

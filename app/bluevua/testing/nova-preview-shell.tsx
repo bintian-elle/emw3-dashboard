@@ -1,5 +1,6 @@
 "use client";
 
+import {TestingComparisonControls} from "./testing-comparison";
 import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import TestingLink from "./testing-link";
@@ -46,7 +47,7 @@ export function NovaPreviewShell({children,account,promptsEnabled=false}:{childr
  const pathname=usePathname();
  const params=useSearchParams();
  const query=new URLSearchParams();
- for(const key of ["period","start","end"]){const value=params.get(key);if(value)query.set(key,value);}
+ for(const key of ["period","start","end","compare","compareStart","compareEnd"]){const value=params.get(key);if(value)query.set(key,value);}
  const concludedContext=isConcludedTestingNavigation(pathname,params.get("returnTo"));
  const refreshChannel=pathname==="/bluevua/testing/inventory"?null:testingRefreshChannel(pathname,concludedContext);
  const sidebarContent=(compact:boolean,onNavigate?:()=>void)=><>
@@ -93,7 +94,7 @@ export function NovaPreviewHeader({sharePeriod}:{sharePeriod:{start:string;end:s
  const update=(period:string,range?:{start:string;end:string})=>{const query=new URLSearchParams(params.toString());query.set("period",period);if(period==="custom"&&range){query.set("start",range.start);query.set("end",range.end);}else {query.delete("start");query.delete("end");}startTransition(()=>router.replace(`${pathname}?${query}`,{scroll:false}));};
  return <header data-testing-header className={styles.header}>
   <div><h1>{zh?'内容测试总览':'Content testing overview'}</h1></div>
-  <div className={styles.controls}><label className={styles.periodLabel} htmlFor="nova-period">{zh?'报告周期':'Reporting period'}</label><NovaReportingPeriodSelect id="nova-period" ariaLabel={zh?'测试报告周期':'Testing reporting period'} value={current} onValueChange={value=>{if(value==="custom")setCustomDraft(true);else{setCustomDraft(false);update(value);}}} disabled={pending}/>{current==="custom"&&<NovaReportingPeriodCustom zh={zh} start={start} end={end} disabled={pending} onApply={range=>{const next={start:range.start.toString(),end:range.end.toString()};setStart(next.start);setEnd(next.end);update("custom",next);}}/>}<NovaShareButton disabled={pending} period={sharePeriod}/><NovaAskAiButton onClick={()=>chat.isOpen?chat.close():chat.open()} aria-expanded={chat.isOpen} aria-controls="testing-ai-panel">{zh?'询问 AI':'Ask AI'}</NovaAskAiButton></div>
+  <div className={styles.controls}><TestingComparisonControls><label className={styles.periodLabel} htmlFor="nova-period">{zh?'报告周期':'Reporting period'}</label><NovaReportingPeriodSelect id="nova-period" ariaLabel={zh?'测试报告周期':'Testing reporting period'} value={current} onValueChange={value=>{if(value==="custom")setCustomDraft(true);else{setCustomDraft(false);update(value);}}} disabled={pending}/>{current==="custom"&&<NovaReportingPeriodCustom zh={zh} start={start} end={end} disabled={pending} onApply={range=>{const next={start:range.start.toString(),end:range.end.toString()};setStart(next.start);setEnd(next.end);update("custom",next);}}/>}</TestingComparisonControls><NovaShareButton disabled={pending} period={sharePeriod}/><NovaAskAiButton onClick={()=>chat.isOpen?chat.close():chat.open()} aria-expanded={chat.isOpen} aria-controls="testing-ai-panel">{zh?'询问 AI':'Ask AI'}</NovaAskAiButton></div>
  </header>;
 }
 

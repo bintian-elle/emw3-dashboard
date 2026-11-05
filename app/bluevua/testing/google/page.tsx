@@ -8,7 +8,7 @@ type SearchParams={period?:string|string[];start?:string|string[];end?:string|st
 
 export default async function GoogleTestingPage({searchParams}:{searchParams:Promise<SearchParams>}) {
   const params=await searchParams;
-  const returnQuery=new URLSearchParams();for(const [key,raw] of Object.entries(params)){const value=Array.isArray(raw)?raw[0]:raw;if(value&&["period","start","end"].includes(key))returnQuery.set(key,value);}
+  const returnQuery=new URLSearchParams();for(const [key,raw] of Object.entries(params)){const value=Array.isArray(raw)?raw[0]:raw;if(value&&["period","start","end","compare","compareStart","compareEnd"].includes(key))returnQuery.set(key,value);}
   const returnTo=`/bluevua/testing/google/search${returnQuery.size?`?${returnQuery}`:""}`;
   const input=testingPeriodInput(params);
   const data=await getGoogleTestingPerformance(input);

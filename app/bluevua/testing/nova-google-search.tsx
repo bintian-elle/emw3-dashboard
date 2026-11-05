@@ -1,5 +1,6 @@
 'use client';
 
+import {ComparisonDelta} from './testing-comparison';
 import {useMemo,useState,type ReactNode} from 'react';
 import {ArrowDown,ArrowUp,ArrowUpDown,ExternalLink} from 'lucide-react';
 import {flexRender,getCoreRowModel,getSortedRowModel,useReactTable,type ColumnDef,type SortingState} from '@tanstack/react-table';
@@ -21,7 +22,7 @@ export function NovaSearchSectionGate(props:Props&{children:ReactNode}){return <
 function Rows({test,creativeLinks}:{test:GoogleSearchTest;creativeLinks?:Record<string,string>}){
  const [sorting,setSorting]=useState<SortingState>([{id:'roas',desc:true}]);
  const defs=useMemo<ColumnDef<GoogleTestGroup>[]>(()=>[{id:'group',header:'Ad group',enableSorting:false,cell:({row})=>{const group=row.original,label=group.label?`${group.label} · ${group.name}`:group.name;return <div className={styles.assetName}>{creativeLinks?.[group.adGroupId]?<TestingLink href={creativeLinks[group.adGroupId]}>{label}</TestingLink>:<span>{label}</span>}{group.label&&<small>{group.label==='Group A'?'Test':'Control'}</small>}</div>;}},
- ...columns.map(column=>({id:column.key,accessorFn:(row:GoogleTestGroup)=>getMetric(row,column.key)??undefined,header:column.label,sortUndefined:'last' as const,cell:({row}:{row:{original:GoogleTestGroup}})=>format(getMetric(row.original,column.key),column.format)}))],[creativeLinks]);
+ ...columns.map(column=>({id:column.key,accessorFn:(row:GoogleTestGroup)=>getMetric(row,column.key)??undefined,header:column.label,sortUndefined:'last' as const,cell:({row}:{row:{original:GoogleTestGroup}})=><>{format(getMetric(row.original,column.key),column.format)}<ComparisonDelta entity={`google-search:${row.original.adGroupId}`} metric={column.key} value={getMetric(row.original,column.key)}/></>}))],[creativeLinks]);
  const table=useReactTable({data:test.groups,columns:defs,state:{sorting},onSortingChange:setSorting,getCoreRowModel:getCoreRowModel(),getSortedRowModel:getSortedRowModel(),enableSortingRemoval:true});
  return <NovaTable aria-label="Ad group performance"><NovaTableHeader>{table.getHeaderGroups().map(group=><NovaTableRow key={group.id}>{group.headers.map((header,index)=>{const direction=header.column.getIsSorted(),Icon=direction==='asc'?ArrowUp:direction==='desc'?ArrowDown:ArrowUpDown;return <NovaTableHead scope="col" key={header.id} className={index?styles.numeric:undefined} aria-sort={direction==='asc'?'ascending':direction==='desc'?'descending':'none'}>{header.column.getCanSort()?<NovaButton variant="ghost" size="sm" className={styles.sort} onClick={header.column.getToggleSortingHandler()} aria-label={`${header.column.columnDef.header}: sort`}>{flexRender(header.column.columnDef.header,header.getContext())}<Icon aria-hidden="true"/></NovaButton>:flexRender(header.column.columnDef.header,header.getContext())}</NovaTableHead>;})}</NovaTableRow>)}</NovaTableHeader><NovaTableBody>{table.getRowModel().rows.map(row=><NovaTableRow key={row.id}>{row.getVisibleCells().map((cell,index)=><NovaTableCell key={cell.id} className={index?styles.numeric:undefined}>{flexRender(cell.column.columnDef.cell,cell.getContext())}</NovaTableCell>)}</NovaTableRow>)}</NovaTableBody></NovaTable>;
 }

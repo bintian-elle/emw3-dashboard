@@ -18,3 +18,6 @@
 - Use a narrowly privileged new database role for new staging tables. Existing staging report reader permissions remain unchanged.
 - Source prompts remain the deployed baseline; staging edits persist across deployments. An already saved production report without captured prompt versions is labeled unrecorded rather than inferred.
 - Trial generation is asynchronous, not browser-bound, and does not promise realtime model-token streaming. A result records immutable version IDs, exact scope, frozen packet and native turn ID.
+
+## Publication hold
+User paused publication on November 4. Commit 98c3b15 was already pushed to codex/staging and its manually triggered build completed successfully; no artifact was deployed and no remote worker service/environment change was installed. Remove the unapplied temporary credential transfer. Keep subsequent local fixes and the local SSH preview transport for the later combined Insight Prompt release.

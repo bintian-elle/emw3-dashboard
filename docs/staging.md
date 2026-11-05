@@ -74,12 +74,55 @@ Only matching author sub or configured STAGING_ADMIN_EMAILS (default bintian.fen
 
 Build workflows remain manually triggered and never upload/deploy by themselves. Source pushes do not publish. Production's release branch contains isolated presentation dependencies to preserve the existing Testing UI; main retains the canonical shared-component implementation for future reviewed releases.
 
+## Local PMax readability trial (2026-11-04)
+
+An opt-in local development trial uses the unchanged PMax analytical prompt, followed by `prompts/content-testing/readability.md`. The existing remote Insights thread generates isolated file results, not shared reports. Current trial: Oct 27–Nov 2 compared with Oct 20–26, from the published Nov 3 PMax snapshot.
+
+Set `DEPLOYMENT_ENV=staging`, `STAGING_REVIEW_EMAILS` to the existing reviewer account, `STAGING_DATA_SNAPSHOT_DIR` to the approved local seed directory, and `CONTENT_TESTING_PRESENTATION_DIR` to `.state/pmax-readable-20261104`; start development with a separate `NEXT_DIST_DIR`. The ordinary localhost Google session remains required. For this offline trial, use an unavailable local database connection rather than production credentials. Other reporting periods retain the normal UI. Production and built remote staging ignore the local-only presentation loader/media route.
+
+`prepare-readable.mjs` reconciles PMax group/product data using the production metric functions and registers immutable chart datasets. `prepare-readable-media.py` reads cached source images/videos and records resized raster frames with timestamps and hashes. `run-readable.py` resumes only the existing Content Testing Insights thread, refuses duplicate running composition, and writes its turn ID/result to isolated files. Validate dataset references, metric units, campaign routing, media identity, and coordinate bounds before viewing. No advertising refresh, Slack delivery, cache publication or deployment is part of this trial.
+
+### Structure-preserving expression revision
+
+`readability.md` preserves each channel's original analytical chapters and their order; it only chooses presentation within those chapters. The local PMax chapter catalog is extracted from the unchanged PMax prompt into `presentation-structure.json`. `run-readable.py --edition sections` reuses the saved analysis, dataset registry and media evidence, verifies the analysis hash, and writes a distinct `presentation-sections.json` without rerunning analysis. Keep the preceding presentation until the replacement passes validation. The v2 contract requires chapter IDs on every block and complete, ordered chapters in every required scope. The renderer groups content and navigation by authoritative chapter titles rather than individual findings.
+
+### Autonomous expression revision
+
+`--edition autonomous` reuses the saved analysis and evidence, preserving direction IDs/order while allowing AI-written chapter/navigation labels and freely selected expression within each direction. It writes a separate `presentation-autonomous.json`; validate before activating locally. No analytics rerun or production publication.
+
+### Free composition trial
+
+`--edition freeform` emits v3 documents within the three retained directions, using arbitrary responsive HTML/CSS/SVG rather than the legacy widget palette. It omits previous presentation input. Local sandboxed frames disable scripts and external dependencies; source references remain validated. Existing analysis is unchanged.
+
+### Offline local bilingual AI reports
+
+Local development staging may deliberately point the shared database connection at an unavailable host for the PMax presentation trial. Data snapshot seeds alone do not include AI analysis. To mirror already-published English reports and matching Chinese translations without generating or updating anything online, run `DEPLOYMENT_ENV=staging node ops/staging/export-readout-snapshots.mjs` with the normal readable shared-database connection. The exporter uses a read-only transaction and writes a private versioned `.state/staging-ai-readouts/` bundle plus an atomic active pointer. Do not commit report payloads.
+
+Only development + staging reads this mirror. Production and built remote staging retain the existing shared-cache behavior. Reports use exact requested cache keys; missing periods remain unavailable, and Chinese translations must match the current English source hash. A missing translation retains the normal English fallback flag. Language switching never generates analysis. A failed read ends the loading state and offers Retry. The local PMax composition is Chinese-only; English mode uses the published English report rather than relabeling Chinese text.
+
+## Integrated last-week analysis bundle (not deployed)
+
+The isolated run `20261104-lastweek` under `.state/content-testing-integrated/` sends the channel content prompt and readability prompt in the same native turn. Seven channels, Reddit cumulative, then Overview are generated from the same frozen inputs; English and Chinese are persisted together. No production queue/cache publication is performed.
+
+Run `compile-integrated.mjs <run-directory>` to validate identities, chapters, HTML safety, registered source/media references and media hashes. Only a completed bundle may be selected by the local `active.json`. Production is always excluded. A future staging deployment sets `STAGING_CONTENT_TESTING_REPORT_DIR` to the exact unpacked run directory, reusing `compiled.json`, inputs, prompts, results, media and checksums; do not call AI during deploy. The current instruction is to retain artifacts locally, not deploy.
+
 ## Prompts workspace
 
-`/bluevua/testing/prompts` is staging-only. Its allowlisted POST endpoint is the sole new mutation exception; existing advertising refresh and Ask AI restrictions remain. The catalog includes master/channel/Overview/Readability/manual/translation/Ask AI prompts and their consumers. Search analysis and Readability-only trials are the first supported generation modes.
+`/bluevua/testing/prompts` is staging-only. Its allowlisted POST endpoint and reviewer-only Prompts page Ask AI POST are new staging mutation exceptions; advertising refresh and other staging chat writes remain blocked. The catalog includes master/channel/Overview/Readability/manual/translation/Ask AI prompts and their consumers. All configured channels and Overview support analysis trials; completed analyses can be reused for Readability and translation.
 
 `STAGING_PROMPTS_DATABASE_URL` uses the narrowly privileged `emw3_staging_prompts` login. Only the new `staging_testing_prompt_versions` and `staging_testing_prompt_runs` tables are writable. Existing staging report readers and all production report/cache permissions remain unchanged. Versions are insert-only for this login; optimistic parent checks are serialized per prompt. Restoring creates another version. No production activation is offered in this rollout.
 
 The `emw3-staging-prompts` service reads this isolated queue, resumes the existing Bluevua Content Testing Insights conversation serially, and stores results only in the staging run table. It records captured prompts, exact Campaign/date/language, frozen data hash and native turn. Readability reuses a completed analysis and its analytical prompt versions. A queued analysis can reuse fixed data for a fair comparison. No daily generator, Slack delivery or production cache publisher is invoked.
 
 Install schema from `ops/staging/prompts-schema.sql`, grant only SELECT/INSERT on versions and SELECT/INSERT/UPDATE on runs to the dedicated role, and add role-specific RLS policies. Keep its connection private in staging `.env.local`. Install `ops/staging/emw3-staging-prompts.service`; the standard staging deployment keeps the service and its durable `/home/ubuntu/.local/share/emw3-staging/prompt-runs` directory. Preview HTML is validated and rendered in a script-free, network-restricted iframe.
+
+### Local-only Prompt trials
+
+Until the combined release is approved, do not install the staging worker service or deploy the website. Start the worker locally with `DEPLOYMENT_ENV=staging STAGING_PROMPTS_REMOTE=EMW3_ANC_AI node --experimental-strip-types scripts/prompt-lab/worker.mjs`. It reads only the dedicated Prompt queue and sends isolated request/result files to the existing AI Bluevua host over SSH, without modifying a deployed checkout, remote environment file or service. The remote native turn remains resumable by run ID. Local edits to prompts/Insight UI can be reviewed together before a later release.
+
+Prompts trials accept Search, PMAX, Demand Gen, Meta, Reddit, EDM, Social lifetime and Overview scopes. Channel prompts bind the trial scope; shared rules can target a chosen channel. All trials capture immutable prompt versions and exact Dashboard snapshot periods, including explicit comparison dates. Missing snapshots fail visibly without requesting upstream advertising APIs or substituting another period. Overview captures all six testing channels and applies their prompts before synthesis. Translation requires a completed baseline. Reuse preserves the baseline channel and exact comparison range. These local additions have not been deployed.
+
+
+## November 4 combined staging release
+
+The combined release is authorized for staging only. Period comparison is now enabled in built staging as well as local development. The completed `20261104-lastweek` bilingual report bundle is transferred separately and activated with `STAGING_CONTENT_TESTING_REPORT_DIR`; it does not replace production AI caches. The isolated Prompt worker is installed with its dedicated database credential and uses the existing native Insights thread. Release contents are recorded in `docs/releases/2026-11-04-staging.md`; the staging review status/catalog point to these changes. Prior local-only instructions above describe the trials before this release approval.

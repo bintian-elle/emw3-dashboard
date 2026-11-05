@@ -12,7 +12,7 @@ export function clearTestingPeriod(href:string,depth=0):string{
  if(!safe)return href;
  const url=new URL(safe,"https://dashboard.local");
  let changed=false;
- for(const key of ["period","start","end"]){if(url.searchParams.has(key)){url.searchParams.delete(key);changed=true;}}
+ for(const key of ["period","start","end","compare","compareStart","compareEnd"]){if(url.searchParams.has(key)){url.searchParams.delete(key);changed=true;}}
  const parent=url.searchParams.get("returnTo");
  if(parent&&depth<5){const cleared=clearTestingPeriod(parent,depth+1);if(cleared!==parent){url.searchParams.set("returnTo",cleared);changed=true;}}
  return changed?`${url.pathname}${url.search}${url.hash}`:href;
@@ -34,7 +34,7 @@ export function testingDocumentPeriodRedirect(href:string,method:string,headers:
  const cleared=clearTestingPeriod(safe);
  return cleared===safe?null:cleared;
 }
-type TestingPeriodQuery={period?:string|string[];start?:string|string[];end?:string|string[]};
+type TestingPeriodQuery={period?:string|string[];start?:string|string[];end?:string|string[];compare?:string|string[];compareStart?:string|string[];compareEnd?:string|string[]};
 export function testingCampaignAnchor(channel:string,name:string){return `campaign:${channel}:${name}`;}
 export function testingCampaignHref(parent:string,channel:string,name:string,query?:TestingPeriodQuery){
  const url=new URL(safeTestingReturnTo(parent,testingRoot),"https://dashboard.local");
@@ -44,6 +44,7 @@ export function testingCampaignHref(parent:string,channel:string,name:string,que
   url.searchParams.set("period",period);
   for(const key of ["start","end"] as const){const value=first(query?.[key]);if(period==="custom"&&value)url.searchParams.set(key,value);else url.searchParams.delete(key);}
  }
+ for(const key of ["compare","compareStart","compareEnd"] as const){const value=first(query?.[key]);if(value)url.searchParams.set(key,value);}
  url.hash=encodeURIComponent(testingCampaignAnchor(channel,name));
  return `${url.pathname}${url.search}${url.hash}`;
 }

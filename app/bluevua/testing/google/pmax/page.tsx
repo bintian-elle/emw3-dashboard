@@ -1,3 +1,5 @@
+import {readPmaxReadableReport} from "@/lib/testing-insight-presentation.server";
+import {PmaxPresentationProvider} from "../../insight-presentation";
 import {TestingPageHeader} from "../../testing-page-header";
 import {GoogleExpandedContentSection} from "../../google-expanded-content-section";
 import {getExpandedGoogleTesting} from "@/lib/google-expanded-content-testing";
@@ -6,7 +8,8 @@ type SearchParams={period?:string|string[];start?:string|string[];end?:string|st
 export default async function ContentTestingPage({searchParams}:{searchParams:Promise<SearchParams>}){
  const params=await searchParams;
  const data=await getExpandedGoogleTesting("pmax",testingPeriodInput(params));
- const query=new URLSearchParams();for(const [key,raw]of Object.entries(params)){const value=Array.isArray(raw)?raw[0]:raw;if(value&&["period","start","end"].includes(key))query.set(key,value);}
+ const query=new URLSearchParams();for(const [key,raw]of Object.entries(params)){const value=Array.isArray(raw)?raw[0]:raw;if(value&&["period","start","end","compare","compareStart","compareEnd"].includes(key))query.set(key,value);}
  const returnTo=`/bluevua/testing/google/pmax${query.size?`?${query}`:""}`;
- return <><TestingPageHeader section="Google PMAX" title="Google PMAX Testing Performance" sharePeriod={data.period} description="Content testing creative performance."/><GoogleExpandedContentSection data={data} returnTo={returnTo}/></>;
+ const readable=await readPmaxReadableReport(data.period);
+ return <PmaxPresentationProvider report={readable}><TestingPageHeader section="Google PMAX" title="Google PMAX Testing Performance" sharePeriod={data.period} description="Content testing creative performance."/><GoogleExpandedContentSection data={data} returnTo={returnTo}/></PmaxPresentationProvider>;
 }

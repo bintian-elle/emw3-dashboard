@@ -16,6 +16,11 @@ export function comparisonRange(range:ComparisonRange,kind:string,latest:string,
  return {start:shift(range.start,-days),end:shift(range.start,-1)};
 }
 export function matchTestingRange(range:ComparisonRange,latest:string){return comparisonPresets.find(preset=>{const candidate=resolveTestingPeriod(latest,{preset});return candidate.start===range.start&&candidate.end===range.end;})??'custom';}
+/** Relative comparisons take precedence over calendar presets in trial controls. */
+export function matchComparisonRange(current:ComparisonRange,previous:ComparisonRange,latest:string){
+ for(const kind of ['previousPeriod','previousYear']){const range=comparisonRange(current,kind,latest);if(range.start===previous.start&&range.end===previous.end)return kind;}
+ return matchTestingRange(previous,latest);
+}
 export function periodOnPeriod(current:number|null|undefined,previous:number|null|undefined){
  return current==null||previous==null||!Number.isFinite(current)||!Number.isFinite(previous)||previous===0?null:(current-previous)/Math.abs(previous);
 }

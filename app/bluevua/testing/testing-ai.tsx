@@ -26,6 +26,7 @@ import {NovaAiComposer} from "./nova-ai-composer";
 import {NovaReportingPeriodSelect,NovaReportingPeriodCustom,novaReportingPeriods} from "./nova-reporting-period";
 import {TestingChannelBrand} from "./testing-channel-brand";
 import nova from "./nova-chat.module.css";
+import {CampaignScopeMenu} from "./campaign-scope-menu";
 import {useSiteLanguage} from "@/components/application/dashboard/site-language-provider";
 import {resolveTestingPeriod,testingLatestCompleteDate} from "@/lib/testing-period";
 import {redditSinceStartLabel,redditSinceStartPreset} from "@/lib/reddit-testing-period";
@@ -62,11 +63,11 @@ export function useTestingPageAiScope(){
 }
 /** The reporting period actually rendered on this page, independent of the AI conversation. */
 export function useTestingPageShareScope(){return useContext(Context)?.pageScope;}
-export function useTestingAiScope(channel:string|undefined,campaign:string|undefined,period:ReadoutPeriod|null|undefined){
+export function useTestingAiScope(channel:string|undefined,campaign:string|undefined,period:ReadoutPeriod|null|undefined,pageContext?:string){
  const context=useContext(Context),id=useId(),page=usePathname();
  const mapped=channel?.startsWith('reddit')?'reddit':channel as TestingChatChannel|undefined;
  const normalizedPeriod=mapped==='social'?{label:'Lifetime snapshot',start:'2026-09-01',end:new Date().toISOString().slice(0,10)}:period;
- const serialized=JSON.stringify(normalizedPeriod&&mapped?{channel:normalizedPeriod.concludedTestId?'concluded':mapped,...(campaign&&campaign!=='overview'?{campaign}:{}),period:normalizedPeriod,page}:null);
+ const serialized=JSON.stringify(normalizedPeriod&&mapped?{channel:normalizedPeriod.concludedTestId?'concluded':mapped,...(campaign&&campaign!=='overview'?{campaign}:{}),period:normalizedPeriod,page,...(pageContext?{pageContext}:{})}:null);
  const register=context?.register;
  useEffect(()=>{const scope=JSON.parse(serialized) as TestingChatScope|null;if(scope&&register)return register(id,scope);},[serialized,register,id]);
  return {open:()=>{const scope=JSON.parse(serialized) as TestingChatScope|null;context?.openScope(scope??undefined);},ask:(question:string)=>{const scope=JSON.parse(serialized) as TestingChatScope|null;return context&&scope?context.askScope(scope,question):Promise.resolve(false);},canAsk:!!serialized&&serialized!=="null"&&(context?.canAsk??false),available:!!context,isOpen:context?.isOpen??false};
@@ -175,9 +176,7 @@ export function TestingAiProvider({owner,children}:{owner:string;children:ReactN
  const scopePicker=(comparison:boolean)=>{
   const sourcePeriod=current.channel==='social'||current.channel==='concluded'?basePeriod:current.period;
   const selectedPeriod={label:sourcePeriod.label,start:sourcePeriod.start,end:sourcePeriod.end};
-  return <DropdownMenu.Root>
-   <DropdownMenu.Trigger asChild><NovaButton type="button" variant="outline" size="sm" className={comparison?nova.addComparison:nova.changeScope} aria-label={comparison?t('Add comparison','添加对比对象'):t('Change discussion','切换讨论对象')}>{comparison?<Plus aria-hidden/>:<ChevronsUpDown aria-hidden/>}{comparison?t('Add comparison','添加对比对象'):t('Change discussion','切换讨论对象')}</NovaButton></DropdownMenu.Trigger>
-   <DropdownMenu.Portal><DropdownMenu.Content className={nova.dropdown} sideOffset={4} align="end">
+  return <CampaignScopeMenu label={comparison?t('Add comparison','添加对比对象'):t('Change discussion','切换讨论对象')} trigger={<NovaButton type="button" variant="outline" size="sm" className={comparison?nova.addComparison:nova.changeScope} aria-label={comparison?t('Add comparison','添加对比对象'):t('Change discussion','切换讨论对象')}>{comparison?<Plus aria-hidden/>:<ChevronsUpDown aria-hidden/>}{comparison?t('Add comparison','添加对比对象'):t('Change discussion','切换讨论对象')}</NovaButton>}>
     {!comparison&&<><DropdownMenu.Item className={nova.dropdownItem} role="menuitemradio" aria-checked={current.channel==='overview'&&!current.campaign} onSelect={()=>choose({channel:'overview',period:selectedPeriod,page:pathname})}><LayoutDashboard aria-hidden/><span>Overview</span>{current.channel==='overview'&&!current.campaign&&<Check aria-hidden/>}</DropdownMenu.Item><DropdownMenu.Separator className={nova.dropdownSeparator}/></>}
     {scopeChannels.map(channel=>{
      const entries=options.filter(entry=>entry.channel===channel&&(!comparison||(entry.campaign!==current.campaign&&!comparisons.includes(entry.campaign))));
@@ -188,8 +187,7 @@ export function TestingAiProvider({owner,children}:{owner:string;children:ReactN
       </DropdownMenu.SubContent></DropdownMenu.Portal>
      </DropdownMenu.Sub>;
     })}
-   </DropdownMenu.Content></DropdownMenu.Portal>
-  </DropdownMenu.Root>;
+   </CampaignScopeMenu>;
  };
  const periodChoices=current.channel==='social'||current.channel==='concluded'?[['lifetime',t('Lifetime','全周期')] as const]:pageChannel==='reddit'&&current.channel==='reddit'?[[redditSinceStartPreset,redditSinceStartLabel] as const,...novaReportingPeriods]:novaReportingPeriods;
  const latestAiDate=testingLatestCompleteDate();

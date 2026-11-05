@@ -62,3 +62,8 @@ next-env.d.ts
 
 # Local Next.js development build output
 /private/tmp/emw3-nova-dev/
+
+# Local staging readability trial build
+/.next-readable-staging/
+
+/.next-readable-input/

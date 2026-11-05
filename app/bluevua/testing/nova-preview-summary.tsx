@@ -1,4 +1,6 @@
 'use client';
+import {usePmaxPresentation} from './insight-presentation';
+import {NovaChannelReport} from './nova-subpage-header';
 import {testingInsightPeriodLabel} from '@/lib/testing-insight-period-label';
 
 import {useEffect,useId,useLayoutEffect,useRef,useState,type MouseEvent} from 'react';
@@ -29,7 +31,7 @@ type Preview={manifest:PromptPreviewManifest;reports:PromptPreviewReport[];statu
 const plugins={cjk,code,math,mermaid};
 
 /** Uses the existing saved insights APIs and AI scope, with isolated Nova UI. */
-export function NovaOverviewSummary({period,overviewMetrics}:{period:ReadoutPeriod;overviewMetrics:OverviewHeadlineMetrics}){
+function SavedOverviewSummary({period,overviewMetrics}:{period:ReadoutPeriod;overviewMetrics:OverviewHeadlineMetrics}){
  const {language}=useSiteLanguage(),zh=language==='zh',query=useSearchParams();
  const chat=useTestingAiScope('overview','overview',period),detailsId=useId(),bottomId=useId();
  const [preview,setPreview]=useState<{key:string;value:Preview|null}>({key:'',value:null});
@@ -88,4 +90,9 @@ export function NovaOverviewSummary({period,overviewMetrics}:{period:ReadoutPeri
   </div>
   {expanded&&<div id={detailsId} className={styles.readoutDetails}>{sections.map((section,index)=><section key={`${section.title}:${index}`} id={`${detailsId}-${index}`} className={styles.readoutDetail}><h3>{section.title}</h3><div className={styles.markdown}><Streamdown plugins={plugins} isAnimating={false} controls={{table:false}} tableMaxHeight={0}>{conclusionOnlyMarkdown(section.markdown)}</Streamdown></div></section>)}<div className={styles.readoutBottom}><NovaButton type="button" variant="outline" aria-controls={detailsId} aria-expanded onClick={hide}>{zh?'收起完整分析':'Hide full analysis'}<ChevronUp aria-hidden="true"/></NovaButton><div id={bottomId} className={styles.questionBottom}/></div></div>}
  </NovaCard>;
+}
+
+export function NovaOverviewSummary(props:{period:ReadoutPeriod;overviewMetrics:OverviewHeadlineMetrics}){
+ const integrated=usePmaxPresentation();
+ return integrated?<NovaChannelReport overviewMetrics={props.overviewMetrics}/>:<SavedOverviewSummary {...props}/>;
 }
