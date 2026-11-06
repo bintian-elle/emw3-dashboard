@@ -25,7 +25,7 @@ export function validateInsightPresentation(value:InsightPresentation,packet:Pic
  for(const block of value.blocks){
   if(!block.id||ids.has(block.id)||!scopes.has(block.scope)||!block.title?.trim()||!['highlight','chart','creative','actions','text','document'].includes(block.type))throw Error('Invalid presentation scope or block identity');ids.add(block.id);
   if(block.type==='document'){
-   if(value.schema_version!=='insight-presentation-v3'||!block.html?.trim()||block.html.length>250000||!block.design_reason?.trim()||!Array.isArray(block.dataset_refs)||!Array.isArray(block.media_keys))throw Error('Invalid free composition');
+   if(value.schema_version!=='insight-presentation-v3'||!block.html?.trim()||block.html.length>250000||!Array.isArray(block.dataset_refs)||!Array.isArray(block.media_keys))throw Error('Invalid free composition');
    if(/<\s*(script|iframe|object|embed|form|base|meta|link)\b|\bon[a-z]+\s*=|javascript\s*:|@import|url\s*\(/i.test(block.html))throw Error('Executable or externally loaded composition');
    for(const ref of block.dataset_refs)if(!packet.datasets[ref]||block.scope!=='channel'&&!ref.startsWith(block.scope+'.')&&!packet.datasets[ref].scopes?.includes(block.scope))throw Error('Unverified composition data');
    const chartIds=new Set<string>();

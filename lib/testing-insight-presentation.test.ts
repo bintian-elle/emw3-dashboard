@@ -27,6 +27,11 @@ test('free compositions preserve directions and may combine verified periods wit
  const bad=structuredClone(value);bad.blocks[0].dataset_refs=['invented'];assert.throws(()=>validateInsightPresentation(bad,{...source,sections}));
 });
 
+test('free compositions do not require a separate design reason',()=>{
+ const value=structuredReport();value.schema_version='insight-presentation-v3';value.blocks=value.blocks.map(block=>({...block,type:'document' as const,html:'<details><summary>依据</summary><p>数据与表达依据</p></details>',dataset_refs:[],media_keys:[]}));
+ assert.equal(validateInsightPresentation(value,{...source,sections}),value);
+});
+
 test('PoP distinguishes increase, decline, unchanged, zero baseline and missing data',()=>{
  assert.equal(presentationPop(57.74,48.8),'PoP ↑ +18.3%');assert.equal(presentationPop(108.2,340.5),'PoP ↓ −68.2%');assert.equal(presentationPop(1,1),'PoP 持平');assert.equal(presentationPop(1,0),'PoP 前期为 0');assert.equal(presentationPop(1,null),'PoP 不可用');
 });

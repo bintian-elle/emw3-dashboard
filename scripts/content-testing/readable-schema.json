@@ -83,9 +83,6 @@
                       "type": "string"
                     }
                   },
-                  "design_reason": {
-                    "type": "string"
-                  },
                   "charts": {
                     "type": "array",
                     "items": {
@@ -163,7 +160,6 @@
                   "html",
                   "dataset_refs",
                   "media_keys",
-                  "design_reason",
                   "charts"
                 ]
               }
@@ -284,9 +280,6 @@
                       "type": "string"
                     }
                   },
-                  "design_reason": {
-                    "type": "string"
-                  },
                   "charts": {
                     "type": "array",
                     "items": {
@@ -364,7 +357,6 @@
                   "html",
                   "dataset_refs",
                   "media_keys",
-                  "design_reason",
                   "charts"
                 ]
               }
