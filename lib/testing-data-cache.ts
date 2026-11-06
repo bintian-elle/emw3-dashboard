@@ -35,12 +35,12 @@ async function loadScope<T>(channel:TestingDataChannel,scope:string,livePublishe
  const directory=stagingDirectory(),seedKey=JSON.stringify([channel,scope]);
  // In staging, a saved preset and a custom range may identify the exact same dates.
  // Reuse only an exact date match; never substitute a nearby reporting period.
- const equivalent=directory?equivalentTestingDataScopes(scope):[scope];
+ const equivalent=equivalentTestingDataScopes(scope);
  if(directory&&!livePublished&&!memory.seeded.has(seedKey)){memory.seeded.add(seedKey);for(const candidate of equivalent){const seed=await readStagingDataSnapshot<T>(directory,channel,candidate);if(seed)return seed;}}
  const key=JSON.stringify([channel,scope]),existing=memory.loads.get(key);
  if(existing)return existing as Promise<TestingDataSnapshot<T>|null>;
  const request=(async()=>{
-  const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 and scope_key=any($2::text[]) order by array_position($2::text[],scope_key) limit 1',[channel,equivalent]);
+  const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 and scope_key=any($2::text[]) order by updated_at desc,array_position($2::text[],scope_key) limit 1',[channel,equivalent]);
   const row=result.rows[0];return row?{payload:(channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
  })();
  memory.loads.set(key,request);
