@@ -41,7 +41,7 @@ async function loadScope<T>(channel:TestingDataChannel,scope:string,livePublishe
  if(existing)return existing as Promise<TestingDataSnapshot<T>|null>;
  const request=(async()=>{
   const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 and scope_key=any($2::text[]) order by array_position($2::text[],scope_key) limit 1',[channel,equivalent]);
-  const row=result.rows[0];return row?{payload:(stagingDirectory()&&channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
+  const row=result.rows[0];return row?{payload:(channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
  })();
  memory.loads.set(key,request);
  void request.finally(()=>{if(memory.loads.get(key)===request)memory.loads.delete(key);}).catch(()=>{});
@@ -50,7 +50,7 @@ async function loadScope<T>(channel:TestingDataChannel,scope:string,livePublishe
 async function loadLatest<T>(channel:TestingDataChannel,livePublished=false):Promise<TestingDataSnapshot<T>|null>{
  const directory=stagingDirectory(),seedKey='latest:'+channel;if(directory&&!livePublished&&!memory.seeded.has(seedKey)){memory.seeded.add(seedKey);const seed=await readStagingDataSnapshot<T>(directory,channel,'latest',true);if(seed)return seed;}
  const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 order by updated_at desc limit 1',[channel]);
- const row=result.rows[0];return row?{payload:(stagingDirectory()&&channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
+ const row=result.rows[0];return row?{payload:(channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
 }
 
 /** Return process memory immediately; cold misses wait for the shared snapshot. */
