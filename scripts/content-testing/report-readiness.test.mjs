@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {missingUpdatedChannels,refreshRecords} from './report-readiness.mjs';
+const channels=['google-search','google-pmax','google-demand-gen','meta','reddit','social-media','edm'];
+test('requires successful source updates today for every channel',()=>{const records=Object.fromEntries(channels.map(c=>[c,{success:true,updatedAt:'2026-11-06T11:00:00Z'}]));assert.deepEqual(missingUpdatedChannels(records,'2026-11-06'),[]);records.meta.updatedAt='2026-11-05T23:59:59Z';records.edm.success=false;delete records.reddit;assert.deepEqual(missingUpdatedChannels(records,'2026-11-06'),['meta','reddit','edm']);});
+test('does not accept invalid or future timestamps as evidence',()=>{const records=Object.fromEntries(channels.map(c=>[c,{success:true,updatedAt:'2026-11-06T12:31:00Z'}]));assert.deepEqual(missingUpdatedChannels(records,'2026-11-06','2026-11-06T12:30:00Z'),channels);});
+test('maps completed dashboard refreshes to all channels and rejects missing scopes',()=>{const item={success:true,updatedAt:'2026-11-06T11:00:00Z'};const data={items:{'meta:lastWeek':item,'reddit:lastWeek':item,'edm:lastWeek':item,'social:all':item}},google={items:{'google:all':item}};const records=refreshRecords(data,google);assert.deepEqual(missingUpdatedChannels(records,'2026-11-06','2026-11-06T12:30:00Z'),[]);delete data.items['meta:lastWeek'];assert.deepEqual(missingUpdatedChannels(refreshRecords(data,google),'2026-11-06','2026-11-06T12:30:00Z'),['meta']);});

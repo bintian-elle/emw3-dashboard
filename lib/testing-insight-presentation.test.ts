@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {validateInsightPresentation,insightPresentationGroups,presentationDocumentHtml,presentationPop,type InsightPresentation} from './testing-insight-presentation.ts';
+import {validateInsightPresentation,insightPresentationGroups,presentationDocumentHtml,presentationPop,canonicalInsightScope,type InsightPresentation} from './testing-insight-presentation.ts';
 test('independently generated scopes keep their own styles',()=>{
  const presentation={schema_version:'insight-presentation-v3',title:'Test',summary:'Test',styles_per_scope:true,blocks:[{id:'a',scope:'A',type:'document',html:'<style>.card{color:red}</style><div>A</div>'},{id:'b',scope:'B',type:'document',html:'<style>.card{color:blue}</style><div>B</div>'}]} as unknown as InsightPresentation;
  const html=presentationDocumentHtml(presentation,presentation.blocks[0]);assert.match(html,/color:red/);assert.doesNotMatch(html,/color:blue/);
@@ -32,6 +32,13 @@ test('free compositions do not require a separate design reason',()=>{
  assert.equal(validateInsightPresentation(value,{...source,sections}),value);
 });
 
+test('visual summaries may use verified media and reject unsafe content',()=>{
+ const value=structuredReport();value.summary_html='<p><strong>Decision</strong></p>';
+ assert.equal(validateInsightPresentation(value,{...source,sections}),value);
+ value.summary_html='<script>alert(1)</script>';assert.throws(()=>validateInsightPresentation(value,{...source,sections}));
+ value.summary_html='<img src="https://unverified.example/image">';assert.throws(()=>validateInsightPresentation(value,{...source,sections}));
+});
+
 test('PoP distinguishes increase, decline, unchanged, zero baseline and missing data',()=>{
  assert.equal(presentationPop(57.74,48.8),'PoP ↑ +18.3%');assert.equal(presentationPop(108.2,340.5),'PoP ↓ −68.2%');assert.equal(presentationPop(1,1),'PoP 持平');assert.equal(presentationPop(1,0),'PoP 前期为 0');assert.equal(presentationPop(1,null),'PoP 不可用');
 });
@@ -56,12 +63,13 @@ test('isolated report blocks retain shared AI layout and annotation CSS',()=>{
  const html=presentationDocumentHtml(value,later);assert.ok(html.startsWith('<div><style>'));assert.ok(html.includes('.mark{position:absolute}'));assert.ok(html.includes(later.html));assert.equal((html.match(/<style>/g)||[]).length,1);
 });
 
-test('allows registered local creative links while rejecting unregistered or unsafe links',()=>{
+test('allows new local and external links without a source allowlist while rejecting unsafe links',()=>{
  const allowed='/bluevua/testing/google/pmax/6760717525';
  assert.ok(insightSourceUrls({url:allowed}).has(allowed));
  const value=structuredReport();value.schema_version='insight-presentation-v3';value.blocks=value.blocks.filter(b=>b.scope==='channel').map(b=>({...b,type:'document' as const,html:`<a href="${allowed}">Creative</a>`,dataset_refs:[],media_keys:[],design_reason:'Registered source'}));
  const packet={...source,analysis:{...source.analysis,campaigns:[]},sections,source_urls:[allowed]};assert.equal(validateInsightPresentation(value,packet),value);
- for(const href of ['/bluevua/testing/google/pmax/unregistered','//evil.test/path','/\\evil.test']){const bad=structuredClone(value);bad.blocks[0].html=`<a href="${href}">Creative</a>`;assert.throws(()=>validateInsightPresentation(bad,packet));}
+ for(const href of ['/bluevua/testing/google/pmax/new-group','https://bluevua.com/','https://new-source.example/research?topic=water&amp;format=video']){const fresh=structuredClone(value);fresh.blocks[0].html=`<a href="${href}">New source</a>`;fresh.summary_html=`<a href="${href}">Source</a>`;assert.equal(validateInsightPresentation(fresh,packet),fresh);}
+ for(const href of ['//evil.test/path','/\\evil.test','javascript:alert(1)','data:text/html,unsafe']){const bad=structuredClone(value);bad.blocks[0].html=`<a href="${href}">Creative</a>`;assert.throws(()=>validateInsightPresentation(bad,packet));}
 });
 
 test('shares and saves are comparable counts without a forced second axis',()=>{const value=report();value.blocks[0].chart!.y_keys=['shares','saves'];const packet={...source,datasets:{'channel.daily':{id:'channel.daily',xKey:'date',columns:{date:'category',shares:'shares',saves:'saves'},rows:[{date:'2026-10-27',shares:2,saves:3}]}}};assert.equal(validateInsightPresentation(value,packet),value);});
@@ -70,4 +78,18 @@ test('a dataset explicitly verified for a Campaign can support its chart',()=>{
  const packet={...source,datasets:{'channel.daily':{...source.datasets['channel.daily'],scopes:['channel','Campaign A']}}};
  assert.equal(validateInsightPresentation(value,packet),value);
  const wrong={...packet,datasets:{'channel.daily':{...packet.datasets['channel.daily'],scopes:['channel']}}};assert.throws(()=>validateInsightPresentation(value,wrong));
+});
+
+test('cached media URLs are identified by media key rather than the cache version query',()=>{
+ const value=structuredReport();value.schema_version='insight-presentation-v3';value.blocks=value.blocks.map(b=>({...b,type:'document' as const,html:'<img src="/api/testing/presentation/media/frame?v=another-cache-version"/>',dataset_refs:[],media_keys:['frame']}));
+ assert.equal(validateInsightPresentation(value,{...source,sections}),value);
+});
+
+
+test('known display names map to stable report scopes without guessing other campaigns',()=>{
+ const tests=[{test_id:'social-selected-posts',campaign_name:'Selected Instagram posts'}];
+ assert.equal(canonicalInsightScope('Selected Instagram posts',tests),'social-selected-posts');
+ assert.equal(canonicalInsightScope('channel',tests),'channel');
+ assert.equal(canonicalInsightScope('Other campaign',tests),'Other campaign');
+ assert.equal(canonicalInsightScope('Shared',[{test_id:'a',campaign_name:'Shared'},{test_id:'b',campaign_name:'Shared'}]),'Shared');
 });

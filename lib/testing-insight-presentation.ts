@@ -1,19 +1,45 @@
 export type PresentationDataset={id:string;scopes?:string[];labels?:Record<string,string>;xKey:string;columns:Record<string,string>;rows:Record<string,string|number|null>[]};
-export type PresentationMedia={key:string;asset_id:string;name:string;kind:'frame'|'image';timestamp_seconds:number|null;width:number;height:number;file:string;sha256:string;url?:string;campaigns:string[]};
+export type PresentationMedia={key:string;asset_id:string;name:string;kind:'frame'|'image'|'video';timestamp_seconds:number|null;width:number;height:number;file:string;sha256:string;url?:string;campaigns:string[]};
 export type PresentationMarker={x:number;y:number;width:number;height:number;label:string;observation:string;recommendation:string;confidence:string};
 export type PresentationChart={chart_type:string;dataset_ref:string;x_key:string;y_keys:string[];reason:string;annotations:{category:string;label:string}[]};
 export type PresentationSection={id:string;title:string};
 export type PresentationBlock={id:string;scope:string;section_id?:string;type:'highlight'|'chart'|'creative'|'actions'|'text'|'document';html?:string;charts?:{id:string;spec:PresentationChart}[];dataset_refs?:string[];media_keys?:string[];design_reason?:string;title:string;text:string;chart:PresentationChart|null;creative:{asset_id:string;media_key:string;markers:PresentationMarker[]}|null;actions:{priority:string;target:string;action:string;evidence:string;validation:string}[]};
-export type InsightPresentation={schema_version:'insight-presentation-v1'|'insight-presentation-v2'|'insight-presentation-v3';title:string;summary:string;sections?:PresentationSection[];styles_per_scope?:boolean;blocks:PresentationBlock[]};
-export type PmaxReadableReport={run_id:string;media_url_base?:string;channel?:string;currency?:string|null;language?:string;scope?:string;source_urls?:string[];period:{start:string;end:string};comparison:{start:string;end:string};totals:Record<string,number|null>;comparison_totals?:Record<string,number|null>;datasets:Record<string,PresentationDataset>;media:PresentationMedia[];presentation:InsightPresentation;analysis:{executive_summary:string;campaigns:{test_id:string;summary:string;detail_markdown:string}[]}};
+export type InsightPresentation={schema_version:'insight-presentation-v1'|'insight-presentation-v2'|'insight-presentation-v3';title:string;summary:string;summary_html?:string;sections?:PresentationSection[];styles_per_scope?:boolean;blocks:PresentationBlock[]};
+export type PmaxReadableReport={run_id:string;media_url_base?:string;channel?:string;currency?:string|null;language?:string;scope?:string;source_urls?:string[];period:{start:string;end:string};comparison:{start:string;end:string};totals:Record<string,number|null>;comparison_totals?:Record<string,number|null>;datasets:Record<string,PresentationDataset>;media:PresentationMedia[];presentation:InsightPresentation;analysis:{executive_summary:string;campaigns:{test_id:string;summary:string;summary_html?:string;detail_markdown:string}[]}};
 export const presentationUnit=(unit:string)=>['count','views','reach','impressions','clicks','orders','likes','comments','shares','saves','follows'].includes(unit)?'count':unit;
 export const presentationCharts=['line','area','bar','column','pie','scatter','composed','radar','funnel','treemap'] as const;
 export function insightPresentationGroups(value:InsightPresentation,scope:string){
  const blocks=value.blocks.filter(block=>block.scope===scope);
  return value.schema_version!=='insight-presentation-v1'?(value.sections??[]).map(section=>({...section,blocks:blocks.filter(block=>block.section_id===section.id)})):blocks.map(block=>({id:block.id,title:block.title,blocks:[block]}));
 }
+/** Display names are aliases only when the supplied test inventory identifies exactly one match. */
+export function canonicalInsightScope(scope:string,tests:readonly {test_id:string;campaign_name?:string}[]){
+ if(scope==='channel'||tests.some(test=>test.test_id===scope))return scope;
+ const matches=tests.filter(test=>test.campaign_name===scope);
+ return matches.length===1?matches[0].test_id:scope;
+}
+/** The route serves immutable report media by key; query strings only control browser caching. */
+function presentationImageKey(src:string){return /^\/api\/testing\/presentation\/media\/([a-zA-Z0-9-]{1,100})(?:\?[^\s#]*)?$/.exec(src)?.[1];}
+/** Navigation safety is independent of whether an AI-discovered source was pre-registered. */
+function validatePresentationLinks(html:string){
+ for(const match of html.matchAll(/\bhref\s*=\s*["']([^"']+)["']/gi)){
+  const href=match[1].replaceAll('&amp;','&');
+  if(/[\u0000-\u0020\u007f\\]/.test(href)||href.startsWith('//'))throw Error('Unsafe presentation link');
+  try{
+   const url=new URL(href,'https://dashboard.invalid');
+   if(!['https:','http:','mailto:','tel:'].includes(url.protocol))throw Error('Unsafe presentation link');
+  }catch{throw Error('Unsafe presentation link');}
+ }
+}
 export function validateInsightPresentation(value:InsightPresentation,packet:Pick<PmaxReadableReport,'datasets'|'media'|'analysis'>&{sections?:PresentationSection[];source_urls?:string[]}){
  if(!['insight-presentation-v1','insight-presentation-v2','insight-presentation-v3'].includes(value.schema_version)||!value.title?.trim()||!value.summary?.trim()||!Array.isArray(value.blocks)||!value.blocks.length||value.blocks.length>60)throw Error('Invalid presentation envelope');
+ const validateSummary=(html:string|undefined,scope:string)=>{
+  if(!html)return;
+  if(html.length>250000||/<\s*(script|iframe|object|embed|form|base|meta|link)\b|\bon[a-z]+\s*=|javascript\s*:|@import|url\s*\(|data-insight-chart/i.test(html))throw Error('Unsafe summary composition');
+  for(const match of html.matchAll(/\bsrc\s*=\s*["']([^"']+)["']/gi))if(!packet.media.some(m=>(scope==='channel'||m.campaigns.includes(scope))&&presentationImageKey(match[1])===m.key))throw Error('Unverified summary image');
+  validatePresentationLinks(html);
+ };
+ validateSummary(value.summary_html,'channel');for(const campaign of packet.analysis.campaigns)validateSummary(campaign.summary_html,campaign.test_id);
  const scopes=new Set(['channel',...packet.analysis.campaigns.map(c=>c.test_id)]),ids=new Set<string>();
  if(value.schema_version!=='insight-presentation-v1'){
   if(!packet.sections?.length||value.sections?.length!==packet.sections.length||packet.sections.some((section,index)=>section.id!==value.sections?.[index]?.id||!value.sections?.[index]?.title?.trim())||new Set(packet.sections.map(section=>section.id)).size!==packet.sections.length)throw Error('Presentation changed the authoritative chapter structure');
@@ -35,8 +61,8 @@ export function validateInsightPresentation(value:InsightPresentation,packet:Pic
     validateInsightPresentation({schema_version:'insight-presentation-v1',title:value.title,summary:value.summary,blocks:[{...block,type:'chart',chart:item.spec}]},packet);
    }
    for(const key of block.media_keys)if(!packet.media.some(m=>m.key===key&&(block.scope==='channel'||m.campaigns.includes(block.scope))))throw Error('Unverified composition media');
-   for(const match of block.html.matchAll(/\bsrc\s*=\s*["']([^"']+)["']/gi))if(!packet.media.some(m=>block.media_keys!.includes(m.key)&&match[1]===`/api/testing/presentation/media/${m.key}?v=${m.sha256.slice(0,12)}`))throw Error('Unverified composition image');
-   for(const match of block.html.matchAll(/\bhref\s*=\s*["']([^"']+)["']/gi)){const href=match[1].replaceAll('&amp;','&');if(href.startsWith('#'))continue;if(/^\/bluevua\/testing\/[a-zA-Z0-9_/-]+$/.test(href)&&!href.includes('//')&&packet.source_urls?.includes(href))continue;const url=new URL(href);if(url.protocol!=='https:'||!(packet.source_urls?.includes(href)||packet.media.some(m=>m.url&&new URL(m.url).origin===url.origin&&new URL(m.url).pathname===url.pathname&&new URL(m.url).searchParams.get('v')===url.searchParams.get('v'))))throw Error('Unverified composition link');}
+   for(const match of block.html.matchAll(/\bsrc\s*=\s*["']([^"']+)["']/gi))if(!packet.media.some(m=>block.media_keys!.includes(m.key)&&presentationImageKey(match[1])===m.key))throw Error('Unverified composition image');
+   validatePresentationLinks(block.html);
   }
   if(block.type==='chart'){
    const chart=block.chart,dataset=chart&&packet.datasets[chart.dataset_ref];

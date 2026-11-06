@@ -1,7 +1,6 @@
 import type {OverviewInsightSource} from './testing-overview-trial-sources.ts';
 import {validateTrialVisualResult,type TrialVisualResult} from './testing-prompt-trial-report.ts';
 export const testingPromptCatalog=[
- {id:'master',file:'prompts/content-testing/master.md',name:'Master rules',zh:'总规则',uses:['All channel analysis','Overview'],stage:'analysis'},
  {id:'overview',file:'prompts/content-testing/overview.md',name:'Overview',zh:'Overview',uses:['Executive Summary','Cross-channel recommendations'],stage:'summary'},
  {id:'readability',file:'prompts/content-testing/readability.md',name:'Readability',zh:'表达与可读性',uses:['Channel report presentation','Campaign detail presentation'],stage:'presentation'},
  {id:'google-search',file:'prompts/content-testing/google-search.md',name:'Google Search',zh:'Google Search',uses:['Search channel insight','Search Campaign insights'],stage:'analysis'},
@@ -11,7 +10,6 @@ export const testingPromptCatalog=[
  {id:'reddit',file:'prompts/content-testing/reddit.md',name:'Reddit',zh:'Reddit',uses:['Reddit period insight','Reddit lifetime insight'],stage:'analysis'},
  {id:'edm',file:'prompts/content-testing/edm.md',name:'EDM',zh:'EDM',uses:['EDM channel insight','Email Campaign insights'],stage:'analysis'},
  {id:'social-media',file:'prompts/content-testing/social-media.md',name:'Social Media',zh:'Social Media',uses:['Social Media lifetime insight'],stage:'analysis'},
- {id:'manual',file:'prompts/content-testing/manual.md',name:'Display and naming rules',zh:'展示与命名规则',uses:['All Testing insight text','Creative names and citations'],stage:'presentation'},
  {id:'translation',file:'prompts/insights/content-testing-translation.md',name:'Chinese translation',zh:'中文翻译',uses:['Chinese translations of published insights'],stage:'translation'},
  {id:'ask-ai',file:'prompts/ask-ai/testing.md',name:'Ask AI',zh:'Ask AI',uses:['Testing Ask AI conversations'],stage:'conversation'},
 ] as const;
@@ -31,12 +29,11 @@ export function validatePromptRun(value:unknown){
  if(!body||!['analysis','readability'].includes(String(body.mode))||!validDate(body.start)||!validDate(body.end)||String(body.start)>String(body.end)||typeof body.campaign!=='string'||body.campaign.length>200||!['en','zh'].includes(String(body.language)))throw Error('Choose a valid Campaign, date range and language.');
  if((Date.parse(String(body.end))-Date.parse(String(body.start)))/86400000>365)throw Error('Choose a range of at most one year.');
  const selectedPrompt=promptId(body.prompt??'google-search');
- const channel=String(body.channel??(['master','manual','readability','translation','ask-ai'].includes(selectedPrompt)?'google-search':selectedPrompt));
+ const channel=String(body.channel??(['readability','translation','ask-ai'].includes(selectedPrompt)?'google-search':selectedPrompt));
  if(!['google-search','google-pmax','google-demand-gen','meta','reddit','edm','social-media','overview'].includes(channel))throw Error('Choose a supported channel.');
  if((body.compareStart!=null||body.compareEnd!=null)&&(!validDate(body.compareStart)||!validDate(body.compareEnd)||String(body.compareStart)>String(body.compareEnd)))throw Error('Choose valid comparison dates.');
- if(['master','manual'].includes(selectedPrompt))throw Error('Legacy prompts cannot be used for new trials.');
  const versions=body.versions as Record<string,unknown>;if(!versions||![...new Set([channel,'readability',selectedPrompt])].every(key=>typeof versions[key]==='string'&&/^[-a-z0-9]{1,80}$/.test(versions[key] as string)))throw Error('Save and select the prompt versions first.');
- if(!['master','manual','readability','translation','ask-ai'].includes(selectedPrompt)&&channel!==selectedPrompt)throw Error('Prompt and channel must match.');
+ if(!['readability','translation','ask-ai'].includes(selectedPrompt)&&channel!==selectedPrompt)throw Error('Prompt and channel must match.');
  if((body.mode==='readability'||selectedPrompt==='translation'||body.baseline)&&(typeof body.baseline!=='string'||!/^[-a-f0-9]{36}$/.test(body.baseline)))throw Error('Choose a completed analysis to restyle.');
  return {channel,prompt:selectedPrompt,mode:body.mode as 'analysis'|'readability',start:body.start as string,end:body.end as string,campaign:body.campaign,language:body.language as 'en'|'zh',versions:versions as Record<string,string>,comparison:validDate(body.compareStart)&&validDate(body.compareEnd)&&String(body.compareStart)<=String(body.compareEnd)?{start:body.compareStart as string,end:body.compareEnd as string}:null,baseline:typeof body.baseline==='string'&&body.baseline?body.baseline:null};
 }

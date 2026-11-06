@@ -5,15 +5,20 @@ import { NextResponse } from "next/server";
 import { currentSiteUser } from "@/lib/current-site-user";
 import {validTestingReadoutKeys} from "@/lib/testing-readout-keys";
 import {readTestingPageReadouts,reconcileExpectedTestingPageReadouts} from "@/lib/testing-readout-page-cache";
+import {usesUnifiedReports} from "@/lib/testing-report-environment";
 
 export async function GET(request: Request) {
   const user = await currentSiteUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const rawKeys = new URL(request.url).searchParams.getAll("key");
-  const keys = validTestingReadoutKeys(rawKeys);
+  let keys = validTestingReadoutKeys(rawKeys);
   if (!keys) {
     return NextResponse.json({ error: "Invalid readout cache key." }, { status: 400 });
+  }
+  if(usesUnifiedReports()){
+    keys=keys.filter(key=>key.startsWith('period:concluded:')||key.startsWith('period:manual-'));
+    if(!keys.length)return NextResponse.json({records:[]},{headers:{"Cache-Control":"private, no-store"}});
   }
 
   // A local preview is file-backed: never publish or translate shared results here.

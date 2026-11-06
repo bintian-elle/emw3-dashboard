@@ -39,6 +39,11 @@ class StagedGenerationTests(unittest.TestCase):
         self.job['frozen_input']['campaigns'] = []
         self.assertEqual(generation_plan(self.job), [('single', None)])
 
+    def test_temporary_campaign_runs_as_one_stage(self):
+        self.job['_generation_stage'] = {'kind': 'campaign', 'campaign': 'A'}
+        self.job['frozen_input']['campaigns'] = ['A']
+        self.assertEqual(generation_plan(self.job), [('single', None)])
+
     def test_channel_receives_unmodified_completed_campaign_results(self):
         first, second = report('A', 'first'), report('B', 'second')
         stage = stage_input(self.job, 'channel', None, [first, second])

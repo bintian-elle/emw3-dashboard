@@ -2,7 +2,8 @@ import 'server-only';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {validateInsightPresentation,type PmaxReadableReport,type InsightPresentation,type PresentationMedia} from './testing-insight-presentation';
-export function localPresentationDirectory(){return process.env.NODE_ENV==='development'&&process.env.DEPLOYMENT_ENV==='staging'?process.env.CONTENT_TESTING_PRESENTATION_DIR:null;}
+import {usesUnifiedLocalReports} from './testing-report-environment';
+export function localPresentationDirectory(){return !usesUnifiedLocalReports()&&process.env.NODE_ENV==='development'&&process.env.DEPLOYMENT_ENV==='staging'?process.env.CONTENT_TESTING_PRESENTATION_DIR:null;}
 export async function readPmaxReadableReport(period:{start:string;end:string}):Promise<PmaxReadableReport|null>{
  const directory=localPresentationDirectory();if(!directory)return null;
  try{

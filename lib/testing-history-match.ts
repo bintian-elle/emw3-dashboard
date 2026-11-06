@@ -1,5 +1,6 @@
 export type HistoryFrequency='daily'|'weekly'|'monthly';
-export type HistoryReport={title:string;summary:string;sections:Array<{title:string;markdown:string}>;generatedAt:string|null};
+import type {PmaxReadableReport} from './testing-insight-presentation';
+export type HistoryReport={title:string;summary:string;sections:Array<{title:string;markdown:string}>;generatedAt:string|null;visual?:PmaxReadableReport;visualScope?:string};
 type Row={period_label:string|null;period_start:string|null;period_end:string|null;payload:unknown;generated_at?:string|Date|null};
 type Report={report_id?:string;title?:string;executive_summary?:string;sections?:Array<{title:string;markdown:string}>;campaigns?:Array<{test_id:string;summary:string;detail_markdown?:string}>};
 export function matchHistoryReport(rows:Row[],frequency:HistoryFrequency,start:string,end:string,scope:string,campaign?:string):HistoryReport|null{

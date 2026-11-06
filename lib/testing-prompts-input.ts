@@ -56,7 +56,7 @@ export async function capturePromptTrial(input:TrialInput):Promise<unknown>{
  if(input.channel!=='overview')return withVisualContext(await channelPacket(input.channel,input),input);
  const packets=await Promise.allSettled(['google-search','google-pmax','google-demand-gen','meta','reddit','edm'].map(channel=>channelPacket(channel,{...input,channel,campaign:'all'})));
  const channels=packets.flatMap(result=>result.status==='fulfilled'?[result.value]:[]);
- return withVisualContext({channel:'overview',period:{start:input.start,end:input.end},comparison:input.comparison??comparisonRange(input,'previousPeriod',input.end),campaigns:[],channels,instructions:'Synthesize frozen completed_channel_reports and overview_sources; never re-run channel analysis. Cached Dashboard numbers supplement evidence only where available. Exclude Organic from paid totals; missing cached inputs do not authorize fresh API calls or fabricated totals.'},input);
+ return withVisualContext({channel:'overview',period:{start:input.start,end:input.end},comparison:input.comparison??comparisonRange(input,'previousPeriod',input.end),campaigns:[],channels},input);
 }
 
 async function withVisualContext(packet:Awaited<ReturnType<typeof channelPacket>>|Record<string,unknown>,input:TrialInput){

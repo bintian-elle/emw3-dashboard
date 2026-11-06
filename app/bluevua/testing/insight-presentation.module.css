@@ -49,7 +49,8 @@
 @media(max-width:520px) { .embedded .card { scroll-margin-top:17rem; } }
 
 .chapter { min-width:0; scroll-margin-top:10rem; display:grid; gap:1rem; }
-.chapterTitle { margin:0; font-size:1.125rem; font-weight:600; line-height:1.5; padding:1.25rem 1.25rem 0; }
+.chapterTitle { margin:0; font-size:1.25rem; font-weight:700; line-height:1.4; letter-spacing:-.015em; padding:1.25rem 1.25rem 0; display:flex; align-items:center; gap:.625rem; }
+.chapterTitle::before { content:''; flex:none; width:3px; height:1.15em; border-radius:2px; background:var(--nova-foreground,#20242a); }
 .embedded .chapter { gap:0; }
 @media(max-width:520px) { .chapter { scroll-margin-top:17rem; } }
 

@@ -86,7 +86,8 @@ async def run(root,only=None,staged=False,staged_context=False):
     target_thread=routing['thread_id']
     assert target_thread==THREAD,'Unexpected future target; refuse creating or switching to another thread'
     manifest['previous_thread_id']=LEGACY_THREAD;manifest['thread_id']=target_thread;manifest['thread_name']=routing['thread_name'];save(root/'manifest.json',manifest)
-    master=(root/'prompts/master.md').read_text()
+    if not manifest.get('period',{}).get('concludedTestId'):
+        raise RuntimeError('Legacy active-test generation has been retired; use the current channel and readability prompts.')
     state_path=root/'state.json';state=json.loads(state_path.read_text()) if state_path.exists() else {'thread_id':THREAD,'turns':{},'status':'prepared'}
     order=[only] if only else [r['report_id'] for r in manifest['reports']]+['overview']
     assert not only or only=='overview' or only in {r['report_id'] for r in manifest['reports']},'Unknown report selection'
@@ -140,7 +141,7 @@ async def run(root,only=None,staged=False,staged_context=False):
             while metadata.get('status',{}).get('type') not in ('idle','notLoaded'):
                 await asyncio.sleep(10)
                 metadata=(await sdk._client.request('thread/read',{'threadId':target_thread,'includeTurns':False},response_model=NativeControlResult)).model_dump()['thread']
-            instructions=master+'\n\n# 本轮渠道唯一正文\n'+prompt+'\n\n'+packet.get('prompt_precedence','')
+            instructions=prompt
             if staged_context:instructions+='\n\n# Readability, applied during the same analysis\n'+(root/'prompts/readability.md').read_text()
             stage=packet.get('generation_stage')
             if stage and stage['kind']=='campaign':

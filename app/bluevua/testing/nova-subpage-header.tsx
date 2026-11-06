@@ -23,6 +23,9 @@ import {NovaInsightQuestion} from './nova-insight-question';
 import {scrollTestingContentBy} from './scroll-testing-content';
 import {NovaAskAiButton} from './nova-ask-ai-button';
 import {NovaShareButton} from './nova-share-button';
+import {GenerateReadoutButton} from './generate-readout-button';
+import {useMatchedReport} from './use-matched-report';
+import {useTemporaryReport} from './use-temporary-report';
 import {NovaHistoryMenu} from './nova-history-menu';
 import {NovaHistoryBadge,NovaHistoricalReadout,useHistoricalPeriod} from './nova-history-readout';
 import reportStyles from './nova-preview-sections.module.css';
@@ -75,8 +78,11 @@ function Question({expanded,detailsId,bottomId}:{expanded:boolean;detailsId:stri
 export function NovaChannelReport(props:{overviewMetrics?:OverviewHeadlineMetrics}){const history=useHistoricalPeriod();return history?<NovaHistoricalReadout/>:<CurrentNovaChannelReport {...props}/>;}
 
 function CurrentNovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHeadlineMetrics}){
- const readable=usePmaxPresentation();
+ const currentReport=usePmaxPresentation();
  const {language}=useSiteLanguage(),pathname=usePathname(),query=useSearchParams(),baseId=previewReportForPath(pathname);
+ const selectedPeriod=resolveTestingPeriod(testingLatestCompleteDate(),testingSnapshotInput('meta',query.get('period')??'lastWeek',query.get('start'),query.get('end')) as Parameters<typeof resolveTestingPeriod>[1]);
+ const temporary=useTemporaryReport(baseId??'', '',selectedPeriod.start,selectedPeriod.end),readable=currentReport??temporary;
+ const match=useMatchedReport(baseId,selectedPeriod.start,selectedPeriod.end,language,!!baseId&&baseId!=='social-media'&&!(baseId==='reddit'&&(!query.get('period')||query.get('period')==='sinceSep24')));
  const [previewState,setPreview]=useState<{key:string;value:Preview}|null>(null),[expandedKey,setExpandedKey]=useState<string|null>(null);
  const [failedKey,setFailedKey]=useState<string|null>(null),[attempt,setAttempt]=useState(0);
  const requestKey=`${language}:${pathname}:${query.toString()}`;
@@ -89,7 +95,7 @@ function CurrentNovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHe
  useEffect(()=>{
   if(!baseId||readable)return;
   let cancelled=false;
-  const load=async()=>{let poll=true;try{const params=new URLSearchParams({...Object.fromEntries(query.entries()),language});if(version.expected)params.set('expected',version.expected);{const data=await fetchTestingReadoutJson<Preview>(`/api/testing/preview?${params}`);if(cancelled)return;setFailedKey(null);if(data.disabled)poll=false;else{setPreview({key:requestKey,value:data});poll=data.status.status!=='completed';}}}catch{if(!cancelled)setFailedKey(requestKey);}finally{void poll;}};
+  const load=async()=>{let poll=true;try{const params=new URLSearchParams({...Object.fromEntries(query.entries()),language});if(version.expected)params.set('expected',version.expected);{const data=await fetchTestingReadoutJson<Preview>(`/api/testing/preview?${params}`);if(cancelled)return;setFailedKey(null);if(data.disabled){setPreview({key:requestKey,value:data});poll=false;}else{setPreview({key:requestKey,value:data});poll=data.status.status!=='completed';}}}catch{if(!cancelled)setFailedKey(requestKey);}finally{void poll;}};
   void load();return()=>{cancelled=true;};
  },[baseId,language,query,requestKey,version.revision,version.expected,readable,attempt]);
  const key=readable&&baseId?`${readable.run_id}:${baseId}`:preview&&baseId?`${preview.manifest.run_id}:${baseId}`:null,expanded=!!key&&expandedKey===key;
@@ -99,7 +105,10 @@ function CurrentNovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHe
   const zh=language==='zh';
   return <NovaCard className={reportStyles.readout}><InsightPresentation report={readable} scope="channel" header summaryOnly embedded actions={<div className={reportStyles.readoutActions} style={{marginTop:'1rem'}}><NovaButton data-review-reveal="analysis" ref={buttonRef} variant="outline" aria-expanded={expanded} aria-controls={contentId} onClick={()=>setExpandedKey(expanded?null:key)}>{expanded?(zh?'收起完整分析':'Hide full analysis'):(zh?'查看完整分析':'View full analysis')}{expanded?<ChevronUp/>:<ChevronDown/>}</NovaButton>{expanded&&insightPresentationGroups(readable.presentation,'channel').map((block,index)=><NovaButton key={block.id} variant="ghost" size="sm" onClick={()=>document.getElementById(`${contentId}-${index}`)?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}>{block.title}</NovaButton>)}<Question expanded={expanded} detailsId={contentId} bottomId={bottomId}/></div>}/>{expanded&&<div id={contentId} className={reportStyles.readoutDetails}><InsightPresentation report={readable} scope="channel" embedded anchorPrefix={contentId}/><div className={reportStyles.readoutBottom}><NovaButton variant="outline" aria-expanded aria-controls={contentId} onClick={hide}>{zh?'收起完整分析':'Hide full analysis'}<ChevronUp/></NovaButton><div id={bottomId} className={reportStyles.questionBottom}/></div></div>}</NovaCard>;
  }
+ if(baseId&&!readable&&(match.checking||match.error))return <NovaCard className={reportStyles.loading}><p role={match.error?'alert':'status'}>{match.error?(language==='zh'?'无法核对已保存报告。':'Could not check saved reports.'):(language==='zh'?'正在核对已保存报告…':'Checking saved reports…')}</p></NovaCard>;
+ if(baseId&&query.get('compare')&&query.get('compare')!=='previousPeriod'&&!readable)return <NovaCard className={reportStyles.loading}><p>{language==='zh'?'当前对比周期暂无匹配分析。':'No analysis matches this comparison period.'}</p><GenerateReadoutButton period={{label:'Custom',...selectedPeriod}} scope={baseId}/></NovaCard>;
  if(!preview&&baseId&&failedKey===requestKey)return <NovaCard className={reportStyles.loading}><p role="alert">{language==='zh'?'分析加载失败，请重试。':'Analysis could not be loaded. Please retry.'}</p><NovaButton variant="outline" onClick={()=>{setFailedKey(null);setAttempt(value=>value+1);}}>{language==='zh'?'重试':'Retry'}</NovaButton></NovaCard>;
+ if(preview?.disabled&&baseId)return <NovaCard className={reportStyles.loading}><p>{language==='zh'?'此时间区间暂无可用分析。':'No analysis is available for this period.'}</p><GenerateReadoutButton period={{label:'Custom',...selectedPeriod}} scope={baseId}/></NovaCard>;
  if(!preview||!baseId||(preview.manifest.language==='en')!==(language==='en'))return null;
  const zh=language==='zh',preset=query.get('period'),lifetime=baseId==='social-media'||(baseId==='reddit'&&(!preset||preset===redditSinceStartPreset));
  const reportId=baseId==='reddit'&&lifetime?'reddit-lifetime':baseId;

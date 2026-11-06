@@ -44,6 +44,18 @@
 ### Round 输入与可比性
 
 补充不同 Rounds 的明确编号、起止日期、参与广告 / 素材 ID、Objective、Angle / Format 映射、投入及结果。轮次关系以已确认测试记录为准，区分上一轮复用、迭代与新素材，不依据名称推断 lineage。比较时控制投放天数、数据成熟度与归因窗口；累计数据必须有可验证分期依据才能拆成 Round。
+
+### 文档要求的输入完整性核对（生成前）
+
+以下是本渠道必须自行补齐和核验的分析输入。先检查提供的数据；缺少的内容由你通过已授权的官方 API、数据工具、项目背景、Slack 或公开资料主动查找，不等待调用方人工整理。不止列出缺项：能取得的先取得并用于分析；确实不支持或无权限的才如实说明。沿用指定测试对象和报告周期，资料检索不限制为预先给定的文件或链接。
+
+- 输入包含所选广告稳定身份、Objective、格式、真实文案/媒体与链接；Awareness 与 Conversion 分开，不能引入 Campaign 非 testing 成绩或 Reach。
+- 为 Round、Winning/Refreshed/New 提供有来源的日期、原版/新版身份及继承映射；先查授权项目背景、brief、Slack记录。查不到就标未确认，不能将报告周期或广告名自动当作 Round。
+- 核实 Single Image/Carousel/Video/Freeform 格式；Message 未确认前不直接改为 Freeform。复合 Messaging 每条仅计一次。
+- 周报与 lifetime 分开提供并核对原始量、Reach及日级/历史快照。不能将周摘要当累计总量，也不相加广告 Reach 冒充去重人数。
+
+- 独立核对报告期的广告级原始量：weekly 和 lifetime 必须分别汇总。若提供的 current_totals、visual_context.totals 或旧摘要与所选日期的 testing 明细不一致，以核验后的本期明细重算并修正本次输入；不能把周度汇总复制到 lifetime。
+
 ## 分析与输出结构（Analysis & Output Structure）
 
 输出报告：先给核心结论摘要，再依次呈现三个大方向：内容或素材横向对比、渠道或广告组整体表现、下一步建议。Messaging / 内容方向比较放在第一部分开头，不单独增加第四部分。章节和跳转按钮使用简短、直白且能准确说明内容的名称；方向内部的图文、卡片、图表与布局由 AI 根据 readability 自主选择。中英文表达同一分析，不重复摘要。

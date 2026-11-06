@@ -23,3 +23,9 @@ export function trialMetricRows(value:unknown):Record<string,string|number|null>
  for(const [key,child] of Object.entries(object))if(key!=='metrics')visit(child,name);
  };visit(value);return rows;
 }
+/** Temporary reports contain exactly the language requested by the user. */
+export function assembleSingleTrialVisualResult(raw:Partial<Record<'en'|'zh',{presentation:PmaxReadableReport['presentation'];campaigns:PmaxReadableReport['analysis']['campaigns']}>>,context:TrialPresentationContext,language:'en'|'zh',runId:string):PmaxReadableReport{
+ const value=raw[language];if(!value?.presentation||!Array.isArray(value.campaigns))throw Error('Requested language is missing');
+ const {sections,...evidence}=context;const report={...evidence,run_id:runId,language,presentation:value.presentation,analysis:{executive_summary:value.presentation.summary,campaigns:value.campaigns}};
+ validateInsightPresentation(report.presentation,{...report,sections});return report;
+}

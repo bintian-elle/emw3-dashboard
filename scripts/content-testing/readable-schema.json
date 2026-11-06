@@ -163,6 +163,9 @@
                   "charts"
                 ]
               }
+            },
+            "summary_html": {
+              "type": "string"
             }
           },
           "required": [
@@ -170,7 +173,8 @@
             "title",
             "summary",
             "sections",
-            "blocks"
+            "blocks",
+            "summary_html"
           ]
         },
         "campaigns": {
@@ -187,12 +191,16 @@
               },
               "detail_markdown": {
                 "type": "string"
+              },
+              "summary_html": {
+                "type": "string"
               }
             },
             "required": [
               "test_id",
               "summary",
-              "detail_markdown"
+              "detail_markdown",
+              "summary_html"
             ]
           }
         }
@@ -360,6 +368,9 @@
                   "charts"
                 ]
               }
+            },
+            "summary_html": {
+              "type": "string"
             }
           },
           "required": [
@@ -367,7 +378,8 @@
             "title",
             "summary",
             "sections",
-            "blocks"
+            "blocks",
+            "summary_html"
           ]
         },
         "campaigns": {
@@ -384,12 +396,16 @@
               },
               "detail_markdown": {
                 "type": "string"
+              },
+              "summary_html": {
+                "type": "string"
               }
             },
             "required": [
               "test_id",
               "summary",
-              "detail_markdown"
+              "detail_markdown",
+              "summary_html"
             ]
           }
         }

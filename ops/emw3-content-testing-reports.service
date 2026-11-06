@@ -1,0 +1,17 @@
+[Unit]
+Description=Generate Content Testing daily, weekly and monthly reports
+After=network-online.target emw3-testing-data-refresh.service emw3-testing-google-refresh.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
+Environment=NODE_ENV=production
+Environment=DEPLOYMENT_ENV=production
+Environment=PYTHONPATH=/home/ubuntu/work/anc-slack-bridge/src
+Environment=CONTENT_TESTING_PYTHON=/home/ubuntu/work/anc-slack-bridge/.venv/bin/python
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node --experimental-strip-types scripts/content-testing/scheduled-runner.mjs
+TimeoutStartSec=20h
+Nice=10
+UMask=0077

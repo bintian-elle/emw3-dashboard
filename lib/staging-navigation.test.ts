@@ -15,6 +15,14 @@ test('exit staging returns to the production counterpart with filters and locati
  assert.equal(productionPageHref('//evil.example'),'https://emw3-dashboard.win/');
 });
 
+test('local staging returns to the local production preview without changing online staging',async()=>{
+ const {productionPageHref}=await import('./staging-navigation.ts');
+ const path='/bluevua/testing/google/pmax',search='period=lastWeek',hash='#campaign';
+ assert.equal(productionPageHref(path,search,hash,'http://localhost:3000'),`http://localhost:3001${path}?period=lastWeek&shared=1${hash}`);
+ assert.equal(productionPageHref(path,search,hash,'http://127.0.0.1:3000'),`http://127.0.0.1:3001${path}?period=lastWeek&shared=1${hash}`);
+ assert.equal(productionPageHref(path,search,hash,'https://staging.emw3-dashboard.win'),`https://emw3-dashboard.win${path}?period=lastWeek&shared=1${hash}`);
+});
+
 test('cross-environment report navigation bypasses the ordinary refresh period reset',async()=>{
  const {testingDocumentPeriodRedirect}=await import('./testing-navigation.ts');const {productionPageHref}=await import('./staging-navigation.ts');
  const url=new URL(productionPageHref('/bluevua/testing','period=custom&start=2026-10-27&end=2026-11-02'));

@@ -43,7 +43,7 @@ export async function createPromptRun(raw:unknown,author:PromptAuthor,capture:(i
  if(promptRunRouting(input.channel,frozen,false).overviewSources){
   const candidates=(await promptDatabase().query("SELECT id,mode,campaign,period,language,status,result,updated_at,frozen_input FROM staging_testing_prompt_runs WHERE status='completed' AND mode='analysis' AND campaign='all' AND frozen_input->'chat' IS NULL ORDER BY updated_at DESC LIMIT 200")).rows;
   const sources=selectOverviewInsightSources({start:input.start,end:input.end},input.comparison??(frozen as {comparison?:{start:string;end:string}}).comparison??null,overviewTrialSources([...await readLocalPromptJobs(),...candidates]),await savedOverviewSources({start:input.start,end:input.end}));
-  frozen={...(frozen as Record<string,unknown>),overview_sources:sources,completed_channel_reports:sources.filter(source=>source.kind!=='unavailable'),overview_generation_rule:'Synthesize these frozen completed channel insights. Trial results take priority over saved insights. Do not rerun channel analysis, query APIs, or replace missing channel results. Show missing scope briefly. Paid totals come only from authoritative frozen Dashboard data, never sum lifetime/organic or repeated asset associations.'};
+  frozen={...(frozen as Record<string,unknown>),overview_sources:sources,completed_channel_reports:sources.filter(source=>source.kind!=='unavailable')};
  }
  const hash=createHash('sha256').update(JSON.stringify({input:frozen,versions,mode:input.mode,language:input.language,campaign:input.campaign,period:{start:input.start,end:input.end}})).digest('hex');
  if(promptRunRouting(input.channel,frozen,localPromptQueueEnabled()).queue==='local'){

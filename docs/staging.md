@@ -13,12 +13,12 @@ Durable storage: /home/ubuntu/.local/share/emw3-staging/{notes,preferences,hando
 
 ## Version indication
 
-The toolbar distinguishes same production content/no pending updates, updates ready for review, and unconfirmed version. STAGING_RELEASE_STATUS_FILE points to /home/ubuntu/.local/share/emw3-staging/release-status.json. Missing or malformed metadata never claims that versions match. Version status concerns application content, not the time of the last data refresh. Infrastructure for notes and isolated access is an intentional staging overlay.
+The toolbar reads an explicit deployment status. After production and staging are both successfully deployed, write `synced` to clear pending review; after a staging-only update, write `pending` with its summary. No version comparison is required. STAGING_RELEASE_STATUS_FILE points to /home/ubuntu/.local/share/emw3-staging/release-status.json. Missing or malformed metadata remains unconfirmed. Infrastructure for notes and isolated access is an intentional staging overlay. The current production deploy script does not yet orchestrate staging; connect the joint deployment and update status only after both succeed when deploying online.
 
 After checking the actual published and preview content commits, run in the isolated staging checkout:
 
 ```sh
-node ops/staging/set-release-status.mjs <production-content-commit> <preview-content-commit> "中文更新说明" "English release summary" "testing-layout,creative-previews,social-post-order,team-feedback"
+node --experimental-strip-types ops/staging/set-release-status.mjs pending "中文更新说明" "English release summary" "testing-layout,creative-previews,social-post-order,team-feedback"
 ```
 
 The optional Chinese/English summaries are plain text, each at most 240 characters. Pending releases show a two-line toolbar preview and the full description inside Team notes. Matching/unknown versions hide old summaries. Review each summary against the actual content diff when publishing. The optional final argument lists unique known change IDs from lib/staging-review-changes.ts. The pending release exposes only canonical local links and semantic targets from this catalog. Selecting an item navigates to its page, waits for streamed content, optionally opens the existing analysis expander, and highlights the visible target for 15 seconds. Missing targets report unavailable after 20 seconds, with no substitute target. The status text opens the linked change list; notes remain accessible.

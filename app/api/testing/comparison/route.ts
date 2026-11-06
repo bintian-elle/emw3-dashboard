@@ -15,7 +15,6 @@ import type {RedditTestingData} from '@/lib/testing-reddit';
 import type {EdmTestingData} from '@/lib/testing-edm';
 const headers={'Cache-Control':'private, no-store'};
 export async function GET(request:NextRequest){
- if(process.env.DEPLOYMENT_ENV!=='staging')return new Response(null,{status:404});
  try{await dashboardOwner(request);}catch{return Response.json({error:'Unauthorized'},{status:401,headers});}
  const params=request.nextUrl.searchParams,start=params.get('start')??'',end=params.get('end')??'',path=params.get('path')??'';
  if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end||!Number.isFinite(Date.parse(start))||!Number.isFinite(Date.parse(end)))return Response.json({error:'Invalid comparison dates'},{status:400,headers});

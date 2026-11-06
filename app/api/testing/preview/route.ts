@@ -7,8 +7,10 @@ import {testingReadoutKey} from '@/lib/testing-readout-contract';
 import {testingPeriodInput,testingPeriodLabels} from '@/lib/testing-google';
 import {resolveTestingPeriod,testingLatestCompleteDate} from '@/lib/testing-period';
 import type {PromptPreviewReport} from '@/lib/testing-prompt-preview';
+import {usesUnifiedReports} from '@/lib/testing-report-environment';
 export async function GET(request:Request){
  if(!await currentSiteUser())return NextResponse.json({error:'Unauthorized'},{status:401});
+ if(usesUnifiedReports())return NextResponse.json({disabled:true},{headers:{'Cache-Control':'private, no-store'}});
  const query=new URL(request.url).searchParams,language=query.get('language')==='zh'?'zh':'en';
  const preview=await readLocalPromptPreview(language);
  if(preview)return NextResponse.json(preview,{headers:{'Cache-Control':'private, no-store'}});

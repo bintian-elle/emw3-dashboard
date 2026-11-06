@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {selectedReportPeriod} from './testing-selected-report.ts';
+test('a one-day custom selection opens that daily report',()=>{assert.deepEqual(selectedReportPeriod(new URLSearchParams('period=custom&start=2026-11-05&end=2026-11-05')),{frequency:'daily',start:'2026-11-05',end:'2026-11-05'});});
+test('does not treat a multi-day selection or invalid date as a daily report',()=>{assert.equal(selectedReportPeriod(new URLSearchParams('period=custom&start=2026-11-04&end=2026-11-05')),null);assert.equal(selectedReportPeriod(new URLSearchParams('period=custom&start=2026-02-30&end=2026-02-30')),null);});
+test('recognizes calendar weeks and months selected through the ordinary date picker',()=>{assert.deepEqual(selectedReportPeriod(new URLSearchParams('period=custom&start=2026-10-27&end=2026-11-02')),{frequency:'weekly',start:'2026-10-27',end:'2026-11-02'});assert.deepEqual(selectedReportPeriod(new URLSearchParams('period=custom&start=2026-10-01&end=2026-10-31')),{frequency:'monthly',start:'2026-10-01',end:'2026-10-31'});});

@@ -77,15 +77,14 @@
 :global(.dark) .panel { --nova-page:#191a1d; }
 .dockedPanel { position:sticky; inset:auto; top:0; width:100%; height:100dvh; box-shadow:none; }
 .dockedPanel .resize { display:block; }
-.header { gap:.625rem; padding:1rem 1.5rem .75rem; border:0; }
+.header { gap:.625rem; padding:26px 14px .75rem; border:0; }
 .headerGroup { gap:.625rem; }
 .headerActions { gap:.25rem; }
 .title { font-size:1rem; letter-spacing:-.025em; }
 .aiMark,.answerMark { display:grid; flex:none; place-items:center; border-radius:.5rem; background:var(--nova-primary); color:var(--nova-primary-foreground); }
 .aiMark { width:1.75rem; height:1.75rem; }
 .aiMark svg { width:.9375rem; height:.9375rem; }
-button.collapse { gap:.35rem; padding-inline:.5rem; color:var(--nova-muted); font-size:.6875rem; }
-button.collapse svg { width:.875rem; height:.875rem; }
+button.collapse { flex:none; }
 .history { padding:0 1.5rem 1rem; border:0; }
 .context { margin:0 1.5rem .75rem; padding:.625rem .75rem; border:1px solid var(--nova-border); border-radius:.625rem; background:var(--nova-page); }
 .contextHeading { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }

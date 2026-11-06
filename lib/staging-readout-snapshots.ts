@@ -25,4 +25,4 @@ export async function readStagingReadoutSnapshot(directory:string,keys:readonly 
   return [{...source,payload:item.translation?.sourceHash===hash?item.translation.payload:{...(payload as Record<string,unknown>),_translation_pending:true}}];
  });
 }
-export function localStagingReadoutDirectory(environment=process.env){return environment.NODE_ENV==='development'&&environment.DEPLOYMENT_ENV==='staging'?join(process.cwd(),'.state/staging-ai-readouts'):null;}
+export function localStagingReadoutDirectory(environment=process.env){return environment.NODE_ENV==='development'&&environment.DEPLOYMENT_ENV==='staging'&&environment.LOCAL_STAGING_REPORT_ENV!=='production'&&environment.STAGING_USE_PRODUCTION_REPORTS!=='1'?join(process.cwd(),'.state/staging-ai-readouts'):null;}

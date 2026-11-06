@@ -1,5 +1,5 @@
 import {insightSourceUrls as urls} from '../../lib/testing-insight-sources.ts';
-import fs from 'node:fs/promises';import path from 'node:path';import {createHash} from 'node:crypto';import {validateInsightPresentation} from '../../lib/testing-insight-presentation.ts';
+import fs from 'node:fs/promises';import path from 'node:path';import {createHash} from 'node:crypto';import {validateInsightPresentation,canonicalInsightScope} from '../../lib/testing-insight-presentation.ts';
 const partial=process.argv.includes('--check-available');
 const root=path.resolve(process.argv[2]),manifest=JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8')),media=JSON.parse(await fs.readFile(path.join(root,'media-index.json'),'utf8')),bundle={run_id:manifest.run_id,period:manifest.period,reports:{}};
 const hash=buffer=>createHash('sha256').update(buffer).digest('hex');const hashes={};
@@ -14,7 +14,7 @@ for(const entry of manifest.reports){
  if(totals&&Array.isArray(history)&&packet.comparison){const selected=history.filter(r=>r.date>=packet.period.start&&r.date<=packet.period.end),prev=history.filter(r=>r.date>=packet.comparison.start&&r.date<=packet.comparison.end),now=sum(selected);if(prev.length&&selected.length&&['spend','revenue','orders'].every(k=>Math.abs(now[k]-totals[k])<.02))comparison_totals=sum(prev);}
 
  bundle.reports[entry.report_id]={};
- for(const language of ['en','zh']){const v=result[language],analysis={executive_summary:v.presentation.summary,campaigns:v.campaigns},scopes=new Set(['channel',...packet.tests.map(t=>t.test_id)]);
+ for(const language of ['en','zh']){const v=result[language];for(const block of v.presentation.blocks)block.scope=canonicalInsightScope(block.scope,packet.tests);for(const campaign of v.campaigns)campaign.test_id=canonicalInsightScope(campaign.test_id,packet.tests);const analysis={executive_summary:v.presentation.summary,campaigns:v.campaigns},scopes=new Set(['channel',...packet.tests.map(t=>t.test_id)]);
  if(v.campaigns.length!==packet.tests.length||new Set(v.campaigns.map(c=>c.test_id)).size!==packet.tests.length||v.campaigns.some(c=>!scopes.has(c.test_id)))throw Error('Campaign identity coverage mismatch');
  const accounts=packet.currency_verification?.accounts??[],currencyChannel=entry.channel.startsWith('Google')||entry.channel==='Demand Gen'?'Google':entry.channel;const currency=entry.report_id==='overview'?(accounts.length&&accounts.every(a=>a.verified&&a.currency==='USD')?'USD':null):(accounts.find(a=>a.channel===currencyChannel&&a.verified)?.currency??null);
  const report={run_id:manifest.run_id,currency,channel:entry.channel,language,scope:entry.scope,period:packet.period,comparison:packet.comparison??{start:'',end:''},totals:totals??{},comparison_totals,datasets:{input:{id:'input',scopes:[...scopes],xKey:'category',columns:{category:'category'},rows:[]},...packet.presentation_datasets},source_urls:[...urls(packet)],media:media.map(item=>{const {source_path,...entry}=item;void source_path;return entry;}),presentation:v.presentation,analysis};

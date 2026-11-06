@@ -69,3 +69,6 @@ next-env.d.ts
 /.next-readable-input/
 
 /.next-readable-qa/
+
+# Local production preview build
+/.next-local-production*/

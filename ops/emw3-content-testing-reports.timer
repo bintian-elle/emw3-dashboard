@@ -1,0 +1,11 @@
+[Unit]
+Description=Generate Content Testing reports at 12:30 UTC
+
+[Timer]
+OnCalendar=*-*-* 12:30:00 UTC
+AccuracySec=1s
+Persistent=false
+Unit=emw3-content-testing-reports.service
+
+[Install]
+WantedBy=timers.target

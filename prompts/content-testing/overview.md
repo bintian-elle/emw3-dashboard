@@ -60,6 +60,17 @@ Overview 在各渠道分析完成后生成。检查七个渠道结果是否齐�
 ### 宏观边界
 
 Overview 严禁堆砌底层 Campaign、Ad Group 或单广告细节；只保留渠道、Messaging 和总体测试覆盖层级。底层证据用于内部核对，具体执行建议交由各渠道报告承接。
+
+### 文档要求的输入完整性核对（生成前）
+
+以下是本渠道必须自行补齐和核验的分析输入。先检查提供的数据；缺少的内容由你通过已授权的官方 API、数据工具、项目背景、Slack 或公开资料主动查找，不等待调用方人工整理。不止列出缺项：能取得的先取得并用于分析；确实不支持或无权限的才如实说明。沿用指定测试对象和报告周期，资料检索不限制为预先给定的文件或链接。
+
+- 只使用本批已完成渠道报告、权威 Dashboard testing 总量、投放窗口/活跃天数；包括 Meta 在内任何渠道重跑后，Overview 最后重新汇总。
+- 完整回答 Total Spend/Total Reach/Overall Paid ROAS、五个付费渠道 Revenue/ROAS、测试素材数量口径、CTR Messaging 与跨渠道旁证、Social/EDM简述和战略行动。Organic不计付费ROAS，Reddit lifetime不重复加入周度。
+- Total Reach各分量必须与页面相同的测试范围一致，保留 Google/Meta/Reddit/EDM Delivered现有定义；缺失如实标记，不能拿更大Campaign Reach补测试，也不称全球唯一受众。
+- 区分唯一素材、广告实例、Asset Group、Post、Module；有稳定去重身份才给唯一总数，不能将不同层级粗加。分渠道说明配置与实际获投单位。
+- 先在同窗口同目标内判断，再综合渠道差异；不把低样本高ROAS排名当公平因果比较。详细Creative/Video Hook留各渠道和Campaign。
+
 ## 分析与输出结构（Analysis & Output Structure）
 
 输出高管摘要后，按跨渠道 Messaging、渠道整体表现、下一步战略建议三个方向展开；章节和跳转按钮采用清楚易懂的短名称。具体表达由 AI 根据 readability 自主编排。中英文表达同一分析，不重复摘要。

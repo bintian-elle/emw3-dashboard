@@ -1,10 +1,14 @@
+# Historical reference only
+
+The preview workflow documented below is retired. New manual and historical analyses use the channel prompt and `readability.md`, and save historical reports in `content_testing_reports`. Do not run the old preview or daily scripts.
+
 # Isolated Content Testing preview
 
 This workflow generates Chinese channel reports first and Overview last, in the existing `Bluevua · Content Testing Insights` native conversation. It bypasses the production AI queue/cache and writes only isolated files. It does not change the online scheduler or prompts.
 
 ## Prompt ownership
 
-- `prompts/content-testing/master.md`: ordering, allowed background/web research, evidence boundaries, flexible page contract, conclusion-first prose and inline verified links.
+- The former master prompt was retired; its content is not used for new reports.
 - The seven channel files: their own analytical content, tables and detail chapters. Do not impose a universal chapter template.
 - `overview.md`: synthesize completed same-run channels and authoritative frozen totals. Never run first.
 - `prompts/ask-ai/testing.md`: the Testing chat's conclusion-first and inline source-link rules. This file is read at request time; the current change is local only.

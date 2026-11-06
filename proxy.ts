@@ -18,7 +18,7 @@ function blockedResponse() {
 
 function resetTestingDocumentPeriod(request: NextRequest) {
   const path = `${request.nextUrl.pathname}${request.nextUrl.search}`;
-  const target = testingDocumentPeriodRedirect(path, request.method, request.headers, process.env.DEPLOYMENT_ENV === "staging");
+  const target = testingDocumentPeriodRedirect(path, request.method, request.headers, true);
   if (!target) return null;
   const response = NextResponse.redirect(new URL(target, request.url));
   response.headers.set("Cache-Control", "private, no-store");

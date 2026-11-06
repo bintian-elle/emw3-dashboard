@@ -1,0 +1,3 @@
+import 'server-only';import {readFile} from 'node:fs/promises';import {createHash} from 'node:crypto';import path from 'node:path';
+const channels=['overview','google-search','google-pmax','google-demand-gen','meta','reddit','edm','social-media'];
+export async function testingPromptRevisions(){const root=path.join(process.cwd(),'prompts/content-testing'),readability=await readFile(path.join(root,'readability.md'),'utf8');return Object.fromEntries(await Promise.all(channels.map(async channel=>{const content=await readFile(path.join(root,`${channel}.md`),'utf8');return [channel,createHash('sha256').update(JSON.stringify({[channel]:{content},readability:{content:readability}})).digest('hex')];})));}

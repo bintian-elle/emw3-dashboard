@@ -7,6 +7,7 @@ import {usePathname,useSearchParams} from 'next/navigation';
 import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
 import {previewReportForPath} from '@/lib/testing-prompt-preview';
 import {resolveTestingPeriod,testingLatestCompleteDate} from '@/lib/testing-period';
+import {comparisonRange} from '@/lib/testing-comparison';
 import type {IntegratedReportBundle} from '@/lib/testing-integrated-reports.server';
 import {Sparkles,ExternalLink} from 'lucide-react';
 import {ResponsiveContainer,LineChart,Line,AreaChart,Area,BarChart,Bar,ComposedChart,XAxis,YAxis,Tooltip,CartesianGrid,Legend,PieChart,Pie,Cell,ScatterChart,Scatter,ReferenceLine,RadarChart,Radar,PolarGrid,PolarAngleAxis,PolarRadiusAxis,FunnelChart,Funnel,LabelList,Treemap} from 'recharts';
@@ -14,6 +15,7 @@ import {insightPresentationGroups,presentationDocumentHtml,presentationUnit} fro
 import type {PmaxReadableReport,PresentationBlock,PresentationDataset,PresentationChart} from '@/lib/testing-insight-presentation';
 import {InsightMarkdown} from './insight-assets';
 import styles from './insight-presentation.module.css';
+import {useMatchedReport} from './use-matched-report';
 import {ComparisonValueDelta} from './testing-comparison';
 const Context=createContext<PmaxReadableReport|null>(null);
 export function PmaxPresentationProvider({report,children}:{report:PmaxReadableReport|null;children:ReactNode}){return <Context.Provider value={report}>{children}</Context.Provider>;}
@@ -21,12 +23,16 @@ const IntegratedContext=createContext<IntegratedReportBundle|null>(null);
 export function IntegratedPresentationProvider({bundle,children}:{bundle:IntegratedReportBundle|null;children:ReactNode}){return <IntegratedContext.Provider value={bundle}>{children}</IntegratedContext.Provider>;}
 export function usePmaxPresentation(){
  const old=useContext(Context),bundle=useContext(IntegratedContext),pathname=usePathname(),query=useSearchParams(),{language}=useSiteLanguage();
+ const scope=previewReportForPath(pathname),preset=query.get('period'),latest=testingLatestCompleteDate();
+ const selected=resolveTestingPeriod(latest,{preset:preset==='custom'?'custom':(preset??'lastWeek') as 'lastWeek',start:query.get('start')??undefined,end:query.get('end')??undefined});
+ const matched=useMatchedReport(scope,selected.start,selected.end,language,!!scope&&!query.get('history')&&scope!=='social-media'&&!(scope==='reddit'&&(!preset||preset==='sinceSep24')));
  if(query.get('history'))return null;
+ if(matched.report)return matched.report;
  if(!bundle)return language==='zh'?old:null;
  let id=previewReportForPath(pathname);if(!id)return null;
  if(id==='reddit'&&(!query.get('period')||query.get('period')==='sinceSep24'))id='reddit-lifetime';
  const report=bundle.reports[id]?.[language==='zh'?'zh':'en'];if(!report)return null;
- const preset=query.get('period');if(report.scope!=='lifetime'){const expected=resolveTestingPeriod(testingLatestCompleteDate(),{preset:preset==='custom'?'custom':'lastWeek',start:query.get('start')??undefined,end:query.get('end')??undefined});if(preset&&preset!=='lastWeek'&&preset!=='custom'||expected.start!==report.period.start||expected.end!==report.period.end)return null;if(query.get('compare')==='custom'&&(query.get('compareStart')!==report.comparison.start||query.get('compareEnd')!==report.comparison.end))return null;}
+ if(report.scope!=='lifetime'){const expected=resolveTestingPeriod(testingLatestCompleteDate(),{preset:preset==='custom'?'custom':'lastWeek',start:query.get('start')??undefined,end:query.get('end')??undefined});if(preset&&preset!=='lastWeek'&&preset!=='custom'||expected.start!==report.period.start||expected.end!==report.period.end)return null;if(query.get('compare')&&query.get('compare')!=='previousPeriod'){const comparison=comparisonRange(expected,query.get('compare')!,testingLatestCompleteDate(),{start:query.get('compareStart')??expected.start,end:query.get('compareEnd')??expected.end});if(comparison.start!==report.comparison.start||comparison.end!==report.comparison.end)return null;}}
  return report;
 }
 
@@ -77,11 +83,16 @@ function FreeComposition({block,report}:{block:PresentationBlock;report:PmaxRead
  return <><div ref={host} className={styles.freeComposition} data-composition={block.id} aria-label={block.title}/>{slots.map(slot=>{const item=block.charts?.find(chart=>chart.id===slot.id);return item?createPortal(<Chart spec={item.spec} dataset={report.datasets[item.spec.dataset_ref]}/>,slot.element,slot.id):null;})}</>;
 }
 
+export function VisualInsightSummary({html,report,scope}:{html:string;report:PmaxReadableReport;scope:string}){
+ const block:PresentationBlock={id:`summary-${scope}`,scope,type:'document',title:'Summary',html,text:'',chart:null,creative:null,actions:[],charts:[]};
+ return <FreeComposition block={block} report={report}/>;
+}
+
 export function InsightPresentation({report,scope,header=false,summaryOnly=false,actions,embedded=false,anchorPrefix}:{report:PmaxReadableReport;scope:string;header?:boolean;summaryOnly?:boolean;actions?:ReactNode;embedded?:boolean;anchorPrefix?:string}){
  const zh=report.language!=='en';
  const groups=summaryOnly?[]:insightPresentationGroups(report.presentation,scope),structured=report.presentation.schema_version!=='insight-presentation-v1';
  return <section className={`${styles.report} ${embedded?styles.embedded:''}`} aria-label={summaryOnly?'渠道分析总结':scope==='channel'?'可视化渠道分析':'Campaign 可视化详细分析'}>
-  {header&&<div className={`${styles.header} ${embedded?styles.embeddedHeader:''}`}><div className={styles.eyebrow}><Sparkles aria-hidden="true"/><span>{report.channel==='Overview'?(zh?'总览分析':'Overview analysis'):`${zh?'渠道分析':'Channel analysis'} · ${report.channel??'Google PMAX'}`}</span><span>{report.language==='en'?'Staging report':'Staging 样稿'}</span><span>{report.scope==='lifetime'?'Lifetime':zh?'本期':'Current'} {report.period.start.slice(5).replace('-','/')}–{report.period.end.slice(5).replace('-','/')}{report.comparison.start&&<> · {zh?'对比':'vs'} {report.comparison.start.slice(5).replace('-','/')}–{report.comparison.end.slice(5).replace('-','/')}</>}</span></div><h2>{report.presentation.title}</h2>{Object.keys(report.totals).length>0&&<div className={styles.kpis}>{[['Spend','spend','USD'],['Revenue','revenue','USD'],['Orders','orders','orders'],['ROAS','roas','ratio']].filter(([,key])=>Object.hasOwn(report.totals,key)).map(([label,key,unit])=><div key={key}><small>{label}</small><strong>{report.totals[key]==null?'—':format(report.totals[key]!,unit==='USD'&&report.currency===null?'amount':unit)}</strong><ComparisonValueDelta metric={key} value={report.totals[key]} previous={report.comparison_totals?.[key]}/><small>{zh?'前期':'Prior'} {report.comparison_totals?.[key]==null?'—':format(report.comparison_totals[key]!,unit==='USD'&&report.currency===null?'amount':unit)}</small></div>)}</div>}<InsightMarkdown channel="google-pmax">{report.presentation.summary}</InsightMarkdown>{actions}</div>}
+  {header&&<div className={`${styles.header} ${embedded?styles.embeddedHeader:''}`}><div className={styles.eyebrow}><Sparkles aria-hidden="true"/><span>{report.channel==='Overview'?(zh?'总览分析':'Overview analysis'):`${zh?'渠道分析':'Channel analysis'} · ${report.channel??'Google PMAX'}`}</span><span>{report.scope==='lifetime'?'Lifetime':zh?'本期':'Current'} {report.period.start.slice(5).replace('-','/')}–{report.period.end.slice(5).replace('-','/')}{report.comparison.start&&<> · {zh?'对比':'vs'} {report.comparison.start.slice(5).replace('-','/')}–{report.comparison.end.slice(5).replace('-','/')}</>}</span></div><h2>{report.presentation.title}</h2>{Object.keys(report.totals).length>0&&<div className={styles.kpis}>{[['Spend','spend','USD'],['Revenue','revenue','USD'],['Orders','orders','orders'],['ROAS','roas','ratio']].filter(([,key])=>Object.hasOwn(report.totals,key)).map(([label,key,unit])=><div key={key}><small>{label}</small><strong>{report.totals[key]==null?'—':format(report.totals[key]!,unit==='USD'&&report.currency===null?'amount':unit)}</strong><ComparisonValueDelta metric={key} value={report.totals[key]} previous={report.comparison_totals?.[key]}/><small>{zh?'前期':'Prior'} {report.comparison_totals?.[key]==null?'—':format(report.comparison_totals[key]!,unit==='USD'&&report.currency===null?'amount':unit)}</small></div>)}</div>}{report.presentation.summary_html?.trim()?<VisualInsightSummary html={report.presentation.summary_html} report={report} scope="channel"/>:<InsightMarkdown channel="google-pmax">{report.presentation.summary}</InsightMarkdown>}{actions}</div>}
   {groups.map((group,index)=><section id={anchorPrefix?`${anchorPrefix}-${index}`:undefined} key={group.id} className={styles.chapter}>{structured&&<h3 className={styles.chapterTitle}>{group.title}</h3>}{group.blocks.map(block=><article key={block.id} className={`${styles.card} ${block.type==='highlight'?styles.highlight:''}`}>{block.type==='document'?<FreeComposition block={block} report={report}/>:<><h4>{block.title}</h4>{block.text&&<InsightMarkdown channel="google-pmax">{block.text}</InsightMarkdown>}{block.type==='chart'&&block.chart&&<><Chart spec={block.chart} dataset={report.datasets[block.chart.dataset_ref]}/><details className={styles.details}><summary>查看数据与选图依据</summary><p>{block.chart.reason}</p><div style={{overflowX:'auto'}}><table><thead><tr><th>{block.chart.x_key}</th>{block.chart.y_keys.map(key=><th key={key}>{names[key]||key}</th>)}</tr></thead><tbody>{report.datasets[block.chart.dataset_ref].rows.map((row,i)=><tr key={i}><td>{row[block.chart!.x_key]}</td>{block.chart!.y_keys.map(key=><td key={key}>{row[key]==null?'—':format(Number(row[key]),report.datasets[block.chart!.dataset_ref].columns[key])}</td>)}</tr>)}</tbody></table></div></details></>}{block.type==='creative'&&block.creative&&<Creative block={block} report={report}/>} {block.type==='actions'&&<div className={styles.actions}>{block.actions.map((action,i)=><div key={i} className={styles.action}><span>{action.priority}</span><strong>{action.target}</strong><p>{action.action}</p><small>依据：{action.evidence}</small><small>验证：{action.validation}</small></div>)}</div>}</>}</article>)}</section>)}
  </section>;
 }

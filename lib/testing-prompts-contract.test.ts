@@ -19,3 +19,4 @@ test('every channel captures its own prompt and rejects mismatched scopes',()=>{
 });
 
 test('a new source baseline supersedes an older saved revision without losing history',()=>{const source={id:'source-new',created_at:'2026-11-05T00:00:00Z'} as PromptVersion,saved={id:'saved-old',created_at:'2026-11-04T00:00:00Z'} as PromptVersion;assert.equal(currentPromptVersion(source,saved).id,'source-new');assert.equal(currentPromptVersion(source,{...saved,created_at:'2026-11-05T01:00:00Z'}).id,'saved-old');});
+test('retired master and manual prompts are not available for new work',()=>{assert.throws(()=>promptId('master'));assert.throws(()=>promptId('manual'));});

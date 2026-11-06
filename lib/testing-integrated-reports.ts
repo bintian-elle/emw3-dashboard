@@ -4,6 +4,7 @@ import type {PmaxReadableReport} from './testing-insight-presentation';
 export type IntegratedReportBundle={run_id:string;period:{start:string;end:string};reports:Record<string,{en:PmaxReadableReport;zh:PmaxReadableReport}>};
 /** Production is excluded even if a trial directory is accidentally configured. */
 export async function integratedReportDirectory():Promise<string|null>{
+ if(process.env.LOCAL_PRODUCTION_PREVIEW==='1'&&process.env.LOCAL_PRODUCTION_REPORT_DIR)return process.env.LOCAL_PRODUCTION_REPORT_DIR;
  if(process.env.DEPLOYMENT_ENV!=='staging')return null;
  if(process.env.STAGING_CONTENT_TESTING_REPORT_DIR)return process.env.STAGING_CONTENT_TESTING_REPORT_DIR;
  if(process.env.NODE_ENV!=='development')return null;
