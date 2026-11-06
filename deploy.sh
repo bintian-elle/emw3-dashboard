@@ -58,7 +58,7 @@ staging_dir=${STAGING_CHECKOUT_DIR:-/home/ubuntu/work/bintian/emw3-dashboard-sta
  node <<'JS'
 const fs=require('node:fs');
 const file='.env.local';let env=fs.readFileSync(file,'utf8');
-env=env.replace(/^STAGING_(?:DATA_SNAPSHOT_DIR|USE_PRODUCTION_REPORTS)=.*\n?/gm,'');
+env=env.replace(/^STAGING_(?:DATA_SNAPSHOT_DIR|CONTENT_TESTING_REPORT_DIR|USE_PRODUCTION_REPORTS)=.*\n?/gm,'');
 fs.writeFileSync(file,env.replace(/\s*$/,'\n')+'STAGING_USE_PRODUCTION_REPORTS=1\n',{mode:0o600});
 JS
  npm ci --include=dev --no-audit --no-fund
