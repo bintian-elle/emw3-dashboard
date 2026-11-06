@@ -37,7 +37,7 @@ async function interruptPreview(job){
 }
 function streamCommand(command,args,job){return new Promise((resolve,reject)=>{
  const child=spawn(command,args,{env:process.env,stdio:['ignore','pipe','inherit']});let buffer='',interrupting=false;
- const cancellation=setInterval(()=>void (localQueue?localJob(job.id).then(job=>({rows:[job]})):pool.query('SELECT status,error FROM staging_testing_prompt_runs WHERE id=$1',[job.id])).then(async result=>{if(result.rows[0]?.error==='user_cancelled'&&!interrupting){interrupting=true;try{await interruptPreview(job);}catch{interrupting=false;}}}).catch(()=>{}),4000);
+ const cancellation=setInterval(()=>void (localQueue?localJob(job.id).then(job=>({rows:[job]})):pool.query('SELECT status,error FROM staging_testing_prompt_runs WHERE id=$1',[job.id])).then(async result=>{if(result.rows[0]?.error==='user_cancelled'&&!interrupting){interrupting=true;try{await interruptPreview(job);}catch{/* Retry while any parallel turn is still starting. */}finally{interrupting=false;}}}).catch(()=>{}),4000);
  const finish=()=>clearInterval(cancellation);
  child.stdout.on('data',chunk=>{buffer+=chunk;let newline;while((newline=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,newline);buffer=buffer.slice(newline+1);try{const message=JSON.parse(line);void update(job.id,message.stage,message).catch(()=>{});}catch{/* SDK diagnostics stay in private worker logs. */}}});
  child.on('error',error=>{finish();reject(error);});child.on('exit',code=>{finish();if(code===0)resolve();else reject(Error('AI preview did not complete. Check the staging worker log.'));});
