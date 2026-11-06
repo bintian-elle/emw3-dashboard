@@ -48,7 +48,27 @@ JS
 )
 NEXT_DIST_DIR="$build_dir" pm2 restart emw3-dashboard --update-env
 
-echo "5. Saving PM2 state..."
+echo "5. Updating staging to the same release..."
+staging_dir=${STAGING_CHECKOUT_DIR:-/home/ubuntu/work/bintian/emw3-dashboard-staging}
+(
+ cd "$staging_dir"
+ test -f .staging-checkout || { echo "Staging checkout marker missing." >&2; exit 1; }
+ git fetch origin
+ git merge --ff-only origin/main
+ node <<'JS'
+const fs=require('node:fs');
+const file='.env.local';let env=fs.readFileSync(file,'utf8');
+env=env.replace(/^STAGING_(?:DATA_SNAPSHOT_DIR|USE_PRODUCTION_REPORTS)=.*\n?/gm,'');
+fs.writeFileSync(file,env.replace(/\s*$/,'\n')+'STAGING_USE_PRODUCTION_REPORTS=1\n',{mode:0o600});
+JS
+ npm ci --include=dev --no-audit --no-fund
+ staging_build_dir=.next-release-production-sync
+ NEXT_DIST_DIR="$staging_build_dir" npm run build
+ NEXT_DIST_DIR="$staging_build_dir" pm2 restart emw3-dashboard-staging --update-env
+ DEPLOYMENT_ENV=staging node --experimental-strip-types ops/staging/set-release-status.mjs synced
+)
+
+echo "6. Saving PM2 state..."
 pm2 save
 echo "=== Deployment completed ==="
 pm2 status

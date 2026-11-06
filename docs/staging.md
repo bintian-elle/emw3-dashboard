@@ -13,7 +13,7 @@ Durable storage: /home/ubuntu/.local/share/emw3-staging/{notes,preferences,hando
 
 ## Version indication
 
-The toolbar reads an explicit deployment status. After production and staging are both successfully deployed, write `synced` to clear pending review; after a staging-only update, write `pending` with its summary. No version comparison is required. STAGING_RELEASE_STATUS_FILE points to /home/ubuntu/.local/share/emw3-staging/release-status.json. Missing or malformed metadata remains unconfirmed. Infrastructure for notes and isolated access is an intentional staging overlay. The current production deploy script does not yet orchestrate staging; connect the joint deployment and update status only after both succeed when deploying online.
+The toolbar reads an explicit deployment status. After production and staging are both successfully deployed, the production deploy script writes `synced` to clear pending review; after a staging-only update, write `pending` with its summary. No version comparison is required. STAGING_RELEASE_STATUS_FILE points to /home/ubuntu/.local/share/emw3-staging/release-status.json. Missing or malformed metadata remains unconfirmed. Infrastructure for notes and isolated access is an intentional staging overlay.
 
 After checking the actual published and preview content commits, run in the isolated staging checkout:
 
