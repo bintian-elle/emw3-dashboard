@@ -2,6 +2,7 @@ import env from '@next/env';import pg from 'pg';import {readFile,writeFile,mkdir
 import {assembleTrialVisualResult,assembleSingleTrialVisualResult} from '../../lib/testing-prompt-trial-report.ts';
 import {orchestrateManualReports} from './manual-orchestration.mjs';
 import {storeReportBundle} from './report-store.mjs';
+import {collectCreativeEvidence} from './creative-evidence.mjs';
 env.loadEnvConfig(process.cwd());
 const id=process.argv[2],temporary=process.argv[3]==='temporary',environment=process.argv[4];if(!/^[a-f0-9-]{36}$/.test(id??'')||!['staging','production'].includes(environment))throw Error('Invalid request');
 const db=new pg.Client({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},connectionTimeoutMillis:15000});const exec=promisify(execFile);
@@ -22,12 +23,16 @@ try{
  async function generate(channel,sources){
   const job=structuredClone(payload.jobs[channel]);if(!job)throw Error(`Missing input for ${channel}`);
   const folder=path.join(root,channel),remote=`/tmp/content-testing-manual-${id}/${channel}`;await mkdir(path.join(folder,'media'),{recursive:true,mode:0o700});
+  if(!remoteHost&&!(job.frozen_input.media_index??[]).length){
+   const found=await collectCreativeEvidence({library:process.env.CONTENT_TESTING_CREATIVE_LIBRARY||'/home/ubuntu/work/emw3-anc/bluevua/.local/creative-library',output:path.join(folder,'media'),channel,campaigns:job.frozen_input.campaigns??[]});
+   job.frozen_input.media_index=found;job.frozen_input.media_directory=path.join(folder,'media');job.frozen_input.visual_context.media=found;
+  }
   const index=job.frozen_input.media_index??[],directory=job.frozen_input.media_directory;
   for(const item of index){
    if(!directory||!/^[-\w]+\.webp$/.test(item.file)||!/^[a-f0-9]{64}$/.test(item.sha256))throw Error('Invalid media input');
    const data=await readFile(path.join(directory,item.file));if(createHash('sha256').update(data).digest('hex')!==item.sha256)throw Error('Media checksum mismatch');
    const previous=media.get(item.key);if(previous&&previous.sha256!==item.sha256)throw Error('Media key conflict');
-   media.set(item.key,{key:item.key,mimeType:'image/webp',sha256:item.sha256,body:data,metadata:item});await copyFile(path.join(directory,item.file),path.join(folder,'media',item.file));
+   media.set(item.key,{key:item.key,mimeType:'image/webp',sha256:item.sha256,body:data,metadata:item});if(path.resolve(directory)!==path.resolve(folder,'media'))await copyFile(path.join(directory,item.file),path.join(folder,'media',item.file));
    item.source_path=path.join(remoteHost?remote:folder,'media',item.file);
   }
   if(channel==='overview'){job.frozen_input.completed_channel_reports=sources.map(x=>({channel:x.channel,content:x.content}));job.frozen_input.overview_sources=sources.map(x=>({channel:x.channel,kind:'saved-or-same-run'}));}
