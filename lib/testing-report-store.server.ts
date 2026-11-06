@@ -2,12 +2,11 @@ import 'server-only';
 import {Pool} from 'pg';
 import {assembleStoredBundle} from './testing-report-store';
 import {reportDatabaseEnvironment} from './testing-report-environment';
+import {reportDatabaseConfig} from '../scripts/content-testing/report-database.mjs';
 let pool:Pool|undefined;
 const reportEnvironment=reportDatabaseEnvironment;
 function database(){
- const connectionString=process.env.KLAVIYO_DATABASE_URL?.trim();
- if(!connectionString)throw Error('Report database is not configured');
- return pool??=new Pool({connectionString,ssl:{rejectUnauthorized:false},max:3,connectionTimeoutMillis:10000});
+ return pool??=new Pool({...reportDatabaseConfig(),max:3,connectionTimeoutMillis:10000});
 }
 /** Explicit opt-in limits draft access to the local development server. */
 export function localProductionReportRun(){

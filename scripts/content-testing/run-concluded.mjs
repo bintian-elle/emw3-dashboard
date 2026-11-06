@@ -5,9 +5,10 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
 import path from 'node:path';
 import {publishConcluded} from './publish-concluded.mjs';
+import {reportDatabaseConfig} from './report-database.mjs';
 
 nextEnv.loadEnvConfig(process.cwd());
-const db=new pg.Client({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},connectionTimeoutMillis:15000});
+const db=new pg.Client({...reportDatabaseConfig(),connectionTimeoutMillis:15000});
 const run=(cmd,args)=>new Promise((resolve,reject)=>{const child=spawn(cmd,args,{stdio:'inherit',env:process.env});child.once('error',reject);child.once('exit',code=>code===0?resolve():reject(Error(`${cmd} failed (${code})`)));});
 const slugs={'Google':'google-search','Google Search':'google-search','Google PMAX':'google-pmax','Google Demand Gen':'google-demand-gen','Meta':'meta','Reddit':'reddit','EDM':'edm'};
 await db.connect();

@@ -5,6 +5,7 @@ import path from 'node:path';
 import {easternClock} from '../testing-refresh/policy.mjs';
 import {refreshRecords} from './report-readiness.mjs';
 import {runScheduledReports} from './scheduled-reports.mjs';
+import {reportDatabaseConfig} from './report-database.mjs';
 
 env.loadEnvConfig(process.cwd());
 const secret=process.env.CRON_SECRET?.trim()||process.env.AI_WORKER_SECRET?.trim();
@@ -12,7 +13,7 @@ if(!secret)throw Error('Internal generation credential missing');
 const now=new Date(),{day}=easternClock(now),root=path.resolve('.state/testing-refresh',day);
 async function phase(name){try{return JSON.parse(await readFile(path.join(root,`${name}.json`),'utf8'));}catch(error){if(error.code==='ENOENT')return {};throw error;}}
 const records=refreshRecords(await phase('data'),await phase('google'));
-const db=new pg.Client({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},connectionTimeoutMillis:15000});await db.connect();
+const db=new pg.Client({...reportDatabaseConfig(),connectionTimeoutMillis:15000});await db.connect();
 try{
  const lock=await db.query('select pg_try_advisory_lock(72929004) as locked');if(!lock.rows[0].locked)throw Error('Scheduled report generation is already running');
  async function complete(period){

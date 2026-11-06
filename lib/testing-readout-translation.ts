@@ -7,7 +7,8 @@ import { Pool } from "pg";
 import { enqueueAiJob, readAiJob, readTestingReadoutCache, type TestingReadoutCacheRecord } from "@/lib/ai-job-queue";
 import { applyReadoutTranslation, readoutTranslationStrings, translationChunks } from "@/lib/testing-readout-translation-contract";
 import {resolveTranslationChunk} from "@/lib/testing-readout-translation-retry";
-const pool = new Pool({ connectionString: process.env.KLAVIYO_DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 10000 });
+import {reportDatabaseConfig} from '../scripts/content-testing/report-database.mjs';
+const pool = new Pool({ ...reportDatabaseConfig(), max: 2, connectionTimeoutMillis: 10000 });
 export function readoutSourceHash(payload: unknown) { return createHash("sha256").update(JSON.stringify(payload)).digest("hex"); }
 function jobId(hash: string, index: number) { return `testing-translation:v1:${hash}:${index}`; }
 async function savedTranslation(key: string, hash: string) {

@@ -5,6 +5,7 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {decodePromptPreviewReport} from '../../lib/testing-prompt-preview.ts';
+import {reportDatabaseConfig} from './report-database.mjs';
 
 export function buildConcludedPayload(manifest,packet,rawReport) {
  const source=manifest.reports?.[0];if(!source||manifest.reports.length!==1)throw Error('Expected one concluded channel report.');
@@ -22,7 +23,7 @@ export async function publishConcluded({root,backupDir}) {
  const packet=JSON.parse(await readFile(path.join(root,'inputs',`${source.report_id}.json`),'utf8'));
  const rawReport=JSON.parse(await readFile(path.join(root,'results',`${source.report_id}.json`),'utf8'));
  const {key,id,period,payload,report}=buildConcludedPayload(manifest,packet,rawReport);
- nextEnv.loadEnvConfig(process.cwd());const db=new pg.Client({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},connectionTimeoutMillis:15000});await db.connect();
+ nextEnv.loadEnvConfig(process.cwd());const db=new pg.Client({...reportDatabaseConfig(),connectionTimeoutMillis:15000});await db.connect();
  try {
   await db.query('begin');await db.query('select pg_advisory_xact_lock(72929002)');
   const old=await db.query('select * from testing_ai_readout_cache where cache_key=$1 for update',[key]);

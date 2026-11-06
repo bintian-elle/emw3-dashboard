@@ -3,9 +3,10 @@ import {assembleTrialVisualResult,assembleSingleTrialVisualResult} from '../../l
 import {orchestrateManualReports} from './manual-orchestration.mjs';
 import {storeReportBundle} from './report-store.mjs';
 import {collectCreativeEvidence} from './creative-evidence.mjs';
+import {reportDatabaseConfig} from './report-database.mjs';
 env.loadEnvConfig(process.cwd());
 const id=process.argv[2],temporary=process.argv[3]==='temporary',environment=process.argv[4];if(!/^[a-f0-9-]{36}$/.test(id??'')||!['staging','production'].includes(environment))throw Error('Invalid request');
-const db=new pg.Client({connectionString:process.env.KLAVIYO_DATABASE_URL,ssl:{rejectUnauthorized:false},connectionTimeoutMillis:15000});const exec=promisify(execFile);
+const db=new pg.Client({...reportDatabaseConfig(),connectionTimeoutMillis:15000});const exec=promisify(execFile);
 const root=path.resolve(temporary?`.state/content-testing-temporary/${environment}`:'.state/content-testing-manual',id),remoteHost=process.env.CONTENT_TESTING_MANUAL_EXECUTION==='local'?'':process.env.CONTENT_TESTING_MANUAL_SSH||(process.cwd().startsWith('/home/ubuntu/')?'':'EMW3_ANC_AI');
 if(remoteHost&&!/^[a-zA-Z0-9][a-zA-Z0-9_@.-]{0,100}$/.test(remoteHost))throw Error('Invalid AI host');
 const python=process.env.CONTENT_TESTING_PYTHON||'/home/ubuntu/work/anc-slack-bridge/.venv/bin/python';
