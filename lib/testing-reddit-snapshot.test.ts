@@ -37,4 +37,5 @@ test('custom staging ranges accept a differently named snapshot only when dates 
  assert.equal(redditSnapshotForExactCustomPeriod(original,{...period,end:'2026-10-27'},'Custom'),null);
  assert.equal(redditSnapshotForExactCustomPeriod({...original,daily:{...daily,rows:[{...daily.rows[0],date:'2026-10-19'}]}},period,'Custom'),null);
  assert.equal(redditSnapshotForExactCustomPeriod({...original,data:{...payload,periodLabel:'Unknown'}},period,'Custom'),null);
+ assert.equal(redditSnapshotForExactCustomPeriod({...original,data:{...payload,periodLabel:'Custom'}},period,'Last Week (Tue–Mon)')?.data.periodLabel,'Last Week (Tue–Mon)');
 });

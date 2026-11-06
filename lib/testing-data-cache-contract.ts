@@ -15,11 +15,12 @@ export function testingDataSnapshotKey(channel:TestingDataChannel,input:TestingD
 function testingLatestCompleteDateFor(now:Date){return new Date(now.getTime()-86400000).toISOString().slice(0,10);}
 export {testingLatestCompleteDate};
 
-/** Exact-date alternatives for staging when a custom range was saved under a preset. */
+/** Exact-date alternatives when the same range was saved under another preset. */
 export function equivalentTestingDataScopes(scope:string):string[]{
  try{
   const parsed=JSON.parse(scope) as {preset?:string;start?:string;end?:string};
-  if(parsed.preset==='custom'&&/^\d{4}-\d{2}-\d{2}$/.test(parsed.start??'')&&/^\d{4}-\d{2}-\d{2}$/.test(parsed.end??''))return [scope,...['lastWeek','wtd','mtd','last7','last30','last90','ytd'].map(preset=>JSON.stringify({preset,start:parsed.start,end:parsed.end}))];
+  const presets=['custom','lastWeek','wtd','mtd','last7','last30','last90','ytd'];
+  if(['custom','lastWeek'].includes(parsed.preset??'')&&/^\d{4}-\d{2}-\d{2}$/.test(parsed.start??'')&&/^\d{4}-\d{2}-\d{2}$/.test(parsed.end??''))return [scope,...(parsed.preset==='lastWeek'?['custom']:presets.filter(preset=>preset!==parsed.preset)).map(preset=>JSON.stringify({preset,start:parsed.start,end:parsed.end}))];
  }catch{/* Non-date scopes have no alternatives. */}
  return [scope];
 }

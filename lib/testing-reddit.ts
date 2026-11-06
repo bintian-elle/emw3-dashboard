@@ -75,7 +75,7 @@ export async function getRedditContentTestingData(input:RedditPeriodInput={}) {
  const label=preset===redditSinceStartPreset?redditSinceStartLabel:testingPeriodLabels[preset];
  try{
   const snapshot=await readTestingDataSnapshot("reddit",input)??await initializeTestingDataSnapshot("reddit",input,()=>fetchFreshRedditTestingData(input));
-  const exactCustom=process.env.DEPLOYMENT_ENV==='staging'&&preset==='custom'&&snapshot?redditSnapshotForExactCustomPeriod(snapshot.payload,period,label):null;
+  const exactCustom=snapshot?redditSnapshotForExactCustomPeriod(snapshot.payload,period,label):null;
   const published=exactCustom??(snapshot&&validRedditSharedSnapshot(snapshot.payload,period,label)?snapshot.payload:null);
   if(published){sharedDaily.set(published.data,published.daily);return published.data;}
  }catch(error){if(process.env.DEPLOYMENT_ENV==='staging')throw error;/* Preserve the production fallback path. */}

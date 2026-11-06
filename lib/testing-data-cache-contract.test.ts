@@ -30,4 +30,6 @@ test('staging custom-range fallback keeps the exact same dates',async()=>{
  assert.ok(candidates.every(candidate=>{const value=JSON.parse(candidate);return value.start==='2026-10-27'&&value.end==='2026-11-02';}));
  assert.deepEqual(equivalentTestingDataScopes('all'),['all']);
  assert.deepEqual(equivalentTestingDataScopes(JSON.stringify({preset:'mtd',start:'2026-10-01',end:'2026-10-31'})),[JSON.stringify({preset:'mtd',start:'2026-10-01',end:'2026-10-31'})]);
+ const weekly=equivalentTestingDataScopes(JSON.stringify({preset:'lastWeek',start:'2026-10-27',end:'2026-11-02'}));
+ assert.ok(weekly.includes(custom));
 });

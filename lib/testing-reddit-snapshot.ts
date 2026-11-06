@@ -22,8 +22,9 @@ export function validRedditSharedSnapshot(value: unknown, period: {start:string;
 
 /** Re-label a fully validated, exact-date preset snapshot for staging custom ranges. */
 export function redditSnapshotForExactCustomPeriod(value:unknown,period:{start:string;end:string},requestedLabel:string):{data:RedditTestingData;daily:OverviewDailySource}|null {
- if(requestedLabel!=='Custom'||!record(value)||!record(value.data)||typeof value.data.periodLabel!=='string')return null;
+ if(!record(value)||!record(value.data)||typeof value.data.periodLabel!=='string')return null;
  const sourceLabel=value.data.periodLabel;
- if(!['Custom','Last Week (Tue–Mon)','Week-to-date','Month-to-date','Year-to-date','Last 7 days','Last 30 days','Last 90 days'].includes(sourceLabel)||!validRedditSharedSnapshot(value,period,sourceLabel))return null;
+ const labels=['Custom','Last Week (Tue–Mon)','Week-to-date','Month-to-date','Year-to-date','Last 7 days','Last 30 days','Last 90 days'];
+ if(!labels.includes(requestedLabel)||!labels.includes(sourceLabel)||!validRedditSharedSnapshot(value,period,sourceLabel))return null;
  return {...value,data:{...value.data,periodLabel:requestedLabel}};
 }
