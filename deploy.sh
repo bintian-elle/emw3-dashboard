@@ -65,6 +65,11 @@ JS
  staging_build_dir=.next-release-production-sync
  NEXT_DIST_DIR="$staging_build_dir" npm run build
  NEXT_DIST_DIR="$staging_build_dir" pm2 restart emw3-dashboard-staging --update-env
+ node <<'JS'
+const fs=require('node:fs'),path=require('node:path');require('@next/env').loadEnvConfig(process.cwd());
+const status=process.env.STAGING_RELEASE_STATUS_FILE||path.join(process.cwd(),'.state','staging-release.json');
+if(fs.existsSync(status)){const archive=path.join(path.dirname(status),'release-status-history');fs.mkdirSync(archive,{recursive:true,mode:0o700});fs.copyFileSync(status,path.join(archive,new Date().toISOString().replace(/[:.]/g,'-')+'.json'));}
+JS
  DEPLOYMENT_ENV=staging node --experimental-strip-types ops/staging/set-release-status.mjs synced
 )
 
