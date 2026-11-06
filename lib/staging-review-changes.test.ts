@@ -15,3 +15,10 @@ test('bilingual insight review links target analysis, separately from business m
  const metrics=reviewChangeFromHash('#review-change=testing-layout')!;
  assert.equal(analysis.target,'testing-analysis');assert.notEqual(analysis.target,metrics.target);assert.equal(analysis.reveal,'analysis');
 });
+
+test('history report change is reviewable without dropping existing release entries',()=>{
+ const changes=reviewChanges(['testing-period-comparison','testing-integrated-insights','testing-prompts','testing-report-history']);
+ assert.deepEqual(changes.map(change=>change.id),['testing-period-comparison','testing-integrated-insights','testing-prompts','testing-report-history']);
+ const history=changes[3];assert.equal(history.page,'/bluevua/testing');assert.equal(history.target,'testing-report-history');
+ assert.ok(history.title.zh&&history.title.en&&history.description.zh&&history.description.en);
+});

@@ -19,3 +19,11 @@ export function validRedditSharedSnapshot(value: unknown, period: {start:string;
  const dateInPeriod=(date:unknown)=>typeof date==="string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && date>=period.start && date<=period.end;
  return value.daily.rows.every(row=>record(row) && dateInPeriod(row.date) && typeof row.entityId==="string" && (row.assetType==="Picture"||row.assetType==="Video"||row.assetType==="Message") && ["spend","revenue","orders","clicks"].every(key=>finite(row[key])) && nullableNumber(row.impressions)) && value.daily.reach.every(row=>record(row) && dateInPeriod(row.date) && nullableNumber(row.value));
 }
+
+/** Re-label a fully validated, exact-date preset snapshot for staging custom ranges. */
+export function redditSnapshotForExactCustomPeriod(value:unknown,period:{start:string;end:string},requestedLabel:string):{data:RedditTestingData;daily:OverviewDailySource}|null {
+ if(requestedLabel!=='Custom'||!record(value)||!record(value.data)||typeof value.data.periodLabel!=='string')return null;
+ const sourceLabel=value.data.periodLabel;
+ if(!['Custom','Last Week (Tue–Mon)','Week-to-date','Month-to-date','Year-to-date','Last 7 days','Last 30 days','Last 90 days'].includes(sourceLabel)||!validRedditSharedSnapshot(value,period,sourceLabel))return null;
+ return {...value,data:{...value.data,periodLabel:requestedLabel}};
+}

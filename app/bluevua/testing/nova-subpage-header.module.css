@@ -18,3 +18,5 @@
 .custom label { display:flex; flex-direction:column; gap:.25rem; color:var(--nova-muted,#707680); font-size:.75rem; }
 :global(.dark) .selectContent { background:#232529; color:#f1f2f3; border-color:#3b3e43; }
 :global(.dark) .selectItem[data-highlighted] { background:#303338; }
+
+.historyTitleRow { display:flex; flex-wrap:wrap; align-items:baseline; gap:.75rem; min-width:0; }

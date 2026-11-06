@@ -1,6 +1,7 @@
 'use client';
 import {usePmaxPresentation} from './insight-presentation';
 import {NovaChannelReport} from './nova-subpage-header';
+import {NovaHistoricalReadout,useHistoricalPeriod} from './nova-history-readout';
 import {testingInsightPeriodLabel} from '@/lib/testing-insight-period-label';
 
 import {useEffect,useId,useLayoutEffect,useRef,useState,type MouseEvent} from 'react';
@@ -93,6 +94,6 @@ function SavedOverviewSummary({period,overviewMetrics}:{period:ReadoutPeriod;ove
 }
 
 export function NovaOverviewSummary(props:{period:ReadoutPeriod;overviewMetrics:OverviewHeadlineMetrics}){
- const integrated=usePmaxPresentation();
- return <div data-review-target="testing-analysis">{integrated?<NovaChannelReport overviewMetrics={props.overviewMetrics}/>:<SavedOverviewSummary {...props}/>}</div>;
+ const integrated=usePmaxPresentation(),history=useHistoricalPeriod();
+ return <div data-review-target="testing-analysis">{history?<NovaHistoricalReadout/>:integrated?<NovaChannelReport overviewMetrics={props.overviewMetrics}/>:<SavedOverviewSummary {...props}/>}</div>;
 }

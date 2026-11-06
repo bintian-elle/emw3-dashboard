@@ -21,6 +21,11 @@ def report(scope, marker):
 
 
 class StagedGenerationTests(unittest.TestCase):
+    def test_visual_analysis_sends_only_selected_prompt_contents(self):
+        job = {'mode': 'analysis', 'period': {'channel': 'google-pmax'},
+               'versions': {'google-pmax': {'content': 'CHANNEL'}, 'readability': {'content': 'READABILITY'}, 'master': {'content': 'OLD'}},
+               'frozen_input': {'visual_context': {}, 'campaigns': ['A']}, '_generation_stage': {'kind': 'campaign', 'campaign': 'A'}}
+        self.assertEqual(staged_generation.visual_analysis_instructions(job), 'CHANNEL\n\nREADABILITY')
     def test_analysis_uses_only_channel_and_readability_even_with_old_trial_versions(self):
         versions = {key: {'content': key} for key in ('master', 'manual', 'google-pmax', 'meta', 'readability')}
         self.assertEqual(staged_generation.analysis_prompt_contents(versions, 'google-pmax'), ['google-pmax', 'readability'])

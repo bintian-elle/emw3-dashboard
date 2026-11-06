@@ -26,3 +26,15 @@ test("a Reddit snapshot publishes totals and daily trends together for the same 
  assert.equal(validRedditSharedSnapshot({data:payload},period,payload.periodLabel),false);
  assert.equal(validRedditSharedSnapshot({data:payload,daily:{...daily,rows:[{...daily.rows[0],date:"2026-10-19"}]}},period,payload.periodLabel),false);
 });
+
+test('custom staging ranges accept a differently named snapshot only when dates and data match',async()=>{
+ const {redditSnapshotForExactCustomPeriod}=await import('./testing-reddit-snapshot.ts');
+ const daily={channel:'Reddit',rows:[{date:period.start,entityId:'a',assetType:'Video',...metrics}],reach:[{date:period.start,value:150}]};
+ const original={data:payload,daily};
+ const result=redditSnapshotForExactCustomPeriod(original,period,'Custom');
+ assert.equal(result?.data.periodLabel,'Custom');
+ assert.equal(payload.periodLabel,'Last Week (Tue–Mon)');
+ assert.equal(redditSnapshotForExactCustomPeriod(original,{...period,end:'2026-10-27'},'Custom'),null);
+ assert.equal(redditSnapshotForExactCustomPeriod({...original,daily:{...daily,rows:[{...daily.rows[0],date:'2026-10-19'}]}},period,'Custom'),null);
+ assert.equal(redditSnapshotForExactCustomPeriod({...original,data:{...payload,periodLabel:'Unknown'}},period,'Custom'),null);
+});

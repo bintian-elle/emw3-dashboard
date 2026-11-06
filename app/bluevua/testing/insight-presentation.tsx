@@ -21,6 +21,7 @@ const IntegratedContext=createContext<IntegratedReportBundle|null>(null);
 export function IntegratedPresentationProvider({bundle,children}:{bundle:IntegratedReportBundle|null;children:ReactNode}){return <IntegratedContext.Provider value={bundle}>{children}</IntegratedContext.Provider>;}
 export function usePmaxPresentation(){
  const old=useContext(Context),bundle=useContext(IntegratedContext),pathname=usePathname(),query=useSearchParams(),{language}=useSiteLanguage();
+ if(query.get('history'))return null;
  if(!bundle)return language==='zh'?old:null;
  let id=previewReportForPath(pathname);if(!id)return null;
  if(id==='reddit'&&(!query.get('period')||query.get('period')==='sinceSep24'))id='reddit-lifetime';

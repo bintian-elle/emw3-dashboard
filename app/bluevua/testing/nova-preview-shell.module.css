@@ -65,3 +65,5 @@ button.mobileMenu { display:none; }
 @keyframes sheet-out { from { transform:translateX(0); } to { transform:translateX(-100%); } }
 @media (max-width:1023px) { .sidebar { display:none; } .main { width:100%; padding:24px 16px 96px; } button.mobileMenu { display:inline-flex; } .topbar { padding-inline:1rem; } }
 @container nova-workspace (max-width:480px) { .topbar { gap:.25rem; padding-inline:.5rem; } .topbarBreadcrumb { gap:.25rem; } button.mobileMenu { width:1.75rem; height:1.75rem; } }
+
+.historyTitleRow { display:flex; flex-wrap:wrap; align-items:baseline; gap:.75rem; min-width:0; }

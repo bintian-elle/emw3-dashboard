@@ -10,7 +10,7 @@ export function TestingWorkspaceTabs({active,count}:{active:'overview'|'inventor
  const params=useSearchParams();
  const {language}=useSiteLanguage();
  const query=new URLSearchParams();
- for(const key of ['period','start','end']){const value=params.get(key);if(value)query.set(key,value);}
+ for(const key of ['period','start','end','history']){const value=params.get(key);if(value)query.set(key,value);}
  const suffix=query.size?`?${query}`:'';
  return <nav className={styles.tabs} aria-label={language==='zh'?'测试页面':'Testing views'}>
   <TestingLink href={`/bluevua/testing${suffix}`} aria-current={active==='overview'?'page':undefined}><LayoutDashboard aria-hidden="true"/>{language==='zh'?'总览':'Overview'}</TestingLink>

@@ -27,3 +27,11 @@ test('Google Search shares the page period even when a concluded campaign has a 
  assert.equal(url.searchParams.get('start'),'2026-10-20');
  assert.equal(url.searchParams.get('end'),'2026-10-26');
 });
+
+test('historical share links preserve the displayed range despite a stale page scope',()=>{
+ const url=new URL(testingShareHref('https://staging.example/bluevua/testing/meta?period=custom&start=2026-10-27&end=2026-11-02&history=weekly',{start:'2026-11-03',end:'2026-11-09'},{start:'2026-11-03',end:'2026-11-09'}));
+ assert.equal(url.searchParams.get('history'),'weekly');
+ assert.equal(url.searchParams.get('start'),'2026-10-27');
+ assert.equal(url.searchParams.get('end'),'2026-11-02');
+ assert.equal(url.searchParams.get('shared'),'1');
+});

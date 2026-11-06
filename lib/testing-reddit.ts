@@ -1,7 +1,7 @@
 import {assertLiveSourceAllowed} from '@/lib/staging-policy';
 import "server-only";
 import { readTestingDataSnapshot, initializeTestingDataSnapshot } from "@/lib/testing-data-cache";
-import { validRedditSharedSnapshot } from "@/lib/testing-reddit-snapshot";
+import { redditSnapshotForExactCustomPeriod, validRedditSharedSnapshot } from "@/lib/testing-reddit-snapshot";
 import { createRedditRequester } from "@/lib/reddit-api-request";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -75,7 +75,9 @@ export async function getRedditContentTestingData(input:RedditPeriodInput={}) {
  const label=preset===redditSinceStartPreset?redditSinceStartLabel:testingPeriodLabels[preset];
  try{
   const snapshot=await readTestingDataSnapshot("reddit",input)??await initializeTestingDataSnapshot("reddit",input,()=>fetchFreshRedditTestingData(input));
-  if(snapshot&&validRedditSharedSnapshot(snapshot.payload,period,label)){sharedDaily.set(snapshot.payload.data,snapshot.payload.daily);return snapshot.payload.data;}
+  const exactCustom=process.env.DEPLOYMENT_ENV==='staging'&&preset==='custom'&&snapshot?redditSnapshotForExactCustomPeriod(snapshot.payload,period,label):null;
+  const published=exactCustom??(snapshot&&validRedditSharedSnapshot(snapshot.payload,period,label)?snapshot.payload:null);
+  if(published){sharedDaily.set(published.data,published.daily);return published.data;}
  }catch(error){if(process.env.DEPLOYMENT_ENV==='staging')throw error;/* Preserve the production fallback path. */}
  if(process.env.DEPLOYMENT_ENV==='staging')throw Error('This reporting period is not available in this staging snapshot.');
  return getRedditTestingData(input,true);

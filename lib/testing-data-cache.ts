@@ -1,7 +1,7 @@
 import {readStagingDataSnapshot,clipStagingRedditDaily} from './staging-data-snapshots';
 import 'server-only';
 import {Pool} from 'pg';
-import {testingDataSnapshotKey,type TestingDataChannel,type TestingDataInput} from './testing-data-cache-contract';
+import {equivalentTestingDataScopes,testingDataSnapshotKey,type TestingDataChannel,type TestingDataInput} from './testing-data-cache-contract';
 import {publishTestingData,type TestingDataPublishOptions} from './testing-data-publication';
 import {VersionedSnapshotMemory} from './testing-memory-snapshot';
 import {querySnapshotVersions} from './testing-snapshot-version-query';
@@ -32,11 +32,15 @@ function database(){
  return pool??=new Pool({connectionString,ssl:{rejectUnauthorized:false},max:4,connectionTimeoutMillis:process.env.DEPLOYMENT_ENV==='staging'?30000:5000});
 }
 async function loadScope<T>(channel:TestingDataChannel,scope:string,livePublished=false):Promise<TestingDataSnapshot<T>|null>{
- const directory=stagingDirectory(),seedKey=JSON.stringify([channel,scope]);if(directory&&!livePublished&&!memory.seeded.has(seedKey)){memory.seeded.add(seedKey);const seed=await readStagingDataSnapshot<T>(directory,channel,scope);if(seed)return seed;}
+ const directory=stagingDirectory(),seedKey=JSON.stringify([channel,scope]);
+ // In staging, a saved preset and a custom range may identify the exact same dates.
+ // Reuse only an exact date match; never substitute a nearby reporting period.
+ const equivalent=directory?equivalentTestingDataScopes(scope):[scope];
+ if(directory&&!livePublished&&!memory.seeded.has(seedKey)){memory.seeded.add(seedKey);for(const candidate of equivalent){const seed=await readStagingDataSnapshot<T>(directory,channel,candidate);if(seed)return seed;}}
  const key=JSON.stringify([channel,scope]),existing=memory.loads.get(key);
  if(existing)return existing as Promise<TestingDataSnapshot<T>|null>;
  const request=(async()=>{
-  const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 and scope_key=$2',[channel,scope]);
+  const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 and scope_key=any($2::text[]) order by array_position($2::text[],scope_key) limit 1',[channel,equivalent]);
   const row=result.rows[0];return row?{payload:(stagingDirectory()&&channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
  })();
  memory.loads.set(key,request);

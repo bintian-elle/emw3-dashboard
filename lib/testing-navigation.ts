@@ -12,15 +12,27 @@ export function clearTestingPeriod(href:string,depth=0):string{
  if(!safe)return href;
  const url=new URL(safe,"https://dashboard.local");
  let changed=false;
- for(const key of ["period","start","end","compare","compareStart","compareEnd"]){if(url.searchParams.has(key)){url.searchParams.delete(key);changed=true;}}
+ for(const key of ["period","start","end","compare","compareStart","compareEnd","history"]){if(url.searchParams.has(key)){url.searchParams.delete(key);changed=true;}}
  const parent=url.searchParams.get("returnTo");
  if(parent&&depth<5){const cleared=clearTestingPeriod(parent,depth+1);if(cleared!==parent){url.searchParams.set("returnTo",cleared);changed=true;}}
  return changed?`${url.pathname}${url.search}${url.hash}`:href;
 }
 
+/** A historical URL must identify a real complete daily, weekly, or monthly period. */
+export function testingHistoryPeriod(params:URLSearchParams):{frequency:'daily'|'weekly'|'monthly';start:string;end:string}|null{
+ const frequency=params.get('history'),start=params.get('start'),end=params.get('end');
+ if(params.get('period')!=='custom'||!start||!end||!['daily','weekly','monthly'].includes(frequency??'')||!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end))return null;
+ const first=new Date(`${start}T00:00:00Z`),last=new Date(`${end}T00:00:00Z`);
+ if(!Number.isFinite(first.getTime())||!Number.isFinite(last.getTime())||first.toISOString().slice(0,10)!==start||last.toISOString().slice(0,10)!==end)return null;
+ if(frequency==='daily'&&start!==end)return null;
+ if(frequency==='weekly'&&(first.getUTCDay()!==2||last.getTime()-first.getTime()!==6*86400000))return null;
+ if(frequency==='monthly'&&(first.getUTCDate()!==1||first.getUTCFullYear()!==last.getUTCFullYear()||first.getUTCMonth()!==last.getUTCMonth()||new Date(last.getTime()+86400000).getUTCDate()!==1))return null;
+ return {frequency:frequency as 'daily'|'weekly'|'monthly',start,end};
+}
+
 /** Reset ordinary document loads before the page can fetch the old period.
  * Shared links explicitly opt in to their saved range for the initial load. */
-export function testingDocumentPeriodRedirect(href:string,method:string,headers:Pick<Headers,"get">):string|null{
+export function testingDocumentPeriodRedirect(href:string,method:string,headers:Pick<Headers,"get">,allowHistory=false):string|null{
  const safe=safeTestingReturnTo(href,"");
  if(!safe||method!=="GET")return null;
  const url=new URL(safe,"https://dashboard.local");
@@ -30,7 +42,9 @@ export function testingDocumentPeriodRedirect(href:string,method:string,headers:
  // use the fetch default */*, while browser document requests accept HTML.
  const legacyDocument=!mode&&!destination&&!url.searchParams.has("_rsc")&&(headers.get("accept")??"").toLowerCase().includes("text/html");
  if(!documentRequest&&!legacyDocument)return null;
- if(url.searchParams.get("shared")==="1")return null;
+ const historical=testingHistoryPeriod(url.searchParams);
+ if(allowHistory&&historical)return null;
+ if(url.searchParams.get("shared")==="1"&&!url.searchParams.has("history"))return null;
  const cleared=clearTestingPeriod(safe);
  return cleared===safe?null:cleared;
 }

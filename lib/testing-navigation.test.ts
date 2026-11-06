@@ -82,3 +82,14 @@ test('document refresh resets period before fetching, while shared links and cli
  const nested='/bluevua/testing/google/search/group?designPreview=nova&returnTo=%2Fbluevua%2Ftesting%3Fperiod%3Dlast7%26designPreview%3Dnova';
  assert.equal(testingDocumentPeriodRedirect(nested,'GET',document),'/bluevua/testing/google/search/group?designPreview=nova&returnTo=%2Fbluevua%2Ftesting%3FdesignPreview%3Dnova');
 });
+
+test('staging historical reports retain their exact period on document reload and sharing',()=>{
+ const document=new Headers({'sec-fetch-mode':'navigate','sec-fetch-dest':'document'});
+ const history='/bluevua/testing?period=custom&start=2026-10-27&end=2026-11-02&history=weekly';
+ assert.equal(testingDocumentPeriodRedirect(history,'GET',document,true),null);
+ assert.equal(testingDocumentPeriodRedirect(history+'&shared=1','GET',document,true),null);
+ assert.equal(testingDocumentPeriodRedirect(history,'GET',document,false),'/bluevua/testing');
+ for(const invalid of [history.replace('weekly','unknown'),history.replace('2026-11-02','2026-11-03'),history.replace('start=2026-10-27&','')])assert.equal(new URL(testingDocumentPeriodRedirect(invalid,'GET',document,true)!, 'https://test').searchParams.has('history'),false);
+ const monthly='/bluevua/testing/meta?period=custom&start=2026-10-01&end=2026-10-31&history=monthly';
+ assert.equal(testingDocumentPeriodRedirect(monthly,'GET',document,true),null);
+});

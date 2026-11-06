@@ -7,6 +7,7 @@ import {InsightMarkdown} from './insight-assets';
 import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
 import {conclusionOnlyMarkdown} from '@/lib/testing-prompt-presentation';
 import {cleanTestingReadoutCopy} from '@/lib/testing-readout-copy';
+import {campaignNavigation} from '@/lib/testing-campaign-navigation';
 import {testingReadoutKey,type CachedTestReadout,type CachedPeriodReadout,type ReadoutPeriod} from '@/lib/testing-readout-contract';
 import type {TestingFrameworkKey,ReadoutMetric} from '@/lib/testing-framework';
 import {NovaButton,NovaCard} from './nova-preview-ui';
@@ -35,6 +36,7 @@ function List({title,items,channel}:{title:string;items?:string[];channel?:strin
 export function NovaTestReadout({channel,testIdentity,period,standalone,campaignId,children,summary,test,overview,socialEdmBrief,deltas,loading,loadError,onRetry,translationPending,translationError,ready:cacheReady,canAsk,ask,open,expanded,setExpanded,toggleRef,detailsId,bottomId,preserveCollapsePosition}:Props){
  const {language}=useSiteLanguage(),zh=language==='zh',isOverview=channel==='overview'&&testIdentity==='overview';
  const readable=usePmaxPresentation(),trial=readable?.analysis.campaigns.find(c=>c.test_id===testIdentity);
+ const navigation=trial&&readable&&testIdentity?campaignNavigation(readable.presentation,testIdentity,detailsId):[];
  const ready=cacheReady||Boolean(trial);
  summary=trial?.summary??summary;
  const t=(english:string,chinese:string)=>zh?chinese:english;
@@ -44,7 +46,7 @@ export function NovaTestReadout({channel,testIdentity,period,standalone,campaign
  const question=<NovaInsightQuestion scope="test" expanded={expanded} detailsId={detailsId} bottomId={bottomId} canAsk={canAsk} ask={ask} open={open}/>;
  const summaryBlock=<div className={styles.summary}><div className={styles.summaryTitle}><Sparkles aria-hidden="true"/><h2>{channel==='social'?t('Post analysis · 10 Instagram Posts','Post 分析 · 10 条 Instagram Posts'):t('Test summary','测试总结')}</h2></div>{summary?<Text text={summary} channel={channel}/>:<div className={styles.muted} role={loading?'status':undefined}>{noData} {loadError&&onRetry?<NovaButton variant="ghost" size="sm" onClick={onRetry}>{t("Retry","重试")}</NovaButton>:!loading&&<GenerateReadoutButton period={period} scope={channel??"overview"}/>}</div>}{zh&&translationPending&&<p className={styles.muted} role="status">中文翻译正在准备，暂显示英文分析。</p>}{zh&&translationError&&<p className={styles.muted} role="status">中文翻译暂不可用，暂显示英文分析。</p>}</div>;
  const details=<div id={detailsId} hidden={!expanded} className={styles.details}>
-  {trial&&readable?expanded&&<><InsightPresentation report={readable} scope={testIdentity!}/>{trial.detail_markdown&&<details className={styles.detailGroup}><summary>查看完整分析依据</summary><InsightMarkdown channel={channel}>{trial.detail_markdown}</InsightMarkdown></details>}</>:test?.preview_sections?test.preview_sections.map((section,index)=><section key={index} className={styles.detailGroup}>{section.title&&<h3>{section.title}</h3>}<div className={shared.markdown}><InsightMarkdown channel={channel}>{conclusionOnlyMarkdown(section.markdown)}</InsightMarkdown></div></section>):<>
+  {trial&&readable?expanded&&<><InsightPresentation report={readable} scope={testIdentity!} anchorPrefix={detailsId}/>{trial.detail_markdown&&<details className={styles.detailGroup}><summary>查看完整分析依据</summary><InsightMarkdown channel={channel}>{trial.detail_markdown}</InsightMarkdown></details>}</>:test?.preview_sections?test.preview_sections.map((section,index)=><section key={index} className={styles.detailGroup}>{section.title&&<h3>{section.title}</h3>}<div className={shared.markdown}><InsightMarkdown channel={channel}>{conclusionOnlyMarkdown(section.markdown)}</InsightMarkdown></div></section>):<>
    {period&&!testingReadoutKey(period)&&<p className={styles.muted}>{t('Select Last Week, Week-to-date or Month-to-date to view analysis.','选择上周、本周至今或本月至今，查看分析。')}</p>}
    {!summary&&<p className={styles.muted} role={loading?'status':undefined}>{noData}</p>}
    {test?.recommended_action&&<section className={styles.detailGroup}><h3>{t('Recommended next step','下一步建议')}</h3><Text text={test.recommended_action} channel={channel}/></section>}
@@ -55,7 +57,7 @@ export function NovaTestReadout({channel,testIdentity,period,standalone,campaign
   {expanded&&<div className={styles.actions}><NovaButton variant="outline" aria-controls={detailsId} aria-expanded onClick={event=>{preserveCollapsePosition(event);setExpanded(false);}}>{t('Hide details','收起详情')}<ChevronUp/></NovaButton><div id={bottomId} className={shared.questionBottom}/></div>}
  </div>;
  if(!children&&!test&&!summary)return null;
- const report=<><div className={styles.actions}>{toggle}{question}</div>{details}</>;
+ const report=<><div className={styles.actions}>{toggle}{expanded&&navigation.map(item=><NovaButton key={item.target} type="button" variant="ghost" size="sm" aria-controls={item.target} onClick={()=>{const target=document.getElementById(item.target);if(!target)return;const headerBottom=document.querySelector('[data-testing-header]')?.getBoundingClientRect().bottom??0;target.style.scrollMarginTop=`${Math.ceil(Math.max(0,headerBottom)+16)}px`;target.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}}>{item.title}</NovaButton>)}{question}</div>{details}</>;
  if(collapsible)return <div id={campaignId} data-campaign-anchor data-campaign-name={testIdentity} data-campaign-channel={channel?channelNames[channel]:'Google Search'} tabIndex={-1} className={styles.campaign}>{summaryBlock}<section aria-label="Test performance data">{children}</section>{report}</div>;
  return <><NovaCard className={styles.card}>{summaryBlock}{report}</NovaCard>{children&&<section aria-label="Test performance data">{children}</section>}</>;
 }

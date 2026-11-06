@@ -23,6 +23,8 @@ import {NovaInsightQuestion} from './nova-insight-question';
 import {scrollTestingContentBy} from './scroll-testing-content';
 import {NovaAskAiButton} from './nova-ask-ai-button';
 import {NovaShareButton} from './nova-share-button';
+import {NovaHistoryMenu} from './nova-history-menu';
+import {NovaHistoryBadge,NovaHistoricalReadout,useHistoricalPeriod} from './nova-history-readout';
 import reportStyles from './nova-preview-sections.module.css';
 import styles from './nova-subpage-header.module.css';
 import {testingReadoutKey} from '@/lib/testing-readout-contract';
@@ -46,20 +48,20 @@ function NovaSubpageHeader({section,title,redditDateFilter,showReportingPeriod,b
  const selected=customDraft?'custom':options.some(([value])=>value===requested)?requested!:(redditDateFilter?redditSinceStartPreset:'lastWeek');
  const update=(period:string,range?:{start:string;end:string})=>{
   if(pending)return;
-  const next=new URLSearchParams(query.toString());next.set('period',period);
+  const next=new URLSearchParams(query.toString());next.set('period',period);next.delete('history');
   if(period==='custom'&&range){next.set('start',range.start);next.set('end',range.end);}else{next.delete('start');next.delete('end');}
   if(next.toString()!==query.toString())startTransition(()=>router.replace(`${pathname}?${next}`,{scroll:false}));
  };
  const overviewQuery=new URLSearchParams();
- for(const key of ['period','start','end','compare','compareStart','compareEnd']){const value=query.get(key);if(value)overviewQuery.set(key,value);}
+ for(const key of ['period','start','end','compare','compareStart','compareEnd','history']){const value=query.get(key);if(value)overviewQuery.set(key,value);}
  return <header data-testing-header className={styles.header}>
   <div className={styles.identity}>
-   <h1>{zh&&title==='Content testing overview'?'内容测试总览':title}</h1>
+   <div className={styles.historyTitleRow}><h1>{zh&&title==='Content testing overview'?'内容测试总览':title}</h1><NovaHistoryBadge/></div>
    {section&&<div className={styles.backLinks}>{backHref&&<NovaButton asChild variant="outline"><Link href={backHref}><ArrowLeft aria-hidden="true"/>{backLabel}</Link></NovaButton>}<NovaButton asChild variant="ghost"><Link href={`/bluevua/testing?${overviewQuery}`}><LayoutDashboard aria-hidden="true"/>{zh?'返回总览':'Back to overview'}</Link></NovaButton></div>}
   </div>
   <div className={styles.controls}>
    {showReportingPeriod&&<TestingComparisonControls><label htmlFor="nova-subpage-period">{zh?'报告周期':'Reporting period'}</label><NovaReportingPeriodSelect id="nova-subpage-period" ariaLabel={zh?'测试报告周期':'Testing reporting period'} value={selected} options={options} disabled={pending} onValueChange={value=>{if(value==='custom')setCustomDraft(true);else{setCustomDraft(false);update(value);}}}/>{selected==='custom'&&<NovaReportingPeriodCustom zh={zh} start={start} end={end} disabled={pending} onApply={range=>{const next={start:range.start.toString(),end:range.end.toString()};setStart(next.start);setEnd(next.end);update('custom',next);}}/>}</TestingComparisonControls>}
-   <NovaShareButton disabled={pending} freezePeriod={showReportingPeriod} period={sharePeriod}/><NovaAskAiButton onClick={()=>chat.isOpen?chat.close():chat.open()} aria-controls="testing-ai-panel" aria-expanded={chat.isOpen}>{zh?'询问 AI':'Ask AI'}</NovaAskAiButton>
+   <NovaHistoryMenu pageTitle={title}/><NovaShareButton disabled={pending} freezePeriod={showReportingPeriod} period={sharePeriod}/><NovaAskAiButton onClick={()=>chat.isOpen?chat.close():chat.open()} aria-controls="testing-ai-panel" aria-expanded={chat.isOpen}>{zh?'询问 AI':'Ask AI'}</NovaAskAiButton>
   </div>
  </header>;
 }
@@ -70,7 +72,9 @@ function Question({expanded,detailsId,bottomId}:{expanded:boolean;detailsId:stri
  return <NovaInsightQuestion scope="channel" expanded={expanded} detailsId={detailsId} bottomId={bottomId} canAsk={chat.canAsk} ask={chat.ask} open={chat.open}/>;
 }
 
-export function NovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHeadlineMetrics}){
+export function NovaChannelReport(props:{overviewMetrics?:OverviewHeadlineMetrics}){const history=useHistoricalPeriod();return history?<NovaHistoricalReadout/>:<CurrentNovaChannelReport {...props}/>;}
+
+function CurrentNovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHeadlineMetrics}){
  const readable=usePmaxPresentation();
  const {language}=useSiteLanguage(),pathname=usePathname(),query=useSearchParams(),baseId=previewReportForPath(pathname);
  const [previewState,setPreview]=useState<{key:string;value:Preview}|null>(null),[expandedKey,setExpandedKey]=useState<string|null>(null);
