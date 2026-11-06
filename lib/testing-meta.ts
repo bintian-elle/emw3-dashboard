@@ -98,8 +98,9 @@ export async function getMetaCampaignTest(input:TestingPeriodInput={}):Promise<M
   await connection();
   const snapshot=await readTestingDataSnapshot<MetaTestingSnapshot>("meta",input)??await initializeTestingDataSnapshot("meta",input,()=>fetchFreshMetaCampaignTest(input));
   if(snapshot?.payload?.data && snapshot.payload.daily){
-    snapshotDaily.set(snapshot.payload.data,snapshot.payload.daily);
-    return snapshot.payload.data;
+    const data={...snapshot.payload.data,periodLabel:testingPeriodLabels[input.preset??'lastWeek']};
+    snapshotDaily.set(data,snapshot.payload.daily);
+    return data;
   }
   return buildMetaCampaignTest(input,graph);
 }

@@ -73,7 +73,7 @@ async function campaignTest(campaignId:string,modulePattern:RegExp|undefined,per
 export async function getEdmTestingData(input:TestingPeriodInput={}):Promise<EdmTestingData>{
   await connection();
   const snapshot=await readTestingDataSnapshot<EdmTestingSnapshot>("edm",input);
-  if(snapshot?.payload?.data&&snapshot.payload.daily){registerEdmDailySnapshot(snapshot.payload.data,snapshot.payload.daily);return snapshot.payload.data;}
+  if(snapshot?.payload?.data&&snapshot.payload.daily){const data={...snapshot.payload.data,periodLabel:testingPeriodLabels[input.preset??'lastWeek']};registerEdmDailySnapshot(data,snapshot.payload.daily);return data;}
   const latest=iso(new Date(Date.now()-86_400_000)),preset=input.preset??"lastWeek",period=resolveTestingPeriod(latest,input);
   const selected=await database().query<{campaign_id:string}>(`
     select c.campaign_id from dim_campaign c
