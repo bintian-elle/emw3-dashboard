@@ -9,7 +9,7 @@ import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } fr
 import type { OverviewDailySource } from "./overview-daily-metrics";
 
 const META_API_VERSION="v25.0";
-const META_CAMPAIGN_IDS=["120251709189500383"] as const;
+const META_CAMPAIGN_IDS=["120251709189500383","120252186354960383"] as const;
 type MetaAction={action_type:string;value:string};
 type MetaInsightRow={ad_id?:string;ad_name?:string;adset_id:string;adset_name:string;reach?:string;spend?:string;impressions?:string;clicks?:string;inline_link_clicks?:string;actions?:MetaAction[];action_values?:MetaAction[]};
 type MetaAdRow={id:string;name:string;adset_id:string;configured_status?:string;effective_status?:string;creative?:MetaCreative&{body?:string;title?:string}};
@@ -73,7 +73,10 @@ async function buildMetaCampaignTest(input:TestingPeriodInput,read:MetaGraph):Pr
   for(const campaignId of META_CAMPAIGN_IDS)campaigns.push(await campaignTest(campaignId,period,read));
   const adGroups=campaigns.flatMap(campaign=>campaign.adGroups);
   const totals=campaigns.reduce((sum,campaign)=>({spend:sum.spend+campaign.totals.spend,revenue:sum.revenue+campaign.totals.revenue,orders:sum.orders+campaign.totals.orders,clicks:sum.clicks+campaign.totals.clicks,impressions:sum.impressions+campaign.totals.impressions}),{spend:0,revenue:0,orders:0,clicks:0,impressions:0});
-  return {periodLabel:testingPeriodLabels[preset],period,campaigns,adGroups,totals:{...totals,reach:campaigns.length===1?campaigns[0].totals.reach:null,costPerReach:campaigns.length===1?campaigns[0].totals.costPerReach:null}};
+  // An undelivered campaign does not change the selected period’s unique reach.
+  const delivered=campaigns.filter(campaign=>campaign.totals.impressions>0);
+  const reachSource=campaigns.length===1?campaigns[0]:delivered.length===1?delivered[0]:undefined;
+  return {periodLabel:testingPeriodLabels[preset],period,campaigns,adGroups,totals:{...totals,reach:reachSource?.totals.reach??null,costPerReach:reachSource?.totals.costPerReach??null}};
 }
 
 /** A fresh result is returned only after every requested Meta resource succeeds. */
