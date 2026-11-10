@@ -71,3 +71,10 @@ test('restart updates the PM2 environment to select the build just produced',t=>
  assert.equal(result.status,0,result.stderr);
  assert.match(result.calls,/pm2 restart emw3-dashboard --update-env/);
 });
+
+test('deployment builds and restarts only the production website',t=>{
+ const result=fixture(t).run();
+ assert.equal(result.status,0,result.stderr);
+ assert.equal((result.calls.match(/npm run build/g)||[]).length,1);
+ assert.doesNotMatch(result.calls,/emw3-dashboard-staging|codex\/staging/);
+});

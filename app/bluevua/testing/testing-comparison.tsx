@@ -4,6 +4,7 @@ import {createContext,useContext,useEffect,useMemo,useState,useTransition,type R
 import {usePathname,useRouter,useSearchParams} from 'next/navigation';
 import {ArrowLeftRight} from 'lucide-react';
 import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
+import {useReviewPreview} from '@/components/application/review/review-preview-context';
 import type {TestingPeriodInput} from '@/lib/testing-google';
 import {redditContentPeriod} from '@/lib/reddit-content-testing';
 import {resolveTestingPeriod,testingLatestCompleteDate} from '@/lib/testing-period';
@@ -36,6 +37,7 @@ export function TestingComparisonProvider({enabled,children}:{enabled:boolean;ch
 }
 export function TestingComparisonControls({children}:{children:ReactNode}){
  const context=useContext(Context),query=useSearchParams(),path=usePathname(),router=useRouter(),{language}=useSiteLanguage(),zh=language==='zh';
+ const preview=useReviewPreview();
  const [pending,startTransition]=useTransition(),[custom,setCustom]=useState<'main'|'compare'|null>(null);
  const latest=testingLatestCompleteDate(),current=(path.startsWith('/bluevua/testing/reddit')&&(!query.get('period')||query.get('period')==='sinceSep24')?redditContentPeriod():resolveTestingPeriod(latest,{preset:(query.get('period')??'lastWeek') as TestingPeriodInput['preset'],start:query.get('start')??undefined,end:query.get('end')??undefined}));
  const compare=query.get('compare')??'previousPeriod',previous=comparisonRange(current,compare,latest,{start:query.get('compareStart')??current.start,end:query.get('compareEnd')??current.end});
@@ -62,7 +64,7 @@ export function TestingComparisonControls({children}:{children:ReactNode}){
  };
  const mainOptions=path.startsWith('/bluevua/testing/reddit')?[['sinceSep24','Lifetime (Sep 24, 2026 – Now)'] as const,...novaReportingPeriods]:novaReportingPeriods;
  const options=[['previousPeriod',zh?'上一周期':'Previous period'],['previousYear',zh?'去年同期':'Previous year'],...novaReportingPeriods] as const;
- return <div className={styles.controls} aria-busy={pending}>
+ return <div className={styles.controls} data-comparison-controls={preview?true:undefined} aria-busy={pending}>
   <div className={styles.picker}><span className={styles.label}>{zh?'报告周期':'Time Period'}</span><ComparisonPeriodSelect ariaLabel={zh?'报告周期':'Time Period'} options={mainOptions} value={custom==='main'?'custom':query.get('period')??(path.startsWith('/bluevua/testing/reddit')?'sinceSep24':'lastWeek')} disabled={pending} onValueChange={value=>choose('main',value)}/><span className={styles.dates}>{current.start} – {current.end}</span>{(custom==='main'||query.get('period')==='custom')&&<NovaReportingPeriodCustom zh={zh} disabled={pending} start={current.start} end={current.end} onApply={range=>setRange('main',{start:range.start.toString(),end:range.end.toString()})}/>}</div>
   <Button className={styles.swap} variant="secondary" iconOnly leadingIcon={ArrowLeftRight} disabled={pending} onClick={swap} aria-label={zh?'交换报告与对比周期':'Swap reporting and comparison periods'}/>
   <div className={styles.picker}><span className={styles.label}>{zh?'对比周期':'Compare With'}</span><ComparisonPeriodSelect ariaLabel={zh?'对比周期':'Compare With'} value={custom==='compare'?'custom':compare} options={options} disabled={pending} onValueChange={value=>choose('compare',value)}/><span className={styles.dates}>{previous.start} – {previous.end}</span>{(custom==='compare'||compare==='custom')&&<NovaReportingPeriodCustom zh={zh} disabled={pending} start={previous.start} end={previous.end} onApply={range=>setRange('compare',{start:range.start.toString(),end:range.end.toString()})}/>}</div>

@@ -56,4 +56,7 @@
 .dialogTitle { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; overflow-wrap:anywhere; }
 .historyBadge { display:inline-flex; align-items:center; border:1px solid #d9dee4; border-radius:999px; padding:.2rem .55rem; color:#536171; font-size:.7rem; font-weight:600; line-height:1.2; white-space:nowrap; }
 :global(.dark) .historyBadge { border-color:#59616d; color:#d7dde5; }
+.previewBadge { border-color:#bfd4fb; background:#edf4ff; color:#2457a6; }
+:global(.dark) .previewBadge { border-color:#41658f; background:#1b304a; color:#c1d9ff; }
 .pageHistory { display:flex; flex-wrap:wrap; align-items:center; gap:.55rem; margin-top:.55rem; color:var(--nova-muted,#68717e); font-size:.75rem; }
+.previewHistory { gap:.625rem; margin-top:0; line-height:1.4; }

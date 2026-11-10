@@ -1,24 +1,25 @@
 import { currentSiteUser } from '@/lib/current-site-user';
 import { authOrigin } from '@/lib/site-auth';
+import {canAccessReviewTools,canWriteReviewTools,reviewExpectedOrigin} from '@/lib/review-access';
 import { createNote, listNotes, resolveNote, validateNote, canDeleteNote, deleteNote } from '@/lib/staging-notes';
-import { readStagingReleaseStatus } from '@/lib/staging-release';
-import {usesUnifiedLocalReports} from '@/lib/testing-report-environment';
 import { join } from 'node:path';
 export const runtime = 'nodejs';
 const headers = { 'Cache-Control': 'private, no-store' };
 const reply=(body:unknown,status=200)=>Response.json(body,{status,headers});
 async function access(request:Request,mutation=false){
- if(process.env.DEPLOYMENT_ENV!=='staging')return reply({error:'Not found'},404);
- if(!await currentSiteUser())return reply({error:'Unauthorized'},401);
- if(mutation&&request.headers.get('origin')!==authOrigin(request.url))return reply({error:'Invalid origin'},403);
+ const user=await currentSiteUser();
+ if(!user)return reply({error:'Unauthorized'},401);
+ if(!canAccessReviewTools(user))return reply({error:'Not available'},403);
+ const expected=reviewExpectedOrigin(request.url,authOrigin(request.url),process.env.LOCAL_PRODUCTION_PREVIEW==='1');
+ if(mutation&&!canWriteReviewTools(user,request.headers.get('origin'),expected))return reply({error:'Invalid origin'},403);
  return null;
 }
-const directory=()=>process.env.STAGING_NOTES_DIR||join(process.cwd(),'.state','staging-notes');
+const directory=()=>process.env.REVIEW_NOTES_DIR||process.env.STAGING_NOTES_DIR||join(process.cwd(),'.state','review-notes');
 export async function GET(request:Request){
  const denied=await access(request);if(denied)return denied;
  const page=new URL(request.url).searchParams.get('page')||'/';
  try{validateNote({page,text:'validation'});}catch{return reply({error:'Invalid page'},400);}
- try{const [notes,release]=await Promise.all([listNotes(directory(),new URL(request.url).searchParams.get('scope')==='all'?undefined:page),usesUnifiedLocalReports()?Promise.resolve({state:'local' as const}):readStagingReleaseStatus(process.env.STAGING_RELEASE_STATUS_FILE||join(process.cwd(),'.state','staging-release.json'))]);const user=(await currentSiteUser())!;return reply({notes:notes.map(note=>({...note,canDelete:canDeleteNote(note,user)})),release});}catch{return reply({error:'Unable to load notes'},503);}
+ try{const notes=await listNotes(directory(),new URL(request.url).searchParams.get('scope')==='all'?undefined:page);const user=(await currentSiteUser())!;return reply({notes:notes.map(note=>({...note,canDelete:canDeleteNote(note,user)}))});}catch{return reply({error:'Unable to load notes'},503);}
 }
 export async function POST(request:Request){
  const denied=await access(request,true);if(denied)return denied;

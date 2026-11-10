@@ -1,8 +1,9 @@
 'use client';
 import {createContext,useContext,useEffect,useId,useState,type ReactNode} from 'react';
 import {usePathname,useRouter,useSearchParams} from 'next/navigation';
-import {ChevronDown,ChevronUp,History} from 'lucide-react';
+import {ArrowLeft,ChevronDown,ChevronUp,History} from 'lucide-react';
 import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
+import {useReviewPreview} from '@/components/application/review/review-preview-context';
 import {previewReportForPath} from '@/lib/testing-prompt-preview';
 import {selectedReportPeriod} from '@/lib/testing-selected-report';
 import {comparisonRange} from '@/lib/testing-comparison';
@@ -51,9 +52,12 @@ export function HistoryReportProvider({children}:{children:ReactNode}){
 
 export function NovaHistoryBadge(){
  const history=useHistoricalPeriod(),{language}=useSiteLanguage(),router=useRouter(),pathname=usePathname(),params=useSearchParams(),{current}=useContext(HistoryLookupContext);
+ const preview=useReviewPreview();
  if(!history)return null;
  const generatedAt=current?.report?.generatedAt,format=generatedAt?new Intl.DateTimeFormat(language==='zh'?'zh-CN':'en-US',{dateStyle:'medium',timeStyle:'short'}).format(new Date(generatedAt)):null;
- return <div className={historyStyles.pageHistory}><span className={historyStyles.historyBadge}>{language==='zh'?'历史报告':'Historical report'}</span><span>{language==='zh'?'报告时间':'Report period'} · {history.start}{history.start!==history.end?` – ${history.end}`:''}</span>{format&&<span>{language==='zh'?'生成时间':'Generated'} · <time dateTime={generatedAt!}>{format}</time></span>}<button type="button" className={historyStyles.textButton} onClick={()=>{const next=new URLSearchParams(params.toString());for(const key of ['history','period','start','end'])next.delete(key);router.push(`${pathname}${next.size?`?${next}`:''}`,{scroll:false});}}>{language==='zh'?'返回当前报告':'Return to current report'}</button></div>;
+ const exit=()=>{const next=new URLSearchParams(params.toString());for(const key of ['history','period','start','end'])next.delete(key);router.push(`${pathname}${next.size?`?${next}`:''}`,{scroll:false});};
+ const label=language==='zh'?'返回当前报告':'Return to current report';
+ return <div className={`${historyStyles.pageHistory} ${preview?historyStyles.previewHistory:''}`} data-historical-indicator={preview?true:undefined}>{preview&&<NovaButton type="button" variant="outline" onClick={exit}><ArrowLeft aria-hidden="true"/>{label}</NovaButton>}<span className={`${historyStyles.historyBadge} ${preview?historyStyles.previewBadge:''}`}>{language==='zh'?'历史报告':'Historical report'}</span><span>{language==='zh'?'报告时间':'Report period'} · {history.start}{history.start!==history.end?` – ${history.end}`:''}</span>{format&&<span>{language==='zh'?'生成时间':'Generated'} · <time dateTime={generatedAt!}>{format}</time></span>}{!preview&&<button type="button" className={historyStyles.textButton} onClick={exit}>{label}</button>}</div>;
 }
 
 export function NovaHistoricalReadout(){

@@ -72,3 +72,4 @@ next-env.d.ts
 
 # Local production preview build
 /.next-local-production*/
+/.next-review-local*/

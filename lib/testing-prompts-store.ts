@@ -5,25 +5,33 @@ import {selectOverviewInsightSources} from './testing-overview-trial-sources';
 import {overviewTrialSources,savedOverviewSources} from './testing-overview-trial-sources.server';
 import {Pool} from 'pg';
 import {createHash,randomUUID} from 'node:crypto';
-import {readFile,mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {readFile,mkdtemp,writeFile,rm,stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {testingPromptCatalog,type PromptAuthor,type PromptId,type PromptVersion,type PromptRun,currentPromptVersion,validatePromptEdit,validatePromptRun} from './testing-prompts-contract';
+import {readReviewPromptVersions,writeReviewPromptVersion} from './review-prompt-versions';
+const localVersions=()=>join(process.cwd(),'.state/review-prompt-versions');
 let pool:Pool|undefined;
-export function promptDatabase(){if(!process.env.STAGING_PROMPTS_DATABASE_URL)throw Error('Prompt storage is not configured.');return pool??=new Pool({connectionString:process.env.STAGING_PROMPTS_DATABASE_URL,ssl:{rejectUnauthorized:false},max:3,connectionTimeoutMillis:5000,statement_timeout:10000});}
+export function promptDatabase(){const url=process.env.REVIEW_PROMPTS_DATABASE_URL||process.env.STAGING_PROMPTS_DATABASE_URL;if(!url)throw Error('Prompt storage is not configured.');return pool??=new Pool({connectionString:url,ssl:{rejectUnauthorized:false},max:3,connectionTimeoutMillis:5000,statement_timeout:10000});}
 export async function sourcePrompt(id:PromptId):Promise<PromptVersion>{
  const entry=testingPromptCatalog.find(p=>p.id===id)!;const content=await readFile(join(process.cwd(),entry.file),'utf8');
  const idHash='source-'+createHash('sha256').update(content).digest('hex');
- await promptDatabase().query('INSERT INTO staging_testing_prompt_sources(prompt_id,id,content) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[id,idHash,content]);
+ if(!localPromptQueueEnabled())await promptDatabase().query('INSERT INTO staging_testing_prompt_sources(prompt_id,id,content) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[id,idHash,content]);
  const row=(await promptDatabase().query('SELECT created_at FROM staging_testing_prompt_sources WHERE prompt_id=$1 AND id=$2',[id,idHash])).rows[0];
- return {id:idHash,prompt_id:id,revision:0,parent_id:null,content,previous_content:content,note:'Deployed source baseline',author:{sub:'source',name:'Deployed source',email:''},created_at:new Date(row.created_at).toISOString()};
+ return {id:idHash,prompt_id:id,revision:0,parent_id:null,content,previous_content:content,note:'Deployed source baseline',author:{sub:'source',name:'Deployed source',email:''},created_at:new Date(row?.created_at??(await stat(join(process.cwd(),entry.file))).mtime).toISOString()};
 }
-export async function promptCatalog(){const result=await promptDatabase().query<PromptVersion>('SELECT DISTINCT ON(prompt_id) * FROM staging_testing_prompt_versions ORDER BY prompt_id,revision DESC');return Promise.all(testingPromptCatalog.map(async entry=>({...entry,current:currentPromptVersion(await sourcePrompt(entry.id),result.rows.find(row=>row.prompt_id===entry.id))})));}
-export async function promptVersion(id:PromptId,version:string){const source=await sourcePrompt(id);if(version===source.id)return source;const result=await promptDatabase().query<PromptVersion>('SELECT * FROM staging_testing_prompt_versions WHERE prompt_id=$1 AND id=$2',[id,version]);if(result.rows[0])return result.rows[0];const old=(await promptDatabase().query('SELECT * FROM staging_testing_prompt_sources WHERE prompt_id=$1 AND id=$2',[id,version])).rows[0];if(!old)throw Error('Prompt version is unavailable.');return {...source,id:old.id,content:old.content,previous_content:old.content,created_at:new Date(old.created_at).toISOString()};}
-export async function promptHistory(id:PromptId){const current=await sourcePrompt(id);const [versions,sources]=await Promise.all([promptDatabase().query('SELECT id,prompt_id,revision,parent_id,note,author,created_at FROM staging_testing_prompt_versions WHERE prompt_id=$1 ORDER BY revision DESC LIMIT 100',[id]),promptDatabase().query('SELECT id,content,created_at FROM staging_testing_prompt_sources WHERE prompt_id=$1 ORDER BY created_at DESC',[id])]);return [...versions.rows,...sources.rows.map(row=>({...current,id:row.id,content:row.content,previous_content:row.content,created_at:new Date(row.created_at).toISOString()}))];}
+export async function promptCatalog(){const [result,local]=await Promise.all([promptDatabase().query<PromptVersion>('SELECT DISTINCT ON(prompt_id) * FROM staging_testing_prompt_versions ORDER BY prompt_id,revision DESC'),localPromptQueueEnabled()?readReviewPromptVersions<PromptVersion>(localVersions()):[]]);return Promise.all(testingPromptCatalog.map(async entry=>{const saved=[...result.rows,...local].filter(row=>row.prompt_id===entry.id).sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0];return {...entry,current:currentPromptVersion(await sourcePrompt(entry.id),saved)};}));}
+export async function promptVersion(id:PromptId,version:string){const source=await sourcePrompt(id);if(version===source.id)return source;if(localPromptQueueEnabled()){const local=(await readReviewPromptVersions<PromptVersion>(localVersions())).find(row=>row.prompt_id===id&&row.id===version);if(local)return local;}const result=await promptDatabase().query<PromptVersion>('SELECT * FROM staging_testing_prompt_versions WHERE prompt_id=$1 AND id=$2',[id,version]);if(result.rows[0])return result.rows[0];const old=(await promptDatabase().query('SELECT * FROM staging_testing_prompt_sources WHERE prompt_id=$1 AND id=$2',[id,version])).rows[0];if(!old)throw Error('Prompt version is unavailable.');return {...source,id:old.id,content:old.content,previous_content:old.content,created_at:new Date(old.created_at).toISOString()};}
+export async function promptHistory(id:PromptId){const current=await sourcePrompt(id);const [versions,sources,local]=await Promise.all([promptDatabase().query('SELECT id,prompt_id,revision,parent_id,note,author,created_at FROM staging_testing_prompt_versions WHERE prompt_id=$1 ORDER BY revision DESC LIMIT 100',[id]),promptDatabase().query('SELECT id,content,created_at FROM staging_testing_prompt_sources WHERE prompt_id=$1 ORDER BY created_at DESC',[id]),localPromptQueueEnabled()?readReviewPromptVersions<PromptVersion>(localVersions()):[]]);return [...local.filter(row=>row.prompt_id===id),...versions.rows,...sources.rows.map(row=>({...current,id:row.id,content:row.content,previous_content:row.content,created_at:new Date(row.created_at).toISOString()}))];}
 export async function savePrompt(raw:unknown,author:PromptAuthor){
+ if(localPromptQueueEnabled()){
+  const edit=validatePromptEdit(raw),latest=(await promptCatalog()).find(item=>item.id===edit.id)!.current;
+  if(latest.id!==edit.parent)throw Error('Conflict: another user saved a newer version. Reload before saving.');if(edit.content===latest.content)throw Error('No changes to save.');
+  const version:PromptVersion={id:randomUUID(),prompt_id:edit.id,revision:latest.revision+1,parent_id:latest.id,content:edit.content,previous_content:latest.content,note:edit.note,author,created_at:new Date().toISOString()};
+  return writeReviewPromptVersion(localVersions(),version);
+ }
  const edit=validatePromptEdit(raw),source=await sourcePrompt(edit.id),db=await promptDatabase().connect();
  try{await db.query('BEGIN');await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',['staging-prompt:'+edit.id]);const saved=(await db.query<PromptVersion>('SELECT * FROM staging_testing_prompt_versions WHERE prompt_id=$1 ORDER BY revision DESC LIMIT 1',[edit.id])).rows[0],latest=currentPromptVersion(source,saved);
  if(latest.id!==edit.parent)throw Error('Conflict: another user saved a newer version. Reload before saving.');if(edit.content===latest.content)throw Error('No changes to save.');

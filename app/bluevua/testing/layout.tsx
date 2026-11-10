@@ -1,5 +1,6 @@
 import {testingPromptRevisions} from '@/lib/testing-prompt-revisions.server';
 import {usesUnifiedLocalReports} from '@/lib/testing-report-environment';
+import {canAccessReviewTools} from '@/lib/review-access';
 import {TemporaryReportOwnerProvider} from './temporary-report-owner';
 import {readIntegratedReports} from '@/lib/testing-integrated-reports.server';
 import {IntegratedPresentationProvider} from './insight-presentation';
@@ -28,5 +29,5 @@ export default async function TestingLayout({children}:{children:ReactNode}) {
   const inventoryBaseline=readRememberedSnapshotVersions(testingSnapshotScopes('inventory'));
   const scopedBaseline=readRememberedSnapshotVersionEntries();
   const inventory=getTestingInventory().catch(()=>({items:[],unavailable:["google-search","google-pmax","google-demand-gen","meta","reddit","edm"] as TestingInventoryChannel[]}));
-  return <Suspense><ResetPeriodOnReload/><TestingSnapshotBaseline cacheKey={testingSnapshotWatchKey('inventory')} versions={inventoryBaseline}/><TestingAiProvider key={owner} owner={owner}><TemporaryReportOwnerProvider owner={owner} revisions={revisions} clearLocalCache={usesUnifiedLocalReports()}><TestingScopedSnapshotProvider entries={scopedBaseline}><TestingInventoryProvider inventory={inventory}><InsightAssetsProvider assets={assets}><TestingComparisonProvider enabled><IntegratedPresentationProvider bundle={integrated}><TestingDesignPreview promptsEnabled={process.env.DEPLOYMENT_ENV==='staging'} account={account} inventory={inventory}>{children}</TestingDesignPreview></IntegratedPresentationProvider></TestingComparisonProvider></InsightAssetsProvider></TestingInventoryProvider></TestingScopedSnapshotProvider></TemporaryReportOwnerProvider></TestingAiProvider></Suspense>;
+  return <Suspense><ResetPeriodOnReload/><TestingSnapshotBaseline cacheKey={testingSnapshotWatchKey('inventory')} versions={inventoryBaseline}/><TestingAiProvider key={owner} owner={owner}><TemporaryReportOwnerProvider owner={owner} revisions={revisions} clearLocalCache={usesUnifiedLocalReports()}><TestingScopedSnapshotProvider entries={scopedBaseline}><TestingInventoryProvider inventory={inventory}><InsightAssetsProvider assets={assets}><TestingComparisonProvider enabled><IntegratedPresentationProvider bundle={integrated}><TestingDesignPreview promptsEnabled={canAccessReviewTools(user)} account={account} inventory={inventory}>{children}</TestingDesignPreview></IntegratedPresentationProvider></TestingComparisonProvider></InsightAssetsProvider></TestingInventoryProvider></TestingScopedSnapshotProvider></TemporaryReportOwnerProvider></TestingAiProvider></Suspense>;
 }

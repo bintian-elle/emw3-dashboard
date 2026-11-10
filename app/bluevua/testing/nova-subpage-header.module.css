@@ -20,3 +20,8 @@
 :global(.dark) .selectItem[data-highlighted] { background:#303338; }
 
 .historyTitleRow { display:flex; flex-wrap:wrap; align-items:baseline; gap:.75rem; min-width:0; }
+.historyTitleRow:has([data-historical-indicator]) { flex-direction:column; align-items:flex-start; gap:.625rem; }
+.identity:has([data-historical-indicator]) { flex-basis:100%; }
+.controls:has(> [data-comparison-controls]) { align-items:flex-start; }
+.controls:has(> [data-comparison-controls]) > button { margin-top:1.5rem; }
+@media (max-width:640px) { .controls:has(> [data-comparison-controls]) > button { margin-top:0; } }

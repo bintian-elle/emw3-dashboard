@@ -61,6 +61,7 @@ export function NovaPreviewShell({children,account,promptsEnabled=false}:{childr
     {!onNavigate&&<NovaButton variant="ghost" size="icon" className={styles.collapse} aria-label={compact?(zh?"展开侧栏":"Expand sidebar"):(zh?"收起侧栏":"Collapse sidebar")} aria-expanded={!compact} onClick={()=>setCollapsed(!compact)}>{compact?<PanelLeft/>:<ChevronLeft/>}</NovaButton>}
     {onNavigate&&<Dialog.Close asChild><NovaButton variant="ghost" size="icon" className={styles.mobileClose} aria-label={zh?"关闭导航":"Close navigation"}><X/></NovaButton></Dialog.Close>}
    </div>
+   <div className={promptsEnabled?styles.sidebarNavigation:styles.defaultNavigation}>
    {!compact&&<p className={styles.navLabel}>{zh?'工作区':'Workspace'}</p>}
    <nav aria-label={zh?'工作区':'Workspace'} className={styles.nav}>
     {workspaceLinks.map(([label,href,Icon])=>{const active=!concludedContext&&pathname===href;const name=zh?(label==='Overview'?'总览':'测试清单'):label;return <TestingLink key={href} href={`${href}${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={name} title={compact?name:undefined}><span className={styles.iconSlot}><Icon/></span>{!compact&&<><span>{name}</span>{label==="Test inventory"&&<InventoryCount badge/>}</>}</TestingLink>;})}
@@ -69,10 +70,11 @@ export function NovaPreviewShell({children,account,promptsEnabled=false}:{childr
    {!compact&&<p className={`${styles.navLabel} ${styles.channelsLabel}`}>{zh?'渠道':'Channels'}</p>}
    <nav aria-label={zh?"内容测试渠道":"Content testing channels"} className={styles.nav}>{channels.map(([label,href,channel])=>{const active=!concludedContext&&(pathname===href||pathname.startsWith(`${href}/`)||(label==="Google Search"&&pathname==="/bluevua/testing/google"));const displayLabel=label==="Google Demand Gen"?"Demand Gen":label;return <Link key={href} href={`${href}${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={label} title={compact?label:undefined}><span className={styles.iconSlot}><TestingChannelBrand name={label} eager={!!onNavigate}/></span>{!compact&&<><span>{displayLabel}</span>{channel&&<InventoryCount channel={channel}/>}</>}</Link>;})}</nav>
    <div className={styles.concluded}><Link href={`/bluevua/testing/concluded${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${concludedContext?styles.active:""}`} aria-current={concludedContext?"page":undefined} aria-label={zh?`已结束测试，${concludedCount} 个活动`:`Concluded Test, ${concludedCount} ${concludedCount===1?"campaign":"campaigns"}`} title={compact?(zh?'已结束测试':'Concluded Test'):undefined}><span className={styles.iconSlot}><Archive/></span>{!compact&&<><span>{zh?'已结束测试':'Concluded Test'}</span><span className={styles.navCount}>{concludedCount}</span></>}</Link></div>
+   </div>
    {refreshChannel&&(!menuOpen||onNavigate)&&<TestingDataRefresh channel={refreshChannel} collapsed={compact} variant="nova"/>}
  </>;
  return <div className={styles.root}>
-  <aside className={`${styles.sidebar} ${collapsed?styles.collapsed:""}`} aria-label={zh?"测试导航":"Testing navigation"}>{sidebarContent(collapsed)}</aside>
+  <aside className={`${styles.sidebar} ${collapsed?styles.collapsed:""} ${promptsEnabled?styles.reviewSidebar:""}`} aria-label={zh?"测试导航":"Testing navigation"}>{sidebarContent(collapsed)}</aside>
   <Dialog.Root open={menuOpen} onOpenChange={setMenuOpen}>
    <Dialog.Portal><Dialog.Overlay className={styles.sheetOverlay}/><Dialog.Content className={styles.mobileSheet}><Dialog.Title className={styles.visuallyHidden}>{zh?"导航":"Navigation"}</Dialog.Title><Dialog.Description className={styles.visuallyHidden}>{zh?"选择渠道或页面。":"Choose a channel or view."}</Dialog.Description>{sidebarContent(false,()=>setMenuOpen(false))}</Dialog.Content></Dialog.Portal>
    <div className={styles.workspace}>

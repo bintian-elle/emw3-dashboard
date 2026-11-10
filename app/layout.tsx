@@ -1,4 +1,6 @@
-import { StagingReviewLink } from "@/components/application/staging/review-link";
+import { canAccessReviewTools,reviewPreviewEnabled } from "@/lib/review-access";
+import {cookies} from 'next/headers';
+import {ReviewPreviewProvider} from '@/components/application/review/review-preview-context';
 import { PageNotes } from "@/components/application/staging/page-notes";
 import {THEME_BOOTSTRAP} from '@/lib/theme-policy';
 import {ThemeInitializer} from '@/components/application/theme/theme-toggle';
@@ -29,5 +31,6 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await currentSiteUser();
   const language = user ? await readUserLanguage(user.sub).catch(() => "en" as const) : "en";
-  return <html data-insight-cache-owner={user?.sub} lang={language === "zh" ? "zh-CN" : "en"} className={geist.variable} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:THEME_BOOTSTRAP}}/></head><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><ThemeInitializer/><Suspense><AccountHeader/></Suspense>{children}<FloatingTableHeaders/>{user && <StagingReviewLink email={user.email} language={language}/>}{process.env.DEPLOYMENT_ENV === "staging" && user && <Suspense><PageNotes key={user.sub} name={user.name}/></Suspense>}</SiteLanguageProvider></body></html>;
+  const reviewPreview=canAccessReviewTools(user)&&reviewPreviewEnabled(user,(await cookies()).get('review_preview')?.value);
+  return <html data-insight-cache-owner={user?.sub} lang={language === "zh" ? "zh-CN" : "en"} className={geist.variable} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:THEME_BOOTSTRAP}}/></head><body suppressHydrationWarning><SiteLanguageProvider initialLanguage={language}><ReviewPreviewProvider enabled={reviewPreview}><ThemeInitializer/><Suspense><AccountHeader/></Suspense>{children}<FloatingTableHeaders/>{user && canAccessReviewTools(user) && <Suspense><PageNotes key={user.sub} name={user.name} preview={reviewPreview}/></Suspense>}</ReviewPreviewProvider></SiteLanguageProvider></body></html>;
 }
