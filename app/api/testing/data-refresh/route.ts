@@ -5,6 +5,7 @@ import {isTestingDataRefreshRunning,publishGoogleTestingSnapshots,publishTesting
 import {testingPeriodInput} from '@/lib/testing-google';
 import {redditPeriodInput} from '@/lib/reddit-testing-period';
 import {isSocialSnapshot,socialDisplayTimestamp} from '@/lib/testing-social-snapshot';
+import type {WarehouseFreshness} from '@/lib/google-testing-warehouse-contract';
 import {revalidatePath} from 'next/cache';
 
 export const maxDuration=300;
@@ -17,11 +18,11 @@ async function socialUpdatedAt(snapshot:{payload:unknown;updatedAt:string}|null)
  const {readSocialLocalSnapshot}=await import('@/lib/testing-social');
  return socialDisplayTimestamp(null,null,await readSocialLocalSnapshot());
 }
-async function source(channel:TestingDataChannel,input:TestingDataInput){
+async function source(channel:TestingDataChannel,input:TestingDataInput,freshness?:WarehouseFreshness){
  switch(channel){
-  case 'google-search':return (await import('@/lib/google-testing-api')).fetchFreshGoogleSearchSnapshot();
-  case 'google-pmax':return (await import('@/lib/google-expanded-content-testing')).fetchFreshGoogleExpandedSnapshot('pmax');
-  case 'google-demand-gen':return (await import('@/lib/google-expanded-content-testing')).fetchFreshGoogleExpandedSnapshot('demand-gen');
+  case 'google-search':return (await import('@/lib/google-testing-api')).fetchFreshGoogleSearchSnapshot(freshness);
+  case 'google-pmax':return (await import('@/lib/google-expanded-content-testing')).fetchFreshGoogleExpandedSnapshot('pmax',freshness);
+  case 'google-demand-gen':return (await import('@/lib/google-expanded-content-testing')).fetchFreshGoogleExpandedSnapshot('demand-gen',freshness);
   case 'meta':return (await import('@/lib/testing-meta')).fetchFreshMetaCampaignTest(input as Parameters<typeof import('@/lib/testing-meta').fetchFreshMetaCampaignTest>[0]);
   case 'reddit':return (await import('@/lib/testing-reddit')).fetchFreshRedditTestingData(input as Parameters<typeof import('@/lib/testing-reddit').fetchFreshRedditTestingData>[0]);
   case 'edm':return (await import('@/lib/testing-edm')).fetchFreshEdmTestingSnapshot(input as Parameters<typeof import('@/lib/testing-edm').fetchFreshEdmTestingSnapshot>[0]);
@@ -51,8 +52,7 @@ export async function POST(request:NextRequest){
  const value=(v:unknown)=>typeof v==='string'?v:undefined;
  const input=inputFor(channel,{period:value(body.period),start:value(body.start),end:value(body.end)});
  try{
-  if(internal&&body.scheduled&&channel.startsWith('google-'))await (await import('@/lib/google-testing-warehouse')).assertGoogleWarehouseUpdatedToday();
-  const result=channel.startsWith('google-')?await publishGoogleTestingSnapshots(googleChannel=>source(googleChannel,{})):await publishTestingDataSnapshot(channel,input,()=>source(channel,input),internal&&body.scheduled&&body.weekly?{reuseExisting:true}:undefined);
+  const result=channel.startsWith('google-')?await publishGoogleTestingSnapshots(googleChannel=>source(googleChannel,{},{requireToday:internal&&body.scheduled===true})):await publishTestingDataSnapshot(channel,input,()=>source(channel,input),internal&&body.scheduled&&body.weekly?{reuseExisting:true}:undefined);
   // Publishing has committed; a transient revalidation error must not be reported as a failed refresh.
   try{revalidatePath('/bluevua/testing','layout');}catch{/* Clients still refresh and read the committed shared snapshot. */}
   return Response.json({updatedAt:result.updatedAt,version:result.updatedAt,refreshing:false,available:true},{headers});

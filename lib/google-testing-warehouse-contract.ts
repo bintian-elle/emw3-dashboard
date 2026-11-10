@@ -1,18 +1,23 @@
 /** Only use dates explicitly covered by successful warehouse extraction queries. */
 export type WarehouseRun={query_text:string|null;completed_at:string|Date|null};
 export type DateWindow={start:string;end:string};
-export function warehouseCoverage(runs:WarehouseRun[],start:string,end:string,now=Date.now()):DateWindow[]{
+export type WarehouseFreshness={requireToday?:boolean};
+const easternDay=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
+
+export function warehouseCoverage(runs:WarehouseRun[],start:string,end:string,now=Date.now(),freshness:WarehouseFreshness={}):DateWindow[]{
+ const today=freshness.requireToday?easternDay.format(now):null;
+ const stableEnd=new Date(now-8*86400000).toISOString().slice(0,10);
+ const yesterday=new Date(now-86400000).toISOString().slice(0,10);
  const ranges=runs.flatMap(run=>{
   const match=run.query_text?.match(/segments\.date\s+BETWEEN\s+'(\d{4}-\d{2}-\d{2})'\s+AND\s+'(\d{4}-\d{2}-\d{2})'/i);
   if(!match||!run.completed_at)return [];
   const completed=new Date(run.completed_at).getTime();
   if(!Number.isFinite(completed)||completed>now+60000)return [];
   // Current and recent attribution can change: old extraction records are not sufficient.
-  const stableEnd=new Date(now-8*86400000).toISOString().slice(0,10);
   const completedYesterday=new Date(completed-86400000).toISOString().slice(0,10);
   const extractionEnd=match[2]<completedYesterday?match[2]:completedYesterday;
-  const last=now-completed<=36*3600000?extractionEnd:extractionEnd<stableEnd?extractionEnd:stableEnd;
-  const yesterday=new Date(now-86400000).toISOString().slice(0,10);
+  const fresh=now-completed<=36*3600000&&(!today||easternDay.format(completed)===today);
+  const last=fresh||extractionEnd<stableEnd?extractionEnd:stableEnd;
   const limit=end<yesterday?end:yesterday;
   const a=match[1]>start?match[1]:start,b=last<limit?last:limit;
   return a<=b?[{start:a,end:b}]:[];

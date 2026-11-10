@@ -18,3 +18,12 @@ test('yesterday’s extraction of a then-current partial day never proves that w
  const covered=warehouseCoverage([run('2026-10-20','2026-10-27','2026-10-27T11:55:00Z')],'2026-10-26','2026-10-27',now);
  assert.deepEqual(uncoveredWindows(covered,'2026-10-26','2026-10-27'),[{start:'2026-10-27',end:'2026-10-27'}]);
 });
+
+test('scheduled refresh uses the API for recent dates when only yesterday’s sync succeeded',()=>{
+ const refresh=Date.parse('2026-11-10T10:15:00Z');
+ const runs=[run('2026-11-01','2026-11-09','2026-11-09T09:32:18Z')];
+ const start='2026-11-01',end='2026-11-09';
+ const covered=warehouseCoverage(runs,start,end,refresh,{requireToday:true});
+ assert.deepEqual(uncoveredWindows(covered,start,end),[{start:'2026-11-03',end}]);
+ assert.deepEqual(uncoveredWindows(warehouseCoverage(runs,start,end,refresh),start,end),[{start:end,end}]);
+});
