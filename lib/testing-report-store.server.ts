@@ -3,6 +3,9 @@ import {Pool} from 'pg';
 import {assembleStoredBundle} from './testing-report-store';
 import {reportDatabaseEnvironment} from './testing-report-environment';
 import {reportDatabaseConfig} from '../scripts/content-testing/report-database.mjs';
+import {readComparisonPeriod} from './testing-comparison.server';
+import {redditSinceStartLabel} from './reddit-testing-period';
+import {validRedditTestingSnapshot} from './testing-reddit-snapshot';
 let pool:Pool|undefined;
 const reportEnvironment=reportDatabaseEnvironment;
 function database(){
@@ -27,12 +30,15 @@ export async function readStoredMedia(runId:string,key:string){
 }
 
 export async function readStoredRedditLifetime(){
- const result=await database().query<{id:string;start:string;end:string;report:unknown}>(`select r.id,to_char(r.period_start,'YYYY-MM-DD') as start,to_char(r.period_end,'YYYY-MM-DD') as end,p.report from content_testing_reports.runs r join content_testing_reports.reports p on p.run_id=r.id where r.status='completed' and r.environment=$1 and p.channel='reddit-lifetime' and p.scope='lifetime' order by r.completed_at desc,r.id desc limit 1`,[reportEnvironment()]);
+ const result=await database().query<{id:string;start:string;end:string;report:{dashboard_snapshot?:unknown}}>(`select r.id,to_char(r.period_start,'YYYY-MM-DD') as start,to_char(r.period_end,'YYYY-MM-DD') as end,p.report from content_testing_reports.runs r join content_testing_reports.reports p on p.run_id=r.id where r.status='completed' and r.environment=$1 and p.channel='reddit-lifetime' and p.scope='lifetime' order by r.completed_at desc,r.id desc limit 1`,[reportEnvironment()]);
  const row=result.rows[0];if(!row)return null;
  const pair=assembleStoredBundle(row.id,row.start,row.end,[{channel:'reddit-lifetime',report:row.report}]).reports['reddit-lifetime'];
- if(pair.en.scope!=='lifetime'||pair.zh.scope!=='lifetime')return null;
+ const period=pair.en.period;
+ if(pair.en.scope!=='lifetime'||pair.zh.scope!=='lifetime'||pair.zh.period.start!==period.start||pair.zh.period.end!==period.end)return null;
  for(const report of [pair.en,pair.zh])report.media_url_base=`/api/testing/history/media/${encodeURIComponent(row.id)}/`;
- return pair;
+ const data=row.report.dashboard_snapshot??await readComparisonPeriod('reddit',period);
+ const snapshot=data&&typeof data==='object'?{...data,periodLabel:redditSinceStartLabel}:null;
+ return {reports:pair,snapshot:validRedditTestingSnapshot(snapshot,period,redditSinceStartLabel)?snapshot:null};
 }
 /** A historical lookup never changes existing reports and only selects completed runs. */
 export async function readStoredHistoricalReport(kind:'daily'|'weekly'|'monthly',start:string,end:string,channel:string,comparison?:{start:string;end:string}){

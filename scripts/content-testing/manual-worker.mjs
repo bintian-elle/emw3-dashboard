@@ -54,7 +54,9 @@ try{
  const saved=Object.fromEntries(Object.entries(payload.saved??{}).map(([channel,pair])=>[channel,pair]));
  const reports=await orchestrateManualReports({scope:request.scope,campaign:payload.campaign,temporary,channels:['google-search','google-pmax','google-demand-gen','meta','reddit','edm','social-media'],saved,generate});
  const versions={...Object.fromEntries(Object.entries(payload.jobs).map(([key,job])=>[key,Object.fromEntries(Object.entries(job.versions).map(([name,value])=>[name,createHash('sha256').update(value.content).digest('hex')]))])),testing_scope_policy:'2026-11-10-campaign-v2'};
- const rows=Object.entries(reports).map(([channel,report])=>({channel,scope:channel==='reddit-lifetime'?'lifetime':'period',report}));
+ const rows=Object.entries(reports).map(([channel,report])=>channel==='reddit-lifetime'
+  ?{channel,scope:'lifetime',report:{...report,dashboard_snapshot:payload.lifetimeSnapshot}}
+  :{channel,scope:'period',report});
  if(temporary){
   await mkdir(path.join(root,'media'),{recursive:true,mode:0o700});const index={};for(const item of media.values()){if(!/^[a-zA-Z0-9-]{1,100}$/.test(item.key))throw Error('Invalid media key');const file=`${item.key}.webp`;await writeFile(path.join(root,'media',file),item.body,{mode:0o600});index[item.key]=file;}
   const report=reports[request.scope];for(const lang of [payload.language])report[lang].media_url_base=`/api/testing/history/generate/media/${id}/`;

@@ -33,7 +33,7 @@ export function usePmaxPresentation(){
  if(query.get('history'))return null;
  if(matched.report)return matched.report;
  if(scope==='reddit'&&(!preset||preset==='sinceSep24')){
-  return (bundle?.reports['reddit-lifetime']??redditLifetime)?.[language==='zh'?'zh':'en']??null;
+  return (redditLifetime??bundle?.reports['reddit-lifetime'])?.[language==='zh'?'zh':'en']??null;
  }
  if(!bundle)return language==='zh'?old:null;
  if(!scope)return null;

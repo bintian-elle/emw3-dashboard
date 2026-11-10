@@ -10,9 +10,7 @@ type SearchParams={period?:string|string[];start?:string|string[];end?:string|st
 const queryString=(params:SearchParams)=>{const query=new URLSearchParams();for(const [key,value] of Object.entries(params)){const item=Array.isArray(value)?value[0]:value;if(item)query.set(key,item);}return query.toString();};
 export default async function RedditTestingPage({searchParams}:{searchParams:Promise<SearchParams>}){
  const params=await searchParams,input=redditPeriodInput(params);
- const [data,lifetime]=await Promise.all([
-  getRedditContentTestingData(input),
-  input.preset===redditSinceStartPreset?readStoredRedditLifetime().catch(()=>null):null,
- ]);
- return <RedditLifetimePresentationProvider reports={lifetime}><TestingPageHeader section="Reddit" title="Reddit Testing Performance" sharePeriod={data.period} description="Compare selected video, image and freeform content tests." redditDateFilter/>{redditContentTests.filter(test=>!data.campaigns.some(campaign=>campaign.campaignId===test.campaignId)).map(test=><p key={test.name} className="mb-4 text-body-regular text-text-secondary">Campaign not returned by Reddit Ads API: {test.name}</p>)}<RedditCampaignSection contentTesting data={data} query={queryString(params)}/><footer className="py-8 text-center text-caption-2-regular text-text-tertiary">Source: Reddit Ads API · Today’s data may be incomplete.</footer></RedditLifetimePresentationProvider>;
+ const lifetime=input.preset===redditSinceStartPreset?await readStoredRedditLifetime().catch(()=>null):null;
+ const data=lifetime?.snapshot??await getRedditContentTestingData(input);
+ return <RedditLifetimePresentationProvider reports={lifetime?.reports??null}><TestingPageHeader section="Reddit" title="Reddit Testing Performance" sharePeriod={data.period} description="Compare selected video, image and freeform content tests." redditDateFilter/>{redditContentTests.filter(test=>!data.campaigns.some(campaign=>campaign.campaignId===test.campaignId)).map(test=><p key={test.name} className="mb-4 text-body-regular text-text-secondary">Campaign not returned by Reddit Ads API: {test.name}</p>)}<RedditCampaignSection contentTesting data={data} query={queryString(params)}/><footer className="py-8 text-center text-caption-2-regular text-text-tertiary">Source: Reddit Ads API{!lifetime?.snapshot&&' · Today’s data may be incomplete.'}</footer></RedditLifetimePresentationProvider>;
 }

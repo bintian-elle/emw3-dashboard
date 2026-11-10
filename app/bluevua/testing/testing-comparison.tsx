@@ -37,11 +37,11 @@ export function TestingComparisonProvider({enabled,children}:{enabled:boolean;ch
  const value=useMemo(()=>({enabled:allowed,packet:shouldLoad&&state?.key===key?state.packet:null,loading:shouldLoad&&state?.key!==key,error:shouldLoad&&state?.key===key&&state.error}),[allowed,shouldLoad,key,state]);
  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
-export function TestingComparisonControls({children}:{children:ReactNode}){
+export function TestingComparisonControls({children,reportingRange}:{children:ReactNode;reportingRange?:ComparisonRange}){
  const context=useContext(Context),query=useSearchParams(),path=usePathname(),router=useRouter(),{language}=useSiteLanguage(),zh=language==='zh';
  const preview=useReviewPreview();
  const [pending,startTransition]=useTransition(),[custom,setCustom]=useState<'main'|'compare'|null>(null);
- const latest=testingLatestCompleteDate(),current=(path.startsWith('/bluevua/testing/reddit')&&(!query.get('period')||query.get('period')==='sinceSep24')?redditContentPeriod():resolveTestingPeriod(latest,{preset:(query.get('period')??'lastWeek') as TestingPeriodInput['preset'],start:query.get('start')??undefined,end:query.get('end')??undefined}));
+ const latest=testingLatestCompleteDate(),current=(path.startsWith('/bluevua/testing/reddit')&&(!query.get('period')||query.get('period')==='sinceSep24')?reportingRange??redditContentPeriod():resolveTestingPeriod(latest,{preset:(query.get('period')??'lastWeek') as TestingPeriodInput['preset'],start:query.get('start')??undefined,end:query.get('end')??undefined}));
  const compare=query.get('compare')??'previousPeriod',previous=comparisonRange(current,compare,latest,{start:query.get('compareStart')??current.start,end:query.get('compareEnd')??current.end});
  if(!context.enabled)return <>{children}</>;
  const update=(next:URLSearchParams)=>startTransition(()=>router.replace(`${path}?${next}`,{scroll:false}));
