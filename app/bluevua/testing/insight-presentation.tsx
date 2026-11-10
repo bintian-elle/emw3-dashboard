@@ -21,17 +21,23 @@ const Context=createContext<PmaxReadableReport|null>(null);
 export function PmaxPresentationProvider({report,children}:{report:PmaxReadableReport|null;children:ReactNode}){return <Context.Provider value={report}>{children}</Context.Provider>;}
 const IntegratedContext=createContext<IntegratedReportBundle|null>(null);
 export function IntegratedPresentationProvider({bundle,children}:{bundle:IntegratedReportBundle|null;children:ReactNode}){return <IntegratedContext.Provider value={bundle}>{children}</IntegratedContext.Provider>;}
+type LifetimeReportPair={en:PmaxReadableReport;zh:PmaxReadableReport};
+const RedditLifetimeContext=createContext<LifetimeReportPair|null>(null);
+export function RedditLifetimePresentationProvider({reports,children}:{reports:LifetimeReportPair|null;children:ReactNode}){return <RedditLifetimeContext.Provider value={reports}>{children}</RedditLifetimeContext.Provider>;}
 export function usePmaxPresentation(){
  const old=useContext(Context),bundle=useContext(IntegratedContext),pathname=usePathname(),query=useSearchParams(),{language}=useSiteLanguage();
+ const redditLifetime=useContext(RedditLifetimeContext);
  const scope=previewReportForPath(pathname),preset=query.get('period'),latest=testingLatestCompleteDate();
  const selected=resolveTestingPeriod(latest,{preset:preset==='custom'?'custom':(preset??'lastWeek') as 'lastWeek',start:query.get('start')??undefined,end:query.get('end')??undefined});
  const matched=useMatchedReport(scope,selected.start,selected.end,language,!!scope&&!query.get('history')&&scope!=='social-media'&&!(scope==='reddit'&&(!preset||preset==='sinceSep24')));
  if(query.get('history'))return null;
  if(matched.report)return matched.report;
+ if(scope==='reddit'&&(!preset||preset==='sinceSep24')){
+  return (bundle?.reports['reddit-lifetime']??redditLifetime)?.[language==='zh'?'zh':'en']??null;
+ }
  if(!bundle)return language==='zh'?old:null;
- let id=previewReportForPath(pathname);if(!id)return null;
- if(id==='reddit'&&(!query.get('period')||query.get('period')==='sinceSep24'))id='reddit-lifetime';
- const report=bundle.reports[id]?.[language==='zh'?'zh':'en'];if(!report)return null;
+ if(!scope)return null;
+ const report=bundle.reports[scope]?.[language==='zh'?'zh':'en'];if(!report)return null;
  if(report.scope!=='lifetime'){const expected=resolveTestingPeriod(testingLatestCompleteDate(),{preset:preset==='custom'?'custom':'lastWeek',start:query.get('start')??undefined,end:query.get('end')??undefined});if(preset&&preset!=='lastWeek'&&preset!=='custom'||expected.start!==report.period.start||expected.end!==report.period.end)return null;if(query.get('compare')&&query.get('compare')!=='previousPeriod'){const comparison=comparisonRange(expected,query.get('compare')!,testingLatestCompleteDate(),{start:query.get('compareStart')??expected.start,end:query.get('compareEnd')??expected.end});if(comparison.start!==report.comparison.start||comparison.end!==report.comparison.end)return null;}}
  return report;
 }

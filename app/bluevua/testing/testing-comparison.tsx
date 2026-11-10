@@ -23,16 +23,18 @@ export function TestingComparisonProvider({enabled,children}:{enabled:boolean;ch
  const allowed=enabled&&!!view&&view!=='inventory'&&view!=='social';
  const latest=testingLatestCompleteDate(),range=(path.startsWith('/bluevua/testing/reddit')&&(!query.get('period')||query.get('period')==='sinceSep24')?redditContentPeriod():resolveTestingPeriod(latest,{preset:(query.get('period')??'lastWeek') as TestingPeriodInput['preset'],start:query.get('start')??undefined,end:query.get('end')??undefined}));
  const comparison=comparisonRange(range,query.get('compare')??'previousPeriod',latest,{start:query.get('compareStart')??range.start,end:query.get('compareEnd')??range.end});
+ // A period entirely before Reddit testing started has no baseline to load.
+ const shouldLoad=allowed&&(view!=='reddit'||comparison.end>=redditContentPeriod().start);
  const key=`${path}:${range.start}:${range.end}:${comparison.start}:${comparison.end}`;
  const [state,setState]=useState<{key:string;packet:ComparisonPacket|null;error:boolean}|null>(null);
  useEffect(()=>{
-  if(!allowed)return;
+  if(!shouldLoad)return;
   const controller=new AbortController();
   const params=new URLSearchParams({start:comparison.start,end:comparison.end,path});
   void fetch(`/api/testing/comparison?${params}`,{signal:controller.signal,cache:'no-store'}).then(async response=>{if(!response.ok)throw Error('Comparison unavailable');return response.json() as Promise<ComparisonPacket>;}).then(packet=>{if(!controller.signal.aborted)setState({key,packet,error:false});}).catch(()=>{if(!controller.signal.aborted)setState({key,packet:null,error:true});});
   return()=>controller.abort();
- },[allowed,path,key,comparison.start,comparison.end]);
- const value=useMemo(()=>({enabled:allowed,packet:state?.key===key?state.packet:null,loading:allowed&&state?.key!==key,error:state?.key===key&&state.error}),[allowed,key,state]);
+ },[shouldLoad,path,key,comparison.start,comparison.end]);
+ const value=useMemo(()=>({enabled:allowed,packet:shouldLoad&&state?.key===key?state.packet:null,loading:shouldLoad&&state?.key!==key,error:shouldLoad&&state?.key===key&&state.error}),[allowed,shouldLoad,key,state]);
  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function TestingComparisonControls({children}:{children:ReactNode}){

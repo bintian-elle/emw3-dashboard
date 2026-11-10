@@ -10,6 +10,8 @@
 
 优先使用提供的 Dashboard 数据。指标、实体、历史或素材信息缺失时，主动通过对应官方 API 或已授权数据工具补取，核对来源和口径后再分析；无法获取或不支持的字段明确标为缺口，不编造数据。
 
+当前 Bluevua Reddit 广告账户的币种已核实为 USD；正常报告直接使用该已知信息，无须每次调用 API 重新确认币种。若账户发生变化或出现与 USD 冲突的可靠证据，再重新核实；这一信息不代表其他账户或渠道的币种。
+
 输入应包含：
 
 1. 测试与投放身份：campaign / ad group / ad ID、Creative Name、实际 Campaign Objective、投放状态、测试范围和映射关系。以明确配置或平台目标为准，不只凭 campaign 名称判断 Awareness / Conversion。
@@ -29,6 +31,7 @@
 - 先合计原始量再计算比率：ROAS = Revenue / Spend；CPA = Spend / Orders；CPC = Spend / 对应口径 Clicks；CPM = Spend / Impressions × 1000；CTR = 对应口径 Clicks / Impressions；CVR 使用 Dashboard 已确认的点击 / 访问分母。注明 Clicks 类型，不混用全部点击与链接点击，不平均行级比率。
 - 沿用 Dashboard 已确认的 Orders、Revenue 和点击 / 浏览归因定义，不重复加总平台总转化与其组成项，不改变归因转化精度。
 - Reach 使用平台对应实体、完整报告期的去重值；不能加总每日或广告 Reach 冒充方向、格式或 campaign 的去重人数。跨 campaign Reach 如无法去重，只能标注为非去重合计，不能冒称唯一人数。Frequency 仅在相同范围的去重 Reach 可用时计算。
+- 测试广告与其他广告共用广告组或 Campaign 时，优先通过 Reddit 报表 API 对已确认的测试广告 ID 集合筛选并请求同报告期的汇总 Reach；用同范围曝光和花费核对筛选是否生效。不要用包含非测试广告的广告组或 Campaign Reach 代替，或将逐广告 Reach 相加冒充去重结果。补取后核对报告批次与时间口径，不能将变化后的数据直接与旧快照混算。
 - 分母为零标记 N/A，缺失不当作零；基期为零不计算相对增长率。百分率绝对差使用百分点（pp），相对变化使用百分比（%），金额标注币种。
 - 没有利润数据不把 Revenue / ROAS 等同于利润；没有适当统计检验依据，不声称统计显著或已证实素材的独立因果效果。
 

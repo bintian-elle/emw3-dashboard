@@ -25,6 +25,15 @@ export async function readStoredMedia(runId:string,key:string){
  const result=await database().query<{body:Buffer;mime_type:string}>('select m.body,m.mime_type from content_testing_reports.media m join content_testing_reports.runs r on r.id=m.run_id where r.status=$1 and m.run_id=$2 and m.media_key=$3 and r.environment=$4',['completed',runId,key,reportEnvironment()]);
  return result.rows[0]??null;
 }
+
+export async function readStoredRedditLifetime(){
+ const result=await database().query<{id:string;start:string;end:string;report:unknown}>(`select r.id,to_char(r.period_start,'YYYY-MM-DD') as start,to_char(r.period_end,'YYYY-MM-DD') as end,p.report from content_testing_reports.runs r join content_testing_reports.reports p on p.run_id=r.id where r.status='completed' and r.environment=$1 and p.channel='reddit-lifetime' and p.scope='lifetime' order by r.completed_at desc,r.id desc limit 1`,[reportEnvironment()]);
+ const row=result.rows[0];if(!row)return null;
+ const pair=assembleStoredBundle(row.id,row.start,row.end,[{channel:'reddit-lifetime',report:row.report}]).reports['reddit-lifetime'];
+ if(pair.en.scope!=='lifetime'||pair.zh.scope!=='lifetime')return null;
+ for(const report of [pair.en,pair.zh])report.media_url_base=`/api/testing/history/media/${encodeURIComponent(row.id)}/`;
+ return pair;
+}
 /** A historical lookup never changes existing reports and only selects completed runs. */
 export async function readStoredHistoricalReport(kind:'daily'|'weekly'|'monthly',start:string,end:string,channel:string,comparison?:{start:string;end:string}){
  const result=await database().query<{id:string;generated_at:Date;report:unknown}>(`select r.id,r.completed_at as generated_at,p.report from content_testing_reports.runs r join content_testing_reports.reports p on p.run_id=r.id where r.status='completed' and r.report_kind=$1 and r.period_start=$2 and r.period_end=$3 and p.channel=$4 and ($5::date is null or (r.comparison_start=$5 and r.comparison_end=$6)) and r.environment=$7 order by r.completed_at desc,r.id desc limit 1`,[kind,start,end,channel,comparison?.start??null,comparison?.end??null,reportEnvironment()]);
