@@ -11,10 +11,14 @@ import {historyGenerationRequest} from '@/lib/testing-history-generation';
 import {enqueueHistoryGeneration,findReusableHistory,historyGenerationStatus} from '@/lib/testing-report-store.server';
 import {enqueueTemporaryJob,readTemporaryJob} from '@/lib/testing-temporary-reports.server';
 import {captureManualFallback} from '@/lib/testing-manual-fallback.server';
-import {capturePromptTrial} from '@/lib/testing-prompts-input';
 import {validatePromptRun} from '@/lib/testing-prompts-contract';
 import {reportDatabaseEnvironment} from '@/lib/testing-report-environment';
 import {testingReportScope,type TestingReportChannel} from '@/lib/testing-report-scope';
+import {testingCampaignReportScope} from '@/lib/testing-report-scope';
+import {getTestingInventory} from '@/lib/testing-inventory';
+import type {TestingInventoryChannel} from '@/lib/testing-inventory-model';
+import {trialMetricRows} from '@/lib/testing-prompt-trial-report';
+import type {PresentationDataset} from '@/lib/testing-insight-presentation';
 export const runtime='nodejs';
 const channels=['google-search','google-pmax','google-demand-gen','meta','reddit','edm','social-media'];
 const environment=()=>process.env.DEPLOYMENT_ENV==='staging'?'staging':'production';
@@ -46,13 +50,30 @@ export async function POST(request:Request){
    if(channel==='overview'){
     // Overview consumes the scoped channel reports assembled by the worker.
     frozen=await captureManualFallback(input) as Record<string,unknown>;
-   }else{
+   }else if(channel==='social-media'){
     const scope=testingReportScope(channel as TestingReportChannel,{start:period.start,end:period.end},{start:period.compareStart,end:period.compareEnd});
-    const bounded=scope.current&&scope.previous?{...input,start:scope.current.start,end:scope.current.end,comparison:scope.previous}:null;
-    if(bounded&&channel!=='social-media'){
-     try{frozen=await capturePromptTrial(bounded,{allowIntegrated:false}) as Record<string,unknown>;}catch{frozen=await captureManualFallback(input,scope) as Record<string,unknown>;}
-    }else frozen=await captureManualFallback(input,scope) as Record<string,unknown>;
+    frozen=await captureManualFallback(input,scope) as Record<string,unknown>;
     frozen.testing_scope=scope;
+   }else{
+    const inventory=await getTestingInventory(),key=channel as TestingInventoryChannel;
+    if(inventory.unavailable.includes(key))throw Error(`Campaign inventory is unavailable for ${channel}`);
+    const names=inventory.items.filter(item=>item.channelKey===key&&(!campaign||item.name===campaign)).map(item=>item.name);
+    if(!names.length)throw Error('Campaign is outside the configured testing scope.');
+    const captured=await Promise.all(names.map(async name=>{
+     const scope=testingCampaignReportScope(key,name,{start:period.start,end:period.end},{start:period.compareStart,end:period.compareEnd});
+     const packet=await captureManualFallback({...input,campaign:name},scope);
+     return {name,scope,packet};
+    }));
+    const template=captured[0].packet;
+    const datasets:Record<string,PresentationDataset>={input:{id:'input',scopes:['channel',...names],xKey:'category',columns:{category:'category'},rows:[]}};
+    for(const {name,packet} of captured){
+     const source=packet.dashboard[0];const rows=trialMetricRows(source&&'snapshot' in source?source.snapshot:null);if(!rows.length)continue;
+     const columns:Record<string,string>={category:'category'};
+     for(const row of rows)for(const field of Object.keys(row))if(field!=='category')columns[field]=['spend','revenue','cpc','cpa','cpm'].includes(field)?'USD':['ctr','cvr'].includes(field)?'fraction':field==='roas'?'ratio':field;
+     const id=name+'.entities';datasets[id]={id,scopes:[name,'channel'],xKey:'category',columns,rows};
+    }
+    const context={...template.visual_context,datasets};
+    frozen={...template,campaigns:names,tests:captured.map(({name,scope,packet})=>({test_id:name,testing_scope:scope,dashboard:packet.dashboard})),testing_campaign_scopes:Object.fromEntries(captured.map(({name,scope})=>[name,scope])),dashboard:undefined,testing_scope:undefined,visual_context:context,presentation_datasets:context.datasets,source_data_gaps:captured.flatMap(({name,scope,packet})=>scope.testStart===null?[`${name}: testing start is not verified.`]:packet.source_data_gaps.map(gap=>`${name}: ${gap}`))};
    }
    const versions=Object.fromEntries(await Promise.all([channel,'readability'].map(async name=>[name,{content:await readFile(path.join(process.cwd(),'prompts/content-testing',`${name}.md`),'utf8')}] as const)));
    frozen.generation_purpose=temporary?'temporary':'history';frozen.requested_language=language;

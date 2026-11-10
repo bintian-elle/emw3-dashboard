@@ -21,7 +21,8 @@
 - 网站主页采用并列的 Workspaces 和 AI Tools 入口，顶部不显示全站导航栏；品牌工作区可扩展，Bluevua 是其中一个品牌，主页保留其仪表盘直达入口。窄屏时两栏纵向排列，并支持明暗主题。
 - 新用户首次访问默认使用英文；用户主动切换后的语言偏好按账户保存。中文模式翻译界面文案，但指标名称和渠道名称保留英文，品牌、Campaign 名称及原始素材保持原文。
 - Campaign 状态以文字搭配语义色标识：投放中为绿色、暂停为琥珀色、已发送为蓝色、已结束为紫色、未知为灰色；明暗主题均保持可读对比度，不仅依靠颜色传达状态。
-- Testing 侧栏按 Workspace 与 Channels 分组，Test inventory 使用已发布的真实 Campaign 数据及状态并链接到对应页面；Campaign 数量使用手动维护的统一配置，Social Media 保留独立入口，不计入清单或数量。
+- Testing 侧栏按 Workspace 与 Channels 分组，Test inventory 使用已发布的真实 Campaign 数据及状态并链接到对应页面；Campaign 数量按同一清单中去重后的 Campaign 动态统计，Social Media 保留独立入口，不计入清单或数量。数据不可用时显示占位，避免错误数字。
+- Test inventory 在每条 Campaign 的状态之后展示该 Campaign 已核实的 Content Testing 首次投放日期，EDM 展示测试邮件发送日期；缺乏可靠证据时显示待确认，不用父 Campaign 或渠道起点代替。
 - Overview 与 Test inventory 切换时优先展示目标页面的标题、导航和卡片结构，等待数据的位置显示局部加载状态，并在内容顶部中央显示简短提示；清单复用已发布的共享快照，不为切换触发渠道 API 刷新。
 - Testing 报表优先使用当前周期的本机缓存，后台轻量核对共享快照版本，只有版本变化时才更新数据；缓存失效或数据源错误时保留最后一次成功的数据，不将不同周期的数据混用。
 - Concluded Test 侧栏入口直接进入主页面并显示已结束 Campaign 总数；主页面使用与 Test inventory 一致的可搜索 Campaign 列表，不显示状态标签；数量按 Campaign 去重，与侧栏使用相同口径。

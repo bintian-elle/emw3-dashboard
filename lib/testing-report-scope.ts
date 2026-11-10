@@ -1,3 +1,6 @@
+import {testingCampaignStart} from './testing-campaign-starts.ts';
+import type {TestingInventoryChannel} from './testing-inventory-model.ts';
+
 /** First day included in this round of Content Testing, in the channel's reporting date. */
 export const contentTestingStartDates = {
   'google-search': '2026-10-08',
@@ -16,6 +19,12 @@ export type TestingReportRange = {start:string;end:string};
 export function testingReportScope(channel:TestingReportChannel,current:TestingReportRange,previous:TestingReportRange|null){
  const start=contentTestingStartDates[channel];
  const clip=(range:TestingReportRange|null):TestingReportRange|null=>!range||range.end<start?null:{start:range.start<start?start:range.start,end:range.end};
+ return {testStart:start,current:clip(current),previous:clip(previous)};
+}
+
+export function testingCampaignReportScope(channel:TestingInventoryChannel,campaign:string,current:TestingReportRange,previous:TestingReportRange|null){
+ const start=testingCampaignStart(channel,campaign);
+ const clip=(range:TestingReportRange|null):TestingReportRange|null=>!start||!range||range.end<start?null:{start:range.start<start?start:range.start,end:range.end};
  return {testStart:start,current:clip(current),previous:clip(previous)};
 }
 

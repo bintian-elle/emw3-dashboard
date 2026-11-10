@@ -44,3 +44,12 @@ test('unavailable snapshots have unknown counts, while available empty channels 
  assert.equal(testingInventoryCount(inventory,'reddit'),0);
  assert.equal(testingInventoryCount(inventory,'google-search'),2);
 });
+
+test('a newly published campaign updates both its channel and the overall inventory count',()=>{
+ const input=sources();
+ const before=buildTestingInventory(input);
+ input.meta!.push({id:'302',name:'New Meta campaign',status:'ACTIVE'});
+ const after=buildTestingInventory(input);
+ assert.equal(testingInventoryCount(after,'meta'),testingInventoryCount(before,'meta')!+1);
+ assert.equal(testingInventoryCount(after),testingInventoryCount(before)!+1);
+});

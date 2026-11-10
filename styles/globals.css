@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Local preview builds are outputs, not sources for Tailwind class discovery. */
+@source not "../.next-*";
 @import "./theme.css";
 @import "./typography.css";
 

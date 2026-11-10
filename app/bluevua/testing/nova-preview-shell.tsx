@@ -1,15 +1,15 @@
 "use client";
 
 import {TestingComparisonControls} from "./testing-comparison";
-import { useState, useTransition, type ReactNode } from "react";
+import { Suspense, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import TestingLink from "./testing-link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Dialog } from "radix-ui";
 import { Archive, ChevronLeft, ChevronRight, FlaskConical, FileText, LayoutDashboard, Menu, PanelLeft, X } from "lucide-react";
-import type { TestingInventory, TestingInventoryChannel } from "@/lib/testing-inventory-model";
-import { configuredTestingCampaignCount } from "@/lib/testing-campaign-counts";
+import { testingInventoryCount, type TestingInventory, type TestingInventoryChannel } from "@/lib/testing-inventory-model";
+import { useTestingInventory } from "./testing-inventory-context";
 import { concludedCampaignCount } from "@/lib/concluded-tests";
 import { TestingChannelBrand } from "./testing-channel-brand";
 import { isConcludedTestingNavigation } from "@/lib/testing-navigation";
@@ -36,9 +36,12 @@ const channels = [
 const workspaceLinks = [["Overview","/bluevua/testing",LayoutDashboard],["Test inventory","/bluevua/testing/inventory",FlaskConical]] as const;
 const concludedCount = concludedCampaignCount();
 
+function InventoryCountValue({channel,badge=false}:{channel?:TestingInventoryChannel;badge?:boolean}) {
+ const count=testingInventoryCount(useTestingInventory(),channel);
+ return <span className={badge?styles.navBadge:styles.navCount} aria-label={count===null?'Campaign count unavailable':`${count} ${count===1?"campaign":"campaigns"}`}>{count??'—'}</span>;
+}
 function InventoryCount({channel,badge=false}:{channel?:TestingInventoryChannel;badge?:boolean}) {
- const count=configuredTestingCampaignCount(channel);
- return <span className={badge?styles.navBadge:styles.navCount} aria-label={`${count} ${count===1?"campaign":"campaigns"}`}>{count}</span>;
+ return <Suspense fallback={<span className={badge?styles.navBadge:styles.navCount}>—</span>}><InventoryCountValue channel={channel} badge={badge}/></Suspense>;
 }
 
 export function NovaPreviewShell({children,account,promptsEnabled=false}:{children:ReactNode;account:{name:string;email:string;picture?:string}|null;inventory:Promise<TestingInventory>;promptsEnabled?:boolean}) {

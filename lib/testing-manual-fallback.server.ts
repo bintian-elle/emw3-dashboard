@@ -7,6 +7,7 @@ import type {TestingDataChannel} from './testing-data-cache-contract';
 import {socialPostsForReport,type TestingReportRange} from './testing-report-scope';
 import {createTestingDataGateway} from './testing-scoped-fetch';
 import type {TestingReportChannel} from './testing-report-scope';
+import {selectCampaignEvidence} from './testing-campaign-evidence';
 
 async function fetchBoundedChannel(channel:TestingReportChannel,range:TestingReportRange){
  const input={preset:'custom' as const,...range};
@@ -26,7 +27,7 @@ async function fetchBoundedChannel(channel:TestingReportChannel,range:TestingRep
  throw Error('Period-bounded social metrics unavailable');
 }
 /** Supply any matching dashboard snapshots and identities; the prompt directs the AI to fill missing data via its API access. */
-export async function captureManualFallback(input:{channel:string;campaign:string;start:string;end:string;comparison:{start:string;end:string}|null},scope?:{testStart:string;current:TestingReportRange|null;previous:TestingReportRange|null}){
+export async function captureManualFallback(input:{channel:string;campaign:string;start:string;end:string;comparison:{start:string;end:string}|null},scope?:{testStart:string|null;current:TestingReportRange|null;previous:TestingReportRange|null}){
  const channel=input.channel,period={start:input.start,end:input.end},comparison=input.comparison??{start:'',end:''};
  let campaigns:string[]=[];if(input.campaign!=='all'){const inventory=await getTestingInventory();if(!inventory.items.some(item=>item.channelKey===channel&&item.name===input.campaign))throw Error('Campaign is outside the configured testing scope.');campaigns=[input.campaign];}else if(channel==='social-media')campaigns=['social-selected-posts'];else if(channel!=='overview'){const inventory=await getTestingInventory();if(inventory.unavailable.includes(channel as never))throw Error(`Campaign inventory is unavailable for ${channel}`);campaigns=inventory.items.filter(item=>item.channelKey===channel).map(item=>item.name);if(!campaigns.length)throw Error(`Campaign inventory is empty for ${channel}`);}
  const prompt=await readFile(path.join(process.cwd(),'prompts/content-testing',`${channel}.md`),'utf8');const sections=[...prompt.matchAll(/^##\s+\d+\.\s+(.+)$/gm)].slice(1).map((m,i)=>({id:`${channel}-${i+2}`,title:m[1]}));
@@ -38,16 +39,21 @@ export async function captureManualFallback(input:{channel:string;campaign:strin
   const snapshot=result.status==='fulfilled'?result.value as {period?:TestingReportRange}|null:null;
   const actual=snapshot?.period;
   const expected=ranges[index];
-  return {period:expected,...(snapshot&&expected&&actual?.start===expected.start&&actual.end===expected.end?{snapshot}:{unavailable:true})};
+  if(snapshot&&expected&&actual?.start===expected.start&&actual.end===expected.end){
+   try{return {period:expected,snapshot:input.campaign==='all'?snapshot:selectCampaignEvidence(snapshot as {period:TestingReportRange;campaigns:Array<{name?:string;campaignName?:string}>},input.campaign)};}catch{/* Fall back to a scoped API request. */}
+  }
+  return {period:expected,unavailable:true};
  });
  if(scope&&channel!=='overview'&&channel!=='social-media'){
-  const request={channel:channel as TestingReportChannel,current:period,previous:input.comparison};
+  const request={channel:channel as TestingReportChannel,current:scope.current??period,previous:scope.previous};
   const fetchPeriod=createTestingDataGateway(request,range=>fetchBoundedChannel(request.channel,range));
   const indexed=await Promise.all((['current','previous'] as const).map(async(which,index)=>{
    const existing=dashboard[index];if(existing&&!('unavailable' in existing))return existing;
+   if(!ranges[index])return {period:null,unavailable:true};
    try{
     const data=await fetchPeriod(which);
-    return {period:ranges[index],...(data?{snapshot:data,source:'api'}:{unavailable:true})};
+    const selected=data&&input.campaign!=='all'?selectCampaignEvidence(data as {period:TestingReportRange;campaigns:Array<{name?:string;campaignName?:string}>},input.campaign):data;
+    return {period:ranges[index],...(selected?{snapshot:selected,source:'api'}:{unavailable:true})};
    }catch{return {period:ranges[index],unavailable:true};}
   }));
   dashboard.splice(0,dashboard.length,...indexed);

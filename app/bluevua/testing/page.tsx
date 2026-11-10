@@ -11,7 +11,6 @@ import {NovaPreviewHeader} from "./nova-preview-shell";
 import {NovaPreviewBusinessPerformance} from "./nova-preview-metrics";
 import {NovaChannelPerformance} from "./nova-preview-channels";
 import {NovaOverviewSummary} from "./nova-preview-summary";
-import {configuredTestingCampaignCount} from "@/lib/testing-campaign-counts";
 import {TestingWorkspaceTabs} from "./testing-workspace-tabs";
 import {resolveTestingPeriod,testingLatestCompleteDate} from "@/lib/testing-period";
 import {OverviewLoadingContent} from "./overview-loading";
@@ -36,5 +35,5 @@ async function TestingOverviewContent({searchParams}:{searchParams:Promise<Searc
 export default async function TestingOverviewPage({searchParams}:{searchParams:Promise<SearchParams>}) {
   const params=await searchParams;
   const period=resolveTestingPeriod(testingLatestCompleteDate(),testingPeriodInput(params));
-  return <><NovaPreviewHeader sharePeriod={period}/><TestingWorkspaceTabs active="overview" count={configuredTestingCampaignCount()}/><Suspense key={queryString(params)} fallback={<OverviewLoadingContent/>}><TestingOverviewContent searchParams={searchParams}/></Suspense></>;
+  return <><NovaPreviewHeader sharePeriod={period}/><TestingWorkspaceTabs active="overview"/><Suspense key={queryString(params)} fallback={<OverviewLoadingContent/>}><TestingOverviewContent searchParams={searchParams}/></Suspense></>;
 }

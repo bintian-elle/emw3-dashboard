@@ -4,7 +4,7 @@ import {createContext,use,useContext,type ReactNode} from 'react';
 import type {TestingInventory} from '@/lib/testing-inventory-model';
 
 // Share the published campaign details while switching Testing views, without
-// re-reading the database on each page transition. Counts are configured separately.
+// re-reading the database on each page transition. Counts share this inventory.
 const TestingInventoryContext=createContext<Promise<TestingInventory>|null>(null);
 
 export function TestingInventoryProvider({inventory,children}:{inventory:Promise<TestingInventory>;children:ReactNode}){
