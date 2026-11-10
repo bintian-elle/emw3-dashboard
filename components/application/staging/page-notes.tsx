@@ -7,9 +7,12 @@ import { MessageSquare, MapPin, Plus, X, Check, RefreshCw, Trash2, Camera } from
 import { Button } from '@/components/base/buttons/button';
 import { useSiteLanguage } from '@/components/application/dashboard/site-language-provider';
 import type { NoteAnchor, PageNote } from '@/lib/staging-notes';
+import type {StagingReleaseStatus} from '@/lib/staging-release';
+import {reviewChangeHref,type StagingReviewChange} from '@/lib/staging-review-changes';
 import {ScreenshotCapture,type RegionCapture} from './screenshot-capture';
 import {ReleaseHighlight} from './release-highlight';
 import styles from './page-notes.module.css';
+const noChanges:StagingReviewChange[]=[];
 function selectorFor(element:Element){
  const parts:string[]=[];let current:Element|null=element;
  while(current&&current!==document.body&&parts.length<12){
@@ -35,12 +38,13 @@ function PageNotesPage({name,preview}:{name:string;preview:boolean}){
  const page=usePathname(),{language}=useSiteLanguage(),zh=language==='zh';
  const router=useRouter(),[switching,setSwitching]=useState(false),[switchError,setSwitchError]=useState(false);
  const [capture,setCapture]=useState<RegionCapture|null>(null),[deleting,setDeleting]=useState<string|null>(null);
+ const [release,setRelease]=useState<StagingReleaseStatus|null>(null);
  const [notes,setNotes]=useState<PageNote[]>([]),[open,setOpen]=useState(false),[selecting,setSelecting]=useState(false),[draft,setDraft]=useState(false),[anchor,setAnchor]=useState<NoteAnchor|null>(null),[text,setText]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loaded,setLoaded]=useState(false),[active,setActive]=useState<string|null>(null),[pins,setPins]=useState<{id:string;x:number;y:number}[]>([]);
  const load=useCallback(async(signal?:AbortSignal)=>{
-  try{const response=await fetch('/api/review/notes?scope=all',{cache:'no-store',signal});if(!response.ok)throw Error();const body=await response.json();if(!signal?.aborted){setNotes(previous=>JSON.stringify(previous)===JSON.stringify(body.notes)?previous:body.notes);setLoaded(true);setError('');}}
+  try{const response=await fetch('/api/review/notes?scope=all',{cache:'no-store',signal});if(!response.ok)throw Error();const body=await response.json();if(!signal?.aborted){setNotes(previous=>JSON.stringify(previous)===JSON.stringify(body.notes)?previous:body.notes);setRelease(previous=>JSON.stringify(previous)===JSON.stringify(body.release??null)?previous:body.release??null);setLoaded(true);setError('');}}
   catch{if(!signal?.aborted)setError(zh?'批注未能加载，请重试。':'Could not load notes. Please retry.');}
  },[zh]);
- useEffect(()=>{const controller=new AbortController();const timer=setTimeout(()=>void load(controller.signal),0);const refresh=()=>void load(controller.signal);window.addEventListener('hashchange',refresh);const interval=setInterval(()=>{if(!document.hidden)void load(controller.signal);},30000);return()=>{clearTimeout(timer);clearInterval(interval);window.removeEventListener('hashchange',refresh);controller.abort();};},[load]);
+ useEffect(()=>{const controller=new AbortController();const timer=setTimeout(()=>void load(controller.signal),0);const refresh=()=>void load(controller.signal);window.addEventListener('hashchange',refresh);const interval=setInterval(()=>{if(!document.hidden)void load(controller.signal);},30000);return()=>{clearTimeout(timer);clearInterval(interval);window.removeEventListener('hashchange',refresh);controller.abort();};},[load,preview]);
  useEffect(()=>{
   const update=()=>setPins(notes.filter(n=>n.page===page&&!n.resolved&&n.anchor).flatMap(n=>{const a=n.anchor!,el=anchoredElement(a);if(!el)return [];const r=el.getBoundingClientRect();if(!r.width||!r.height)return [];return [{id:n.id,x:r.left+r.width*a.x,y:r.top+r.height*a.y}];}));
   const frame=requestAnimationFrame(update);window.addEventListener('scroll',update,true);window.addEventListener('resize',update);const observer=new ResizeObserver(update);observer.observe(document.body);return()=>{cancelAnimationFrame(frame);window.removeEventListener('scroll',update,true);window.removeEventListener('resize',update);observer.disconnect();};
@@ -54,15 +58,28 @@ function PageNotesPage({name,preview}:{name:string;preview:boolean}){
  function goToNote(event:MouseEvent<HTMLAnchorElement>,note:PageNote){if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;setOpen(false);if(note.page===page){event.preventDefault();history.pushState(null,'',note.page+'#review-note='+note.id);setTimeout(()=>window.dispatchEvent(new HashChangeEvent('hashchange')),0);}}
  const startCapture=()=>{setOpen(false);setDraft(false);setSelecting(true);setActive(null);};
  const togglePreview=async()=>{setSwitching(true);setSwitchError(false);try{const response=await fetch('/api/review/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!preview})});if(!response.ok)throw Error();router.refresh();}catch{setSwitchError(true);}finally{setSwitching(false);}};
+ const changes=preview&&release?.state==='pending'?release.changes??noChanges:noChanges;
+ const summary=preview&&release?.state==='pending'?(zh?release.summary?.zh??release.summary?.en:release.summary?.en??release.summary?.zh):undefined;
+ const releaseLabel=release?.state==='pending'?(zh?'有待验收更新':'Updates ready for review'):release?.state==='synced'?(zh?'暂无待验收更新':'No pending updates'):release?.state==='unknown'||error?(zh?'更新状态暂不可用':'Update status unavailable'):(zh?'正在加载…':'Loading…');
+ function goToChange(event:MouseEvent<HTMLAnchorElement>,change:StagingReviewChange){
+  if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+  setOpen(false);
+  if(change.page===page){
+   event.preventDefault();
+   history.pushState(null,'',location.pathname+location.search+new URL(reviewChangeHref(change),location.origin).hash);
+   window.dispatchEvent(new HashChangeEvent('hashchange'));
+  }
+ }
  return <>
-  <ReleaseHighlight changes={[]} notes={notes} onOpenNote={id=>{setActive(id);setDraft(false);setOpen(true);}}/>
+  <ReleaseHighlight changes={changes} notes={notes} onOpenNote={id=>{setActive(id);setDraft(false);setOpen(true);}}/>
   <div data-page-notes className={styles.reviewEntry}><Button variant={preview?'primary':'secondary'} size="small" aria-pressed={preview} disabled={switching} onClick={()=>void togglePreview()}>{preview?(zh?'退出预览':'Exit preview'):(zh?'进入预览':'Enter preview')}</Button>{switchError&&<p role="alert">{zh?'切换失败，请重试。':'Could not switch preview. Try again.'}</p>}</div>
-  <div data-page-notes data-review-target="team-feedback" className={styles.toolbar}><Button variant="secondary" size="small" leadingIcon={MessageSquare} onClick={()=>setOpen(true)}>{zh?'团队批注':'Team notes'}{loaded?` · ${notes.filter(n=>!n.resolved).length}`:''}</Button></div>
+  <div data-page-notes data-review-target="team-feedback" className={styles.toolbar}>{preview&&<button type="button" className={styles.releaseButton} onClick={()=>{setDraft(false);setOpen(true);}}>Preview · {releaseLabel}{summary&&<small className={styles.releaseSummary}>{summary}</small>}</button>}<Button variant="secondary" size="small" leadingIcon={MessageSquare} onClick={()=>setOpen(true)}>{zh?'团队批注':'Team notes'}{loaded?` · ${notes.filter(n=>!n.resolved).length}`:''}</Button></div>
   {selecting&&<ScreenshotCapture onCancel={()=>{setSelecting(false);setDraft(Boolean(capture)||Boolean(text.trim()));setOpen(true);}} onCapture={(image,element,point)=>{setCapture(image);if(element&&selectorFor(element)&&!element.closest('[data-page-notes]')){const rect=element.getBoundingClientRect();setAnchor({selector:selectorFor(element),x:Math.max(0,Math.min(1,(point.x-rect.left)/(rect.width||1))),y:Math.max(0,Math.min(1,(point.y-rect.top)/(rect.height||1))),context:(element.textContent||'').replace(/\s+/g,' ').trim().slice(0,180)});}else setAnchor(null);setSelecting(false);setDraft(true);setOpen(true);}}/>}
   {pins.map(pin=><button data-page-notes key={pin.id} className={styles.pin} style={{left:pin.x,top:pin.y}} aria-label={`${zh?'打开批注':'Open note'}: ${notes.find(n=>n.id===pin.id)?.author.name}`} onClick={()=>{setActive(pin.id);setDraft(false);setOpen(true);}}><MapPin size={16}/><span>{notes.findIndex(n=>n.id===pin.id)+1}</span></button>)}
   <Dialog.Root open={open} onOpenChange={value=>{setOpen(value);if(!value){setDraft(false);setActive(null);}}}>
    <Dialog.Portal><Dialog.Overlay className={styles.overlay}/><Dialog.Content data-page-notes className={styles.panel}>
     <div className={styles.heading}><div><Dialog.Title className={styles.title}>{zh?'团队批注':'Team notes'}</Dialog.Title><Dialog.Description className={styles.description}>{zh?'查看和管理页面批注':'View and manage page notes'}</Dialog.Description></div><Dialog.Close asChild><Button variant="ghost" size="small" iconOnly leadingIcon={X} aria-label={zh?'关闭':'Close'}/></Dialog.Close></div>
+    {preview&&!draft&&<section className={styles.releaseDetails} aria-label={zh?'更新状态':'Update status'}><h3 className={styles.sectionTitle}>{releaseLabel}</h3>{summary&&<p>{summary}</p>}{changes.length>0&&<nav className={styles.changeList} aria-label={zh?'修改位置':'Changed areas'}>{changes.map(change=><a key={change.id} href={reviewChangeHref(change)} onClick={event=>goToChange(event,change)}><strong>{change.title[zh?'zh':'en']}</strong><span>{change.description[zh?'zh':'en']}</span></a>)}</nav>}</section>}
     <section className={styles.notesSection} aria-label={zh?'团队批注':'Team notes'}><div><h3 className={styles.sectionTitle}>{zh?'团队批注':'Team notes'}</h3><p className={styles.description}>{zh?'全站批注 · 点击所属页面跳转 · 以登录账号署名':'All pages · Click a page to locate a note · Signed with your account'}</p></div>
     <div className={styles.actions}><Button size="small" leadingIcon={Camera} onClick={startCapture}>{zh?'截图标记页面':'Capture a region'}</Button><Button variant="secondary" size="small" leadingIcon={Plus} onClick={startDraft}>{zh?'页面批注':'Page note'}</Button><Button variant="ghost" size="small" iconOnly leadingIcon={RefreshCw} aria-label={zh?'刷新':'Refresh'} onClick={()=>void load()}/></div>
     {error&&<p className={styles.error} role="alert">{error}</p>}

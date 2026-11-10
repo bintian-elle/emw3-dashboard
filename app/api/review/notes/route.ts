@@ -1,6 +1,8 @@
 import { currentSiteUser } from '@/lib/current-site-user';
 import { authOrigin } from '@/lib/site-auth';
 import {canAccessReviewTools,canWriteReviewTools,reviewExpectedOrigin} from '@/lib/review-access';
+import {isReviewPreview} from '@/lib/review-preview.server';
+import {readStagingReleaseStatus} from '@/lib/staging-release';
 import { createNote, listNotes, resolveNote, validateNote, canDeleteNote, deleteNote } from '@/lib/staging-notes';
 import { join } from 'node:path';
 export const runtime = 'nodejs';
@@ -19,7 +21,15 @@ export async function GET(request:Request){
  const denied=await access(request);if(denied)return denied;
  const page=new URL(request.url).searchParams.get('page')||'/';
  try{validateNote({page,text:'validation'});}catch{return reply({error:'Invalid page'},400);}
- try{const notes=await listNotes(directory(),new URL(request.url).searchParams.get('scope')==='all'?undefined:page);const user=(await currentSiteUser())!;return reply({notes:notes.map(note=>({...note,canDelete:canDeleteNote(note,user)}))});}catch{return reply({error:'Unable to load notes'},503);}
+ try{
+  const [notes,preview,user]=await Promise.all([
+   listNotes(directory(),new URL(request.url).searchParams.get('scope')==='all'?undefined:page),
+   isReviewPreview(),
+   currentSiteUser(),
+  ]);
+  const release=preview?await readStagingReleaseStatus(process.env.REVIEW_RELEASE_STATUS_FILE||join(process.cwd(),'.state','review-release.json')):undefined;
+  return reply({notes:notes.map(note=>({...note,canDelete:canDeleteNote(note,user!)})),release});
+ }catch{return reply({error:'Unable to load notes'},503);}
 }
 export async function POST(request:Request){
  const denied=await access(request,true);if(denied)return denied;
