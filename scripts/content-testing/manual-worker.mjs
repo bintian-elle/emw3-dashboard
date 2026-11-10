@@ -54,7 +54,7 @@ try{
  const saved=Object.fromEntries(Object.entries(payload.saved??{}).map(([channel,pair])=>[channel,pair]));
  const reports=await orchestrateManualReports({scope:request.scope,campaign:payload.campaign,temporary,channels:['google-search','google-pmax','google-demand-gen','meta','reddit','edm','social-media'],saved,generate});
  const versions={...Object.fromEntries(Object.entries(payload.jobs).map(([key,job])=>[key,Object.fromEntries(Object.entries(job.versions).map(([name,value])=>[name,createHash('sha256').update(value.content).digest('hex')]))])),testing_scope_policy:'2026-11-10-campaign-v2'};
- const rows=Object.entries(reports).map(([channel,report])=>channel==='reddit-lifetime'
+ const rows=Object.entries(reports).map(([channel,report])=>['reddit-lifetime','social-lifetime'].includes(channel)
   ?{channel,scope:'lifetime',report:{...report,dashboard_snapshot:payload.lifetimeSnapshot}}
   :{channel,scope:'period',report});
  if(temporary){

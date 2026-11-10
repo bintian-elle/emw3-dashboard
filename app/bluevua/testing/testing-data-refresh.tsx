@@ -21,6 +21,7 @@ type StatusEntry = { key: string; value: RefreshStatus };
 
 export function testingRefreshChannel(pathname: string, concluded: boolean): RefreshChannel | null {
   if (pathname === "/bluevua/testing" || pathname === "/bluevua/testing/") return null;
+  if (pathname === "/bluevua/testing/prompts" || pathname.startsWith("/bluevua/testing/prompts/")) return null;
   if (concluded || pathname.startsWith("/bluevua/testing/concluded") || pathname.startsWith("/bluevua/testing/google/concluded")) return "concluded";
   if (pathname === "/bluevua/testing/google" || pathname.startsWith("/bluevua/testing/google/search")) return "google-search";
   if (pathname.startsWith("/bluevua/testing/google/pmax")) return "google-pmax";

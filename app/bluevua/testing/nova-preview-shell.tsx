@@ -26,6 +26,7 @@ import { NovaAccountControls } from "./nova-account-controls";
 import { SiteHomeLogo } from "@/components/brand/site-home-logo";
 import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 import styles from "./nova-preview-shell.module.css";
+import {useReviewPreview} from "@/components/application/review/review-preview-context";
 
 const channels = [
   ["Google Search", "/bluevua/testing/google/search", "google-search"],
@@ -45,6 +46,7 @@ function InventoryCount({channel,badge=false}:{channel?:TestingInventoryChannel;
 }
 
 export function NovaPreviewShell({children,account,promptsEnabled=false}:{children:ReactNode;account:{name:string;email:string;picture?:string}|null;inventory:Promise<TestingInventory>;promptsEnabled?:boolean}) {
+ const reviewPreview=useReviewPreview();
  const {language}=useSiteLanguage();
  const zh=language==='zh';
  const {collapsed,setCollapsed}=useTestingSidebarState();
@@ -65,7 +67,7 @@ export function NovaPreviewShell({children,account,promptsEnabled=false}:{childr
    {!compact&&<p className={styles.navLabel}>{zh?'工作区':'Workspace'}</p>}
    <nav aria-label={zh?'工作区':'Workspace'} className={styles.nav}>
     {workspaceLinks.map(([label,href,Icon])=>{const active=!concludedContext&&pathname===href;const name=zh?(label==='Overview'?'总览':'测试清单'):label;return <TestingLink key={href} href={`${href}${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={name} title={compact?name:undefined}><span className={styles.iconSlot}><Icon/></span>{!compact&&<><span>{name}</span>{label==="Test inventory"&&<InventoryCount badge/>}</>}</TestingLink>;})}
-   {promptsEnabled&&<Link href="/bluevua/testing/prompts" onClick={onNavigate} className={`${styles.navItem} ${pathname==='/bluevua/testing/prompts'?styles.active:''}`} aria-current={pathname==='/bluevua/testing/prompts'?'page':undefined} aria-label="Prompts" title={compact?'Prompts':undefined}><span className={styles.iconSlot}><FileText/></span>{!compact&&<span>Prompts</span>}</Link>}
+   {promptsEnabled&&reviewPreview&&<Link href="/bluevua/testing/prompts" onClick={onNavigate} className={`${styles.navItem} ${pathname==='/bluevua/testing/prompts'?styles.active:''}`} aria-current={pathname==='/bluevua/testing/prompts'?'page':undefined} aria-label="Prompts" title={compact?'Prompts':undefined}><span className={styles.iconSlot}><FileText/></span>{!compact&&<span>Prompts</span>}</Link>}
    </nav>
    {!compact&&<p className={`${styles.navLabel} ${styles.channelsLabel}`}>{zh?'渠道':'Channels'}</p>}
    <nav aria-label={zh?"内容测试渠道":"Content testing channels"} className={styles.nav}>{channels.map(([label,href,channel])=>{const active=!concludedContext&&(pathname===href||pathname.startsWith(`${href}/`)||(label==="Google Search"&&pathname==="/bluevua/testing/google"));const displayLabel=label==="Google Demand Gen"?"Demand Gen":label;return <Link key={href} href={`${href}${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={label} title={compact?label:undefined}><span className={styles.iconSlot}><TestingChannelBrand name={label} eager={!!onNavigate}/></span>{!compact&&<><span>{displayLabel}</span>{channel&&<InventoryCount channel={channel}/>}</>}</Link>;})}</nav>

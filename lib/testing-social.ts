@@ -75,10 +75,17 @@ async function adCreatives(ids:string[]){
  }
  return result;
 }
-async function addPaidPerformance(posts:SocialPost[]){
+/** Ads Insights can provide bounded Paid metrics. Media Insights remains cumulative. */
+export async function fetchSocialPaidForPeriod(posts:SocialPost[],period:{start:string;end:string}){
+ const eligible=posts.filter(post=>post.publishedAt&&post.publishedAt.slice(0,10)<=period.end).map(post=>({...post}));
+ if(eligible.length)await addPaidPerformance(eligible,period);
+ return eligible.map(({code,url,paid})=>({code,url,paid}));
+}
+
+async function addPaidPerformance(posts:SocialPost[],period?:{start:string;end:string}){
  const account=process.env.META_AD_ACCOUNT_ID?.replace(/^act_/,"");if(!account||!/^\d+$/.test(account))throw Error("Instagram ad account unavailable");
- const since=posts.flatMap(post=>post.publishedAt?[post.publishedAt.slice(0,10)]:[]).sort()[0];if(!since)throw Error("Instagram publication dates unavailable");
- const until=new Date().toISOString().slice(0,10),time_range=JSON.stringify({since,until});
+ const since=period?.start??posts.flatMap(post=>post.publishedAt?[post.publishedAt.slice(0,10)]:[]).sort()[0];if(!since)throw Error("Instagram publication dates unavailable");
+ const until=period?.end??new Date().toISOString().slice(0,10),time_range=JSON.stringify({since,until});
  const platform={field:"publisher_platform",operator:"IN",value:["instagram"]};
  const ids=new Set<string>();let after:string|undefined;
  // Start with delivered ads, including paused ads, rather than scanning every creative in the account.
@@ -92,7 +99,7 @@ async function addPaidPerformance(posts:SocialPost[]){
   const linked=ads.filter(ad=>ad.creative&&matchesInstagramPost(post,ad.creative));
   if(!linked.length){post.paid={metrics:{views:0,reach:0,likes:0,comments:0,shares:0,saved:0,follows:null},adCount:0,status:"available"};continue;}
   // Meta deduplicates reach across all ads for this post; never add ad-level reach values.
-  const result=await graph<{data:PaidInsight[]}>(`act_${account}/insights`,{fields:"impressions,reach,actions,video_play_actions",time_range:JSON.stringify({since:post.publishedAt?.slice(0,10)??since,until}),filtering:JSON.stringify([platform,{field:"ad.id",operator:"IN",value:linked.map(ad=>ad.id)}])});
+  const result=await graph<{data:PaidInsight[]}>(`act_${account}/insights`,{fields:"impressions,reach,actions,video_play_actions",time_range:JSON.stringify({since:period?.start??post.publishedAt?.slice(0,10)??since,until}),filtering:JSON.stringify([platform,{field:"ad.id",operator:"IN",value:linked.map(ad=>ad.id)}])});
   post.paid={metrics:paidInstagramMetrics(result.data[0]??{},post.mediaType==="Reel"||post.mediaType==="Video"),adCount:linked.length,status:"available"};
  }
 }

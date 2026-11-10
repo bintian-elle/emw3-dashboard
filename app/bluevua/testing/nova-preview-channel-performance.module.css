@@ -1,6 +1,5 @@
 .card { overflow:hidden; }
-.header { padding:1.25rem 1.25rem 1.1rem; }
-.header h2 { margin:0; color:var(--nova-foreground,#20242a); font-size:.875rem; line-height:1.35; font-weight:550; letter-spacing:-.01em; }
+.header { composes: header from './testing-card-header.module.css'; }
 .card table { min-width:56rem; table-layout:fixed; }
 .card table :global([data-slot="table-header"]) { background:var(--nova-soft,#f4f4f5); }
 .card table :global([data-slot="table-head"]) { font-size:.65rem; font-weight:450; }

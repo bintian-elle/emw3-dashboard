@@ -33,7 +33,7 @@ function anchoredElement(anchor:NoteAnchor){
 export function PageNotes({name,preview=false}:{name:string;preview?:boolean}){
  const page=usePathname(),{language}=useSiteLanguage(),zh=language==='zh';
  const router=useRouter(),[switching,setSwitching]=useState(false),[switchError,setSwitchError]=useState(false);
- const togglePreview=async()=>{setSwitching(true);setSwitchError(false);try{const response=await fetch('/api/review/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!preview})});if(!response.ok)throw Error();router.refresh();}catch{setSwitchError(true);}finally{setSwitching(false);}};
+ const togglePreview=async()=>{setSwitching(true);setSwitchError(false);try{const response=await fetch('/api/review/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!preview})});if(!response.ok)throw Error();if(preview&&page==='/bluevua/testing/prompts')router.replace('/bluevua/testing');router.refresh();}catch{setSwitchError(true);}finally{setSwitching(false);}};
  return <>
   <div data-page-notes className={styles.reviewEntry}><Button variant={preview?'primary':'secondary'} size="small" aria-pressed={preview} disabled={switching} onClick={()=>void togglePreview()}>{preview?(zh?'退出预览':'Exit preview'):(zh?'进入预览':'Enter preview')}</Button>{switchError&&<p role="alert">{zh?'切换失败，请重试。':'Could not switch preview. Try again.'}</p>}</div>
   {preview&&<PageNotesPage key={page} name={name}/>}

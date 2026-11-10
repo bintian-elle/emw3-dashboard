@@ -1,20 +1,22 @@
 .section {
   min-width: 0;
-  padding: 1.25rem;
+  padding: 0 0 1.25rem;
   border: 1px solid var(--nova-border, #e4e6e9);
   border-radius: 0.625rem;
   background: var(--nova-surface, #fff);
   color: var(--nova-foreground, #18191b);
 }
 
+.sectionHeader {
+  composes: header from './testing-card-header.module.css';
+}
+
 .sectionTitle {
-  margin: 0 0 1.25rem;
   scroll-margin-top: 8rem;
-  color: var(--nova-foreground, #18191b);
-  font-size: 0.875rem;
-  font-weight: 550;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
+}
+
+.section > .grid {
+  margin: 1.25rem 1.25rem 0;
 }
 
 .grid {

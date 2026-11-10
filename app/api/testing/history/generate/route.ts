@@ -22,6 +22,8 @@ import type {PresentationDataset} from '@/lib/testing-insight-presentation';
 import {redditContentPeriod} from '@/lib/reddit-content-testing';
 import {readRequiredTestingDataSnapshot} from '@/lib/testing-data-cache';
 import {redditSinceStartLabel,redditSinceStartPreset} from '@/lib/reddit-testing-period';
+import {getSocialPerformance} from '@/lib/testing-social';
+import {contentTestingStartDates} from '@/lib/testing-report-scope';
 import {validRedditTestingSnapshot} from '@/lib/testing-reddit-snapshot';
 export const runtime='nodejs';
 const channels=['google-search','google-pmax','google-demand-gen','meta','reddit','edm','social-media'];
@@ -40,20 +42,23 @@ export async function POST(request:Request){
  let period,body:Record<string,unknown>;try{body=await request.json();period=historyGenerationRequest(body,testingLatestCompleteDate());}catch{return reply({error:'Invalid report selection'},400);}
  const temporary=body.purpose==='temporary',language=temporary&&body.language==='zh'?'zh':'en',campaign=temporary&&typeof body.campaign==='string'?body.campaign:'';
  const lifetime=body.coverage==='lifetime';
- if(lifetime&&(!scheduled||temporary||period.scope!=='reddit'||period.kind!=='weekly'))return reply({error:'Invalid scheduled request'},400);
+ if(lifetime&&(!scheduled||temporary||!['reddit','social-media'].includes(period.scope)||period.kind!=='weekly'))return reply({error:'Invalid scheduled request'},400);
  if(scheduled&&(temporary||!lifetime&&period.scope!=='overview'))return reply({error:'Invalid scheduled request'},400);
  if(campaign.length>200||campaign&&period.scope==='overview')return reply({error:'Invalid campaign'},400);
- const jobScope=lifetime?'reddit-lifetime':period.scope;
- const current=lifetime?redditContentPeriod():{start:period.start,end:period.end};
+ const socialLifetime=lifetime&&period.scope==='social-media';
+ const jobScope=socialLifetime?'social-lifetime':lifetime?'reddit-lifetime':period.scope;
+ const social= socialLifetime?await getSocialPerformance().catch(()=>null):null;
+ if(socialLifetime&&(!social?.capturedAt||social.error))return reply({error:'Social Lifetime snapshot is not available.'},503);
+ const current=social?{start:contentTestingStartDates['social-media'],end:social.capturedAt.slice(0,10)}:lifetime?redditContentPeriod():{start:period.start,end:period.end};
  const comparison=lifetime?null:{start:period.compareStart,end:period.compareEnd};
  try{
   const existing=await findReusableHistory(period.kind,period.start,period.end,period.compareStart,period.compareEnd,jobScope) as {en?:{run_id?:string;analysis?:{campaigns?:Array<{test_id:string}>};media_url_base?:string};zh?:{run_id?:string;analysis?:{campaigns?:Array<{test_id:string}>};media_url_base?:string}}|null;
   if(existing?.en&&existing.zh&&(!campaign||existing.en.analysis?.campaigns?.some(item=>item.test_id===campaign))){for(const report of [existing.en,existing.zh])if(report.run_id)report.media_url_base=`/api/testing/history/media/${encodeURIComponent(report.run_id)}/`;return reply({job:{status:'completed',result:temporary?{[language]:existing[language]}:existing,source:'saved'}});}
   const selected=period.scope==='overview'&&!temporary?[...channels,'overview']:[period.scope];
   const saved:Record<string,unknown>={},jobs:Record<string,unknown>={};
-  const publishedLifetime=lifetime?await readRequiredTestingDataSnapshot<{data:unknown}>('reddit',{preset:redditSinceStartPreset}):null;
-  const lifetimeSnapshot=publishedLifetime?.payload.data??null;
-  if(lifetime&&!validRedditTestingSnapshot(lifetimeSnapshot,current,redditSinceStartLabel))throw Error('Reddit Lifetime snapshot is not published.');
+  const publishedLifetime=lifetime&&!socialLifetime?await readRequiredTestingDataSnapshot<{data:unknown}>('reddit',{preset:redditSinceStartPreset}):null;
+  const lifetimeSnapshot=social??publishedLifetime?.payload.data??null;
+  if(lifetime&&!socialLifetime&&!validRedditTestingSnapshot(lifetimeSnapshot,current,redditSinceStartLabel))throw Error('Reddit Lifetime snapshot is not published.');
   if(temporary&&period.scope==='overview')for(const channel of channels){const report=await findReusableHistory(period.kind,period.start,period.end,period.compareStart,period.compareEnd,channel);if(report)saved[channel]=report;}
   for(const channel of selected){
    if(period.scope==='overview'&&channel!=='overview'){
@@ -66,8 +71,8 @@ export async function POST(request:Request){
     // Overview consumes the scoped channel reports assembled by the worker.
     frozen=await captureManualFallback(input) as Record<string,unknown>;
    }else if(channel==='social-media'){
-    const scope=testingReportScope(channel as TestingReportChannel,{start:period.start,end:period.end},{start:period.compareStart,end:period.compareEnd});
-    frozen=await captureManualFallback(input,scope) as Record<string,unknown>;
+    const scope=testingReportScope(channel as TestingReportChannel,current,comparison);
+    frozen=await captureManualFallback(input,scope,social??undefined) as Record<string,unknown>;
     frozen.testing_scope=scope;
    }else{
     const inventory=await getTestingInventory(),key=channel as TestingInventoryChannel;

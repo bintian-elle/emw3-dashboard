@@ -16,6 +16,7 @@ import {HistoryGenerateButton} from './history-generate-button';
 import {NovaInsightQuestion} from './nova-insight-question';
 import styles from './nova-preview-sections.module.css';
 import historyStyles from './nova-history-menu.module.css';
+import {testingAnalysisTitle} from '@/lib/testing-analysis-title';
 
 export function useHistoricalPeriod(){
  const params=useSearchParams(),pathname=usePathname();
@@ -71,10 +72,10 @@ export function NovaHistoricalReadout(){
  if(!history)return null;
  const show=expanded&&!!current?.report;
  return <NovaCard className={styles.readout}><div className={styles.readoutBody}>
-  <div className={styles.readoutHeading}><History aria-hidden="true"/><h2>{scope==='overview'?(zh?'总览分析':'Overview analysis'):(zh?'渠道分析':'Channel analysis')}</h2><span>{history.start} – {history.end}</span></div>
+  <div className={styles.readoutHeading}><History aria-hidden="true"/><h2>{testingAnalysisTitle(scope??undefined,language)}</h2><span>{history.start} – {history.end}</span></div>
   {!scope?<p>{zh?'此范围暂无历史分析。':'No historical analysis is available for this scope.'}</p>:!current?<p role="status">{zh?'正在加载历史分析…':'Loading historical analysis…'}</p>:current.error?<p role="alert">{zh?'历史分析加载失败。':'Could not load the historical analysis.'} <NovaButton variant="ghost" onClick={retry}>{zh?'重试':'Retry'}</NovaButton></p>:!current.report?<><p>{zh?'此范围暂无历史分析。':'No historical analysis is available for this scope.'}</p><HistoryGenerateButton scope={scope!} frequency={history.frequency} start={history.start} end={history.end} {...(comparison?{compareStart:comparison.start,compareEnd:comparison.end}:{})} onComplete={retry}/></>:<>
    {current.untranslated&&<p>{zh?'中文版本暂不可用，显示原文。':'Chinese translation unavailable; showing the original.'}</p>}
-   <h3>{current.report.title}</h3><div className={styles.readoutSummary}>{current.report.visual?.presentation.summary_html?<VisualInsightSummary html={current.report.visual.presentation.summary_html} report={current.report.visual} scope="channel"/>:<InsightMarkdown channel={scope}>{current.report.summary}</InsightMarkdown>}</div>
+   <div className={styles.readoutSummary}>{current.report.visual?.presentation.summary_html?<VisualInsightSummary html={current.report.visual.presentation.summary_html} report={current.report.visual} scope="channel"/>:<InsightMarkdown channel={scope}>{current.report.summary}</InsightMarkdown>}</div>
    <div className={styles.readoutActions}><NovaButton variant="outline" aria-expanded={show} aria-controls={id} onClick={()=>setExpanded(value=>!value)}>{show?(zh?'收起完整分析':'Hide full analysis'):(zh?'查看完整分析':'View full analysis')}{show?<ChevronUp/>:<ChevronDown/>}</NovaButton><NovaInsightQuestion scope={scope==='overview'?'overview':'channel'} expanded={show} detailsId={id} bottomId={bottomId} canAsk={chat.canAsk} ask={chat.ask} open={chat.open}/></div>
   </>}
  </div>{show&&current?.report&&<div className={styles.readoutDetails} id={id}>{current.report.visual?<InsightPresentation report={current.report.visual} scope={current.report.visualScope??'channel'}/>:current.report.sections.map((section,index)=><section key={index} className={styles.readoutDetail}>{section.title&&<h3>{section.title}</h3>}<div className={styles.markdown}><InsightMarkdown channel={scope??undefined}>{section.markdown}</InsightMarkdown></div></section>)}<div className={styles.readoutBottom}><NovaButton variant="outline" onClick={()=>setExpanded(false)}>{zh?'收起完整分析':'Hide full analysis'}<ChevronUp/></NovaButton><div id={bottomId} className={styles.questionBottom}/></div></div>}</NovaCard>;

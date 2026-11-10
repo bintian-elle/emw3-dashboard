@@ -7,6 +7,7 @@ import type {TestingDataChannel} from './testing-data-cache-contract';
 import {socialPostsForReport,type TestingReportRange} from './testing-report-scope';
 import {createTestingDataGateway} from './testing-scoped-fetch';
 import type {TestingReportChannel} from './testing-report-scope';
+import {fetchSocialPaidForPeriod,type SocialPerformance} from './testing-social';
 import {selectCampaignEvidence} from './testing-campaign-evidence';
 
 async function fetchBoundedChannel(channel:TestingReportChannel,range:TestingReportRange){
@@ -29,13 +30,13 @@ async function fetchBoundedChannel(channel:TestingReportChannel,range:TestingRep
 /** Supply any matching dashboard snapshots and identities; the prompt directs the AI to fill missing data via its API access. */
 export async function captureManualFallback(input:{channel:string;campaign:string;start:string;end:string;comparison:{start:string;end:string}|null},scope?:{testStart:string|null;current:TestingReportRange|null;previous:TestingReportRange|null},publishedCurrent?:unknown){
  const channel=input.channel,period={start:input.start,end:input.end},comparison=input.comparison??{start:'',end:''};
- let campaigns:string[]=[];if(input.campaign!=='all'){const inventory=await getTestingInventory();if(!inventory.items.some(item=>item.channelKey===channel&&item.name===input.campaign))throw Error('Campaign is outside the configured testing scope.');campaigns=[input.campaign];}else if(channel==='social-media')campaigns=['social-selected-posts'];else if(channel!=='overview'){const inventory=await getTestingInventory();if(inventory.unavailable.includes(channel as never))throw Error(`Campaign inventory is unavailable for ${channel}`);campaigns=inventory.items.filter(item=>item.channelKey===channel).map(item=>item.name);if(!campaigns.length)throw Error(`Campaign inventory is empty for ${channel}`);}
+ let campaigns:string[]=[];if(input.campaign!=='all'){const inventory=await getTestingInventory();if(!inventory.items.some(item=>item.channelKey===channel&&item.name===input.campaign))throw Error('Campaign is outside the configured testing scope.');campaigns=[input.campaign];}else if(channel==='social-media')campaigns=[];else if(channel!=='overview'){const inventory=await getTestingInventory();if(inventory.unavailable.includes(channel as never))throw Error(`Campaign inventory is unavailable for ${channel}`);campaigns=inventory.items.filter(item=>item.channelKey===channel).map(item=>item.name);if(!campaigns.length)throw Error(`Campaign inventory is empty for ${channel}`);}
  const prompt=await readFile(path.join(process.cwd(),'prompts/content-testing',`${channel}.md`),'utf8');const sections=[...prompt.matchAll(/^##\s+\d+\.\s+(.+)$/gm)].slice(1).map((m,i)=>({id:`${channel}-${i+2}`,title:m[1]}));
  const storageChannel=(channel==='social-media'?'social':channel) as TestingDataChannel;
  const ranges=scope?[scope.current,scope.previous]:[period,comparison];
  // Social snapshots are lifetime totals: they cannot establish metrics at a past period end.
  const snapshots=channel==='overview'||channel==='social-media'||channel.startsWith('google-')?[]:await Promise.allSettled(ranges.map((range,index)=>index===0&&publishedCurrent!==undefined?Promise.resolve(publishedCurrent):range?readComparisonPeriod(storageChannel,range):Promise.resolve(null)));
- const dashboard=snapshots.map((result,index)=>{
+ const dashboard:Array<{period:TestingReportRange|null; snapshot?:unknown; unavailable?:true; source?:'api'}>=snapshots.map((result,index)=>{
   const snapshot=result.status==='fulfilled'?result.value as {period?:TestingReportRange}|null:null;
   const actual=snapshot?.period;
   const expected=ranges[index];
@@ -47,8 +48,8 @@ export async function captureManualFallback(input:{channel:string;campaign:strin
  if(scope&&channel!=='overview'&&channel!=='social-media'){
   const request={channel:channel as TestingReportChannel,current:scope.current??period,previous:scope.previous};
   const fetchPeriod=createTestingDataGateway(request,range=>fetchBoundedChannel(request.channel,range));
-  const indexed=await Promise.all((['current','previous'] as const).map(async(which,index)=>{
-   const existing=dashboard[index];if(existing&&!('unavailable' in existing))return existing;
+  const indexed=await Promise.all((['current','previous'] as const).map(async(which,index):Promise<(typeof dashboard)[number]>=>{
+   const existing=dashboard[index];if(existing&&!existing.unavailable)return existing;
    if(!ranges[index])return {period:null,unavailable:true};
    try{
     const data=await fetchPeriod(which);
@@ -58,12 +59,25 @@ export async function captureManualFallback(input:{channel:string;campaign:strin
   }));
   dashboard.splice(0,dashboard.length,...indexed);
  }
+ const lifetime=channel==='social-media'&&publishedCurrent!==undefined?publishedCurrent as SocialPerformance:null;
  let social_posts:unknown=undefined;
- if(channel==='social-media'&&scope){
-  const source=await readTestingDataSnapshot<{posts:Parameters<typeof socialPostsForReport>[0]}>('social').catch(()=>null);
-  if(source?.payload?.posts)social_posts={current:socialPostsForReport(source.payload.posts,scope.current),previous:socialPostsForReport(source.payload.posts,scope.previous)};
+ if(channel==='social-media'&&scope&&!lifetime){
+  const source=await readTestingDataSnapshot<SocialPerformance>('social').catch(()=>null);
+  if(source?.payload?.posts){
+   const posts=source.payload.posts;
+   social_posts={current:socialPostsForReport(posts,scope.current),previous:socialPostsForReport(posts,scope.previous)};
+   // Bound the extra Ads Insights requests to weekly and longer reporting windows.
+   const days=(Date.parse(period.end)-Date.parse(period.start))/86400000+1;
+   const captures=await Promise.allSettled(ranges.map(range=>range&&days>=7?fetchSocialPaidForPeriod(posts,range):null));
+   for(const [index,capture] of captures.entries()){
+    const range=ranges[index];
+    if(range&&capture.status==='fulfilled'&&capture.value){
+     dashboard.push({period:range,snapshot:{posts:capture.value},source:'api'});
+    }else dashboard.push({period:range,unavailable:true});
+   }
+  }
  }
  const datasets={input:{id:'input',scopes:['channel',...campaigns],xKey:'category',columns:{category:'category'},rows:[]}};
- const gaps=channel==='social-media'?['Lifetime social totals are not historical period metrics; obtain period-bounded data or mark unavailable.']:dashboard.some(item=>'unavailable' in item&&item.period)?['Some requested dashboard snapshots are unavailable.']:[];
- return {channel,period,comparison,campaigns,dashboard,tests:campaigns.map(test_id=>({test_id})),presentation_datasets:datasets,media_index:[],...(scope?{testing_scope:scope}:{}),...(social_posts?{social_posts}:{}),source_data_gaps:gaps,visual_context:{run_id:'manual',channel,scope:'period',period,comparison,currency:null,totals:{},datasets,source_urls:[],media:[],sections}};
+ const gaps=channel==='social-media'&&!lifetime?['Instagram Media Insights provides current cumulative metrics. Historical Organic values are unavailable without matching snapshots. Any bounded API rows in dashboard are Paid only.']:dashboard.some(item=>item.unavailable&&item.period)?['Some requested dashboard snapshots are unavailable.']:[];
+ return {channel,period,comparison,campaigns,dashboard,tests:campaigns.map(test_id=>({test_id})),presentation_datasets:datasets,media_index:[],...(scope?{testing_scope:scope}:{}),...(social_posts?{social_posts}:{}),...(lifetime?{social_lifetime_snapshot:lifetime}:{}),source_data_gaps:gaps,visual_context:{run_id:'manual',channel,scope:lifetime?'lifetime':'period',period,comparison,currency:null,totals:{},datasets,source_urls:lifetime?.posts.map(post=>post.url)??[],media:[],sections}};
 }

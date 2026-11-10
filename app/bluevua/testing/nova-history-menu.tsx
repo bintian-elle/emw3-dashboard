@@ -46,7 +46,7 @@ export function NovaHistoryMenu({pageTitle}:{pageTitle?:string}){
  const choose=(type:Frequency,start:CalendarDate,end=start)=>{setLookup({key:'',state:'loading'});setSelection({type,start:start.toString(),end:end.toString()});};
  const result=lookup.key===lookupKey?lookup:null;
  return <Popover.Root open={open} onOpenChange={value=>{if(value)setLookup({key:'',state:'loading'});setOpen(value);}}>
-  <Popover.Trigger asChild><NovaButton data-review-target="testing-report-history" type="button" variant="outline"><History aria-hidden="true"/>{zh?'查看历史报告':'View history'}<ChevronDown aria-hidden="true"/></NovaButton></Popover.Trigger>
+  <Popover.Trigger asChild><NovaButton data-review-target="testing-report-history" type="button" variant="outline"><History aria-hidden="true"/>{zh?'查看历史报告':'View historical reports'}<ChevronDown aria-hidden="true"/></NovaButton></Popover.Trigger>
   <Popover.Portal><Popover.Content className={styles.content} align="end" sideOffset={6} collisionPadding={12} aria-label={zh?'选择历史报告日期':'Choose a historical report date'}>
    <div>
     <div role="group" className={styles.tabs} aria-label={zh?'报告类型':'Report type'}>{(Object.keys(labels) as Frequency[]).map(value=><button key={value} type="button" aria-pressed={frequency===value} onClick={()=>setFrequency(value)} className={styles.tab}>{labels[value].replace(' Insight','')}</button>)}</div>

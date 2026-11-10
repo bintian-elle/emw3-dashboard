@@ -1,5 +1,4 @@
 import {notFound} from 'next/navigation';
-import {currentSiteUser} from '@/lib/current-site-user';
-import {canAccessReviewTools} from '@/lib/review-access';
+import {isReviewPreview} from '@/lib/review-preview.server';
 import {PromptsWorkspace} from './prompts-workspace';
-export default async function PromptsPage(){const user=await currentSiteUser();if(!canAccessReviewTools(user))notFound();return <PromptsWorkspace/>;}
+export default async function PromptsPage(){if(!await isReviewPreview())notFound();return <PromptsWorkspace/>;}

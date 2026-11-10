@@ -1,12 +1,13 @@
 import {currentSiteUser} from '@/lib/current-site-user';
 import {authOrigin} from '@/lib/site-auth';
-import {canAccessReviewTools,canWriteReviewTools,reviewExpectedOrigin} from '@/lib/review-access';
+import {canWriteReviewTools,reviewExpectedOrigin} from '@/lib/review-access';
+import {isReviewPreview} from '@/lib/review-preview.server';
 import {promptId} from '@/lib/testing-prompts-contract';
 import {promptCatalog,promptVersion,promptHistory,promptDiff,savePrompt,readPromptRuns,createPromptRun} from '@/lib/testing-prompts-store';
 import {capturePromptTrial,promptTrialOptions} from '@/lib/testing-prompts-input';
 export const runtime='nodejs';
 const reply=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'private, no-store'}});
-async function access(request:Request,write=false){const user=await currentSiteUser();if(!user||!canAccessReviewTools(user))return null;const expected=reviewExpectedOrigin(request.url,authOrigin(request.url),process.env.LOCAL_PRODUCTION_PREVIEW==='1');if(write&&!canWriteReviewTools(user,request.headers.get('origin'),expected))return null;return user;}
+async function access(request:Request,write=false){const user=await currentSiteUser();if(!user||!await isReviewPreview())return null;const expected=reviewExpectedOrigin(request.url,authOrigin(request.url),process.env.LOCAL_PRODUCTION_PREVIEW==='1');if(write&&!canWriteReviewTools(user,request.headers.get('origin'),expected))return null;return user;}
 export async function GET(request:Request){
  if(!await access(request))return reply({error:'Not available'},403);
  const params=new URL(request.url).searchParams;

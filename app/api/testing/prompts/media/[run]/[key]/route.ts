@@ -1,12 +1,11 @@
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
-import {currentSiteUser} from '@/lib/current-site-user';
-import {canAccessReviewTools} from '@/lib/review-access';
+import {isReviewPreview} from '@/lib/review-preview.server';
 import {readLocalPromptJobs} from '@/lib/testing-prompts-local-runs';
 import {promptDatabase} from '@/lib/testing-prompts-store';
 import type {PresentationMedia} from '@/lib/testing-insight-presentation';
 export async function GET(_request:Request,{params}:{params:Promise<{run:string;key:string}>}){
- const user=await currentSiteUser();if(!canAccessReviewTools(user))return new Response(null,{status:403});
+ if(!await isReviewPreview())return new Response(null,{status:403});
  const {run,key}=await params;if(!/^[a-f0-9-]{36}$/.test(run)||!/^[-a-zA-Z0-9]{1,100}$/.test(key))return new Response(null,{status:404});
  const local=(await readLocalPromptJobs()).find(job=>job.id===run);const row=local??(await promptDatabase().query('SELECT frozen_input FROM staging_testing_prompt_runs WHERE id=$1',[run])).rows[0];
  const media=(row?.frozen_input?.media_index??[]) as PresentationMedia[],entry=media.find(item=>item.key===key);if(!entry||!/^[-\w]+\.webp$/.test(entry.file))return new Response(null,{status:404});

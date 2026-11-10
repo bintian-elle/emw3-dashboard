@@ -27,6 +27,7 @@ import styles from './nova-preview-sections.module.css';
 import {useReadoutVersion} from './use-readout-version';
 import {GenerateReadoutButton} from './generate-readout-button';
 import {fetchTestingReadoutJson} from '@/lib/testing-readout-fetch';
+import {testingAnalysisTitle} from '@/lib/testing-analysis-title';
 
 type Preview={manifest:PromptPreviewManifest;reports:PromptPreviewReport[];status:{status?:string};disabled?:boolean};
 const plugins={cjk,code,math,mermaid};
@@ -85,7 +86,7 @@ function SavedOverviewSummary({period,overviewMetrics}:{period:ReadoutPeriod;ove
  },[expanded]);
  const hide=(event:MouseEvent<HTMLButtonElement>)=>{const rect=event.currentTarget.getBoundingClientRect();collapseY.current=event.clientY>0?event.clientY:rect.top+rect.height/2;setExpandedKey(null);};
  return <NovaCard className={styles.readout}>
-  <div className={styles.readoutBody}><div className={styles.readoutHeading}><Sparkles aria-hidden="true"/><h2>{zh?'测试总结':previewReport?.title??'Test summary'}</h2><span>{testingInsightPeriodLabel(period,language)}</span></div>
+  <div className={styles.readoutBody}><div className={styles.readoutHeading}><Sparkles aria-hidden="true"/><h2>{testingAnalysisTitle('overview',language)}</h2><span>{testingInsightPeriodLabel(period,language)}</span></div>
    {summary?<div className={styles.readoutSummary}>{summary}</div>:<p role="status" className={styles.loading}>{cached.key!==requestKey?(zh?'正在获取分析…':'Fetching analysis…'):<>{zh?'此时间区间暂无可用分析。':'Analysis is not available for this reporting period.'} <GenerateReadoutButton period={period} scope="overview"/></>}</p>}
    {summary&&<div className={styles.readoutActions}><NovaButton data-review-reveal="analysis" ref={buttonRef} type="button" variant="outline" aria-expanded={expanded} aria-controls={detailsId} onClick={()=>setExpandedKey(current=>current===requestKey?null:requestKey)}>{expanded?(zh?'收起完整分析':'Hide full analysis'):(previewReport?(zh?'查看完整分析':'View full analysis'):(zh?'查看全部洞察与数据覆盖':'View all insights and data coverage'))}{expanded?<ChevronUp aria-hidden="true"/>:<ChevronDown aria-hidden="true"/>}</NovaButton>{expanded&&sections.map((section,index)=><NovaButton key={`${section.title}:${index}`} type="button" size="sm" variant="ghost" onClick={()=>document.getElementById(`${detailsId}-${index}`)?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}>{section.title}</NovaButton>)}<NovaInsightQuestion scope="overview" expanded={expanded} detailsId={detailsId} bottomId={bottomId} canAsk={chat.canAsk} ask={chat.ask} open={chat.open}/></div>}
   </div>

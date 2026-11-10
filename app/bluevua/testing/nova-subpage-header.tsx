@@ -1,6 +1,7 @@
 'use client';
 
 import {TestingComparisonControls} from './testing-comparison';
+import {testingAnalysisTitle} from '@/lib/testing-analysis-title';
 import {insightPresentationGroups} from '@/lib/testing-insight-presentation';
 import {usePmaxPresentation,InsightPresentation} from './insight-presentation';
 import {fetchTestingReadoutJson} from '@/lib/testing-readout-fetch';
@@ -81,7 +82,7 @@ function CurrentNovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHe
  const currentReport=usePmaxPresentation();
  const {language}=useSiteLanguage(),pathname=usePathname(),query=useSearchParams(),baseId=previewReportForPath(pathname);
  const selectedPeriod=resolveTestingPeriod(testingLatestCompleteDate(),testingSnapshotInput('meta',query.get('period')??'lastWeek',query.get('start'),query.get('end')) as Parameters<typeof resolveTestingPeriod>[1]);
- const temporary=useTemporaryReport(baseId??'', '',selectedPeriod.start,selectedPeriod.end),readable=currentReport??temporary;
+ const temporary=useTemporaryReport(baseId??'', '',selectedPeriod.start,selectedPeriod.end),readable=currentReport??(baseId==='social-media'?null:temporary);
  const match=useMatchedReport(baseId,selectedPeriod.start,selectedPeriod.end,language,!!baseId&&baseId!=='social-media'&&!(baseId==='reddit'&&(!query.get('period')||query.get('period')==='sinceSep24')));
  const [previewState,setPreview]=useState<{key:string;value:Preview}|null>(null),[expandedKey,setExpandedKey]=useState<string|null>(null);
  const [failedKey,setFailedKey]=useState<string|null>(null),[attempt,setAttempt]=useState(0);
@@ -105,6 +106,8 @@ function CurrentNovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHe
   const zh=language==='zh';
   return <NovaCard className={reportStyles.readout}><InsightPresentation report={readable} scope="channel" header summaryOnly embedded actions={<div className={reportStyles.readoutActions} style={{marginTop:'1rem'}}><NovaButton data-review-reveal="analysis" ref={buttonRef} variant="outline" aria-expanded={expanded} aria-controls={contentId} onClick={()=>setExpandedKey(expanded?null:key)}>{expanded?(zh?'收起完整分析':'Hide full analysis'):(zh?'查看完整分析':'View full analysis')}{expanded?<ChevronUp/>:<ChevronDown/>}</NovaButton>{expanded&&insightPresentationGroups(readable.presentation,'channel').map((block,index)=><NovaButton key={block.id} variant="ghost" size="sm" onClick={()=>document.getElementById(`${contentId}-${index}`)?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}>{block.title}</NovaButton>)}<Question expanded={expanded} detailsId={contentId} bottomId={bottomId}/></div>}/>{expanded&&<div id={contentId} className={reportStyles.readoutDetails}><InsightPresentation report={readable} scope="channel" embedded anchorPrefix={contentId}/><div className={reportStyles.readoutBottom}><NovaButton variant="outline" aria-expanded aria-controls={contentId} onClick={hide}>{zh?'收起完整分析':'Hide full analysis'}<ChevronUp/></NovaButton><div id={bottomId} className={reportStyles.questionBottom}/></div></div>}</NovaCard>;
  }
+
+ if(baseId==='social-media'&&(!preview||preview.disabled||!preview.reports.some(item=>item.report_id==='social-media'&&item.scope==='lifetime')))return <NovaCard className={reportStyles.readout}><div className={reportStyles.readoutBody}><div className={reportStyles.readoutHeading}><Sparkles aria-hidden="true"/><h2>{testingAnalysisTitle(baseId,language)}</h2><span>{language==='zh'?'全周期':'Lifetime'}</span></div><p role="status">{language==='zh'?'暂无全周期分析。':'Lifetime analysis is not available yet.'}</p></div></NovaCard>;
  if(baseId&&!readable&&(match.checking||match.error))return <NovaCard className={reportStyles.loading}><p role={match.error?'alert':'status'}>{match.error?(language==='zh'?'无法核对已保存报告。':'Could not check saved reports.'):(language==='zh'?'正在核对已保存报告…':'Checking saved reports…')}</p></NovaCard>;
  if(baseId&&query.get('compare')&&query.get('compare')!=='previousPeriod'&&!readable)return <NovaCard className={reportStyles.loading}><p>{language==='zh'?'当前对比周期暂无匹配分析。':'No analysis matches this comparison period.'}</p><GenerateReadoutButton period={{label:'Custom',...selectedPeriod}} scope={baseId}/></NovaCard>;
  if(!preview&&baseId&&failedKey===requestKey)return <NovaCard className={reportStyles.loading}><p role="alert">{language==='zh'?'分析加载失败，请重试。':'Analysis could not be loaded. Please retry.'}</p><NovaButton variant="outline" onClick={()=>{setFailedKey(null);setAttempt(value=>value+1);}}>{language==='zh'?'重试':'Retry'}</NovaButton></NovaCard>;
@@ -114,13 +117,13 @@ function CurrentNovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHe
  const reportId=baseId==='reddit'&&lifetime?'reddit-lifetime':baseId;
  const supported=lifetime||!preset||preset==='lastWeek'||(query.get('start')===preview.manifest.period.start&&query.get('end')===preview.manifest.period.end);
  if(!supported&&!preview.manifest.run_id.startsWith('published-'))return <NovaCard className={reportStyles.loading}>{zh?'本轮预览使用':'This preview covers'} {preview.manifest.period.start} – {preview.manifest.period.end}{zh?'；请选择 Last Week 查看。':'. Select Last Week to view it.'}</NovaCard>;
- const report=preview.reports.find(item=>item.report_id===reportId);
+ const report=preview.reports.find(item=>item.report_id===reportId&&(baseId!=='social-media'||item.scope==='lifetime'));
  if(!report&&preview.manifest.run_id.startsWith('published-'))return null;
  const assetChannel=baseId==='social-media'?'social':baseId==='reddit-lifetime'?'reddit':baseId==='overview'?undefined:baseId;
- const reportHeading=baseId==='overview'?(zh?'总览分析':'Overview analysis'):(zh?'渠道分析':'Channel analysis');
+ const reportHeading=testingAnalysisTitle(baseId,language);
  const summary=report&&baseId==='overview'&&overviewMetrics?liveOverviewExecutiveSummary(report.executive_summary,overviewMetrics,language):report?.executive_summary;
  return <NovaCard className={reportStyles.readout}><div className={reportStyles.readoutBody}>
-  <div className={reportStyles.readoutHeading}><Sparkles aria-hidden="true"/><h2>{reportHeading}{report?.title?` · ${report.title}`:''}</h2><span>{lifetime?'Lifetime':`${preview.manifest.period.start} – ${preview.manifest.period.end}`}</span></div>
+  <div className={reportStyles.readoutHeading}><Sparkles aria-hidden="true"/><h2>{reportHeading}</h2><span>{lifetime?'Lifetime':`${preview.manifest.period.start} – ${preview.manifest.period.end}`}</span></div>
   {report?<><div className={reportStyles.readoutSummary}><InsightMarkdown channel={assetChannel}>{summary??""}</InsightMarkdown></div><div className={reportStyles.readoutActions}><NovaButton data-review-reveal="analysis" ref={buttonRef} variant="outline" aria-expanded={expanded} aria-controls={contentId} onClick={()=>setExpandedKey(expanded?null:key)}>{expanded?(zh?'收起完整分析':'Hide full analysis'):(zh?'查看完整分析':'View full analysis')}{expanded?<ChevronUp/>:<ChevronDown/>}</NovaButton>{expanded&&report.sections.map((section,index)=><NovaButton key={section.title} variant="ghost" size="sm" onClick={()=>document.getElementById(`${contentId}-${index}`)?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}>{section.title}</NovaButton>)}<Question expanded={expanded} detailsId={contentId} bottomId={bottomId}/></div></>:<p role="status" className={reportStyles.loading}>{preview.status.status==='completed'?(zh?'此时间区间暂无可用分析。':'Analysis is not available for this reporting period.'):(zh?'正在获取分析…':'Fetching analysis…')}</p>}
  </div>{report&&expanded&&<div id={contentId} className={reportStyles.readoutDetails}>{report.sections.map((section,index)=><section key={section.title} id={`${contentId}-${index}`} className={reportStyles.readoutDetail}><h3><InsightText channel={assetChannel}>{section.title}</InsightText></h3><div className={reportStyles.markdown}><InsightMarkdown channel={assetChannel}>{conclusionOnlyMarkdown(section.markdown)}</InsightMarkdown></div></section>)}<div className={reportStyles.readoutBottom}><NovaButton variant="outline" aria-expanded aria-controls={contentId} onClick={hide}>{zh?'收起完整分析':'Hide full analysis'}<ChevronUp/></NovaButton><div id={bottomId} className={reportStyles.questionBottom}/></div></div>}</NovaCard>;
 }

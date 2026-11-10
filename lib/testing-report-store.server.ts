@@ -1,4 +1,7 @@
 import 'server-only';
+import {readFile,stat} from 'node:fs/promises';
+import path from 'node:path';
+import type {IntegratedReportBundle} from './testing-integrated-reports';
 import {Pool} from 'pg';
 import {assembleStoredBundle} from './testing-report-store';
 import {reportDatabaseEnvironment} from './testing-report-environment';
@@ -29,6 +32,27 @@ export async function readStoredMedia(runId:string,key:string){
  return result.rows[0]??null;
 }
 
+async function readLocalSocialReport(kind:'lifetime'|'weekly'){
+ if(process.env.NODE_ENV!=='development'&&process.env.LOCAL_PRODUCTION_PREVIEW!=='1')return null;
+ try{
+  const file=path.join(process.cwd(),'.state/content-testing-social',kind==='weekly'?'weekly/report.json':'lifetime.json');
+  const report=JSON.parse(await readFile(file,'utf8')) as IntegratedReportBundle['reports'][string];
+  const scope=kind==='weekly'?'period':'lifetime';
+  if(report.en?.scope!==scope||report.zh?.scope!==scope||report.en.run_id!==report.zh.run_id)return null;
+  if(JSON.stringify(report.en.period)!==JSON.stringify(report.zh.period)||JSON.stringify(report.en.comparison)!==JSON.stringify(report.zh.comparison))return null;
+  return report;
+ }catch{return null;}
+}
+
+export async function readStoredSocialLifetime(){
+ const local=await readLocalSocialReport('lifetime');
+ if(local)return local;
+ const result=await database().query<{id:string;report:IntegratedReportBundle['reports'][string]}>(`select r.id,p.report from content_testing_reports.runs r join content_testing_reports.reports p on p.run_id=r.id where r.status='completed' and r.environment=$1 and p.channel='social-lifetime' and p.scope='lifetime' order by r.completed_at desc,r.id desc limit 1`,[reportEnvironment()]);
+ const row=result.rows[0];
+ if(!row||row.report.en?.scope!=='lifetime'||row.report.zh?.scope!=='lifetime'||row.report.en.run_id!==row.id||row.report.zh.run_id!==row.id)return null;
+ for(const report of [row.report.en,row.report.zh])report.media_url_base=`/api/testing/history/media/${encodeURIComponent(row.id)}/`;
+ return row.report;
+}
 export async function readStoredRedditLifetime(){
  const result=await database().query<{id:string;start:string;end:string;report:{dashboard_snapshot?:unknown}}>(`select r.id,to_char(r.period_start,'YYYY-MM-DD') as start,to_char(r.period_end,'YYYY-MM-DD') as end,p.report from content_testing_reports.runs r join content_testing_reports.reports p on p.run_id=r.id where r.status='completed' and r.environment=$1 and p.channel='reddit-lifetime' and p.scope='lifetime' order by r.completed_at desc,r.id desc limit 1`,[reportEnvironment()]);
  const row=result.rows[0];if(!row)return null;
@@ -42,6 +66,14 @@ export async function readStoredRedditLifetime(){
 }
 /** A historical lookup never changes existing reports and only selects completed runs. */
 export async function readStoredHistoricalReport(kind:'daily'|'weekly'|'monthly',start:string,end:string,channel:string,comparison?:{start:string;end:string}){
+ if(channel==='social-media'&&kind==='weekly'){
+  const local=await readLocalSocialReport('weekly');
+  if(local?.en.period.start===start&&local.en.period.end===end&&(!comparison||local.en.comparison.start===comparison.start&&local.en.comparison.end===comparison.end)){
+   const {mtime}=await stat(path.join(process.cwd(),'.state/content-testing-social/weekly/report.json'));
+   return {id:local.en.run_id,generated_at:mtime,report:local};
+  }
+ }
+
  const result=await database().query<{id:string;generated_at:Date;report:unknown}>(`select r.id,r.completed_at as generated_at,p.report from content_testing_reports.runs r join content_testing_reports.reports p on p.run_id=r.id where r.status='completed' and r.report_kind=$1 and r.period_start=$2 and r.period_end=$3 and p.channel=$4 and ($5::date is null or (r.comparison_start=$5 and r.comparison_end=$6)) and r.environment=$7 order by r.completed_at desc,r.id desc limit 1`,[kind,start,end,channel,comparison?.start??null,comparison?.end??null,reportEnvironment()]);
  return result.rows[0]??null;
 }

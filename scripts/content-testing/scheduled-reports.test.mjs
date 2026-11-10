@@ -22,3 +22,15 @@ test('a missing Reddit Lifetime snapshot does not stop the normal weekly report'
  }}),/Waiting for the updated Reddit Lifetime snapshot/);
  assert.deepEqual(attempted,['weekly']);
 });
+
+test('a missing Social Lifetime report runs after the weekly report even if Reddit Lifetime fails',async()=>{
+ const attempted=[];
+ await assert.rejects(runScheduledReports({
+  day:'2026-12-01',now:'2026-12-01T12:30:00Z',records,
+  hasReport:async period=>period.kind!=='weekly',
+  generate:async()=>attempted.push('weekly'),
+  redditLifetime:{snapshot:records.reddit,hasReport:async()=>false,generate:async()=>{throw Error('Reddit error');}},
+  socialLifetime:{snapshot:records['social-media'],hasReport:async()=>false,generate:async()=>attempted.push('social-lifetime')},
+ }),/reddit-lifetime: Reddit error/);
+ assert.deepEqual(attempted,['weekly','social-lifetime']);
+});
