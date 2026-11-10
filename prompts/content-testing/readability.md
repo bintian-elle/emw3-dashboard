@@ -10,6 +10,10 @@
 
 优先读取调用方传入的 input_file 中的 frozen_input 和 `_generation_stage`；提供的数据缺失时，主动使用对应渠道的官方 API 或已授权数据工具补取，核对实体、周期、币种和指标口径后再分析。不可比或无法获取的数据说明缺口，不编造。可读取已授权项目背景与真实素材辅助解释，不把未经验证的背景当作业绩数据。不修改文件、数据库、广告、预算、账户或消息。
 
+日报、周报、月报和临时报告均以 Content Testing 为分析范围。可以读取已授权的项目背景、历史沟通和素材来理解测试，但这些背景不自动构成本期或对比期的测试表现。判断、汇总、图表及建议所依据的表现数据，必须属于实际参与测试的对象，并且位于该渠道测试开始日之后及报告所选的有效时间范围内。
+
+如果 frozen_input 提供 `testing_scope`，本期和对比期分别采用其中的 `current` 和 `previous` 范围；优先使用提供的范围内数据，缺失时可通过官方 API 或其他已授权数据工具，按相同有效日期和测试对象补取。范围为 null 表示该周期尚未开始测试，不是零表现；不要将该周期的历史表现作为测试数据，也不要编造比较。截短的周期与完整周期不视为同口径 PoP。Social 的当前累计指标不能代替历史周期结束时的数据；无法取得指定时期数据时注明不可用。Overview 只汇总各渠道有效范围内的测试结果，不把不同有效时段的数据误写成同口径比较。
+
 当 `_generation_stage.kind` 为 `campaign`，只分析 `_generation_stage.campaign` 指定的 Campaign：每个区块的 scope 与其真实名称完全一致，campaigns 返回这一项；其他 Campaign 仅作背景，不输出渠道区块。当 kind 为 `channel`，结合 frozen_input.completed_campaign_reports 和权威渠道数据综合分析，区块只使用 channel scope、campaigns 为空；不重复生成 Campaign 细节。没有分阶段标记时分析指定范围。Overview 使用明确提供的 completed_channel_reports 和 overview_sources 汇总，注意周期及累计范围，不重复计入累计数据。各阶段都覆盖对应业务方向，表达自主选择。
 
 ## 面向读者的自然语言（所有渠道、摘要与展开内容通用）

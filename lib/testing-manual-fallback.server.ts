@@ -1,16 +1,63 @@
 import 'server-only';
 import {readFile} from 'node:fs/promises';import path from 'node:path';
+import {readComparisonPeriod} from './testing-comparison.server';
 import {readTestingDataSnapshot} from './testing-data-cache';
 import {getTestingInventory} from './testing-inventory';
 import type {TestingDataChannel} from './testing-data-cache-contract';
+import {socialPostsForReport,type TestingReportRange} from './testing-report-scope';
+import {createTestingDataGateway} from './testing-scoped-fetch';
+import type {TestingReportChannel} from './testing-report-scope';
+
+async function fetchBoundedChannel(channel:TestingReportChannel,range:TestingReportRange){
+ const input={preset:'custom' as const,...range};
+ if(channel==='google-search'){
+  const {getGoogleContentTests}=await import('./testing-google');
+  const campaigns=await getGoogleContentTests(input);
+  if(campaigns.some(campaign=>campaign.period?.start!==range.start||campaign.period?.end!==range.end))throw Error('Testing data period mismatch');
+  return {period:range,campaigns};
+ }
+ if(channel==='google-pmax'||channel==='google-demand-gen'){
+  const {getExpandedGoogleTesting}=await import('./google-expanded-content-testing');
+  return getExpandedGoogleTesting(channel==='google-pmax'?'pmax':'demand-gen',input);
+ }
+ if(channel==='meta')return (await (await import('./testing-meta')).fetchFreshMetaCampaignTest(input)).data;
+ if(channel==='reddit')return (await (await import('./testing-reddit')).fetchFreshRedditTestingData(input)).data;
+ if(channel==='edm')return (await (await import('./testing-edm')).fetchFreshEdmTestingSnapshot(input)).data;
+ throw Error('Period-bounded social metrics unavailable');
+}
 /** Supply any matching dashboard snapshots and identities; the prompt directs the AI to fill missing data via its API access. */
-export async function captureManualFallback(input:{channel:string;campaign:string;start:string;end:string;comparison:{start:string;end:string}|null}){
+export async function captureManualFallback(input:{channel:string;campaign:string;start:string;end:string;comparison:{start:string;end:string}|null},scope?:{testStart:string;current:TestingReportRange|null;previous:TestingReportRange|null}){
  const channel=input.channel,period={start:input.start,end:input.end},comparison=input.comparison??{start:'',end:''};
  let campaigns:string[]=[];if(input.campaign!=='all'){const inventory=await getTestingInventory();if(!inventory.items.some(item=>item.channelKey===channel&&item.name===input.campaign))throw Error('Campaign is outside the configured testing scope.');campaigns=[input.campaign];}else if(channel==='social-media')campaigns=['social-selected-posts'];else if(channel!=='overview'){const inventory=await getTestingInventory();if(inventory.unavailable.includes(channel as never))throw Error(`Campaign inventory is unavailable for ${channel}`);campaigns=inventory.items.filter(item=>item.channelKey===channel).map(item=>item.name);if(!campaigns.length)throw Error(`Campaign inventory is empty for ${channel}`);}
  const prompt=await readFile(path.join(process.cwd(),'prompts/content-testing',`${channel}.md`),'utf8');const sections=[...prompt.matchAll(/^##\s+\d+\.\s+(.+)$/gm)].slice(1).map((m,i)=>({id:`${channel}-${i+2}`,title:m[1]}));
  const storageChannel=(channel==='social-media'?'social':channel) as TestingDataChannel;
- const snapshots=channel==='overview'?[]:await Promise.allSettled([period,comparison].map(range=>readTestingDataSnapshot(storageChannel,{preset:'custom',...range})));
- const dashboard=snapshots.map((result,index)=>({period:index===0?period:comparison,...(result.status==='fulfilled'&&result.value?{snapshot:result.value}:{unavailable:true})}));
+ const ranges=scope?[scope.current,scope.previous]:[period,comparison];
+ // Social snapshots are lifetime totals: they cannot establish metrics at a past period end.
+ const snapshots=channel==='overview'||channel==='social-media'||channel.startsWith('google-')?[]:await Promise.allSettled(ranges.map(range=>range?readComparisonPeriod(storageChannel,range):Promise.resolve(null)));
+ const dashboard=snapshots.map((result,index)=>{
+  const snapshot=result.status==='fulfilled'?result.value as {period?:TestingReportRange}|null:null;
+  const actual=snapshot?.period;
+  const expected=ranges[index];
+  return {period:expected,...(snapshot&&expected&&actual?.start===expected.start&&actual.end===expected.end?{snapshot}:{unavailable:true})};
+ });
+ if(scope&&channel!=='overview'&&channel!=='social-media'){
+  const request={channel:channel as TestingReportChannel,current:period,previous:input.comparison};
+  const fetchPeriod=createTestingDataGateway(request,range=>fetchBoundedChannel(request.channel,range));
+  const indexed=await Promise.all((['current','previous'] as const).map(async(which,index)=>{
+   const existing=dashboard[index];if(existing&&!('unavailable' in existing))return existing;
+   try{
+    const data=await fetchPeriod(which);
+    return {period:ranges[index],...(data?{snapshot:data,source:'api'}:{unavailable:true})};
+   }catch{return {period:ranges[index],unavailable:true};}
+  }));
+  dashboard.splice(0,dashboard.length,...indexed);
+ }
+ let social_posts:unknown=undefined;
+ if(channel==='social-media'&&scope){
+  const source=await readTestingDataSnapshot<{posts:Parameters<typeof socialPostsForReport>[0]}>('social').catch(()=>null);
+  if(source?.payload?.posts)social_posts={current:socialPostsForReport(source.payload.posts,scope.current),previous:socialPostsForReport(source.payload.posts,scope.previous)};
+ }
  const datasets={input:{id:'input',scopes:['channel',...campaigns],xKey:'category',columns:{category:'category'},rows:[]}};
- return {channel,period,comparison,campaigns,dashboard,tests:campaigns.map(test_id=>({test_id})),presentation_datasets:datasets,media_index:[],source_data_gaps:['Some requested dashboard snapshots are unavailable.'],visual_context:{run_id:'manual',channel,scope:'period',period,comparison,currency:null,totals:{},datasets,source_urls:[],media:[],sections}};
+ const gaps=channel==='social-media'?['Lifetime social totals are not historical period metrics; obtain period-bounded data or mark unavailable.']:dashboard.some(item=>'unavailable' in item&&item.period)?['Some requested dashboard snapshots are unavailable.']:[];
+ return {channel,period,comparison,campaigns,dashboard,tests:campaigns.map(test_id=>({test_id})),presentation_datasets:datasets,media_index:[],...(scope?{testing_scope:scope}:{}),...(social_posts?{social_posts}:{}),source_data_gaps:gaps,visual_context:{run_id:'manual',channel,scope:'period',period,comparison,currency:null,totals:{},datasets,source_urls:[],media:[],sections}};
 }

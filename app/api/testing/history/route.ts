@@ -8,6 +8,7 @@ import {currentSiteUser} from '@/lib/current-site-user';
 import {readTestingReadoutsForDates} from '@/lib/ai-job-queue';
 import {translatedTestingReadouts} from '@/lib/testing-readout-translation';
 import {matchHistoryReport,type HistoryFrequency} from '@/lib/testing-history-match';
+import {readIntegratedReports as readLocalPreview} from '@/lib/testing-integrated-reports';
 
 export async function GET(request:Request){
  if(!await currentSiteUser())return NextResponse.json({error:'Unauthorized'},{status:401});
@@ -16,6 +17,15 @@ export async function GET(request:Request){
  try{
   const compareStart=query.get('compareStart'),compareEnd=query.get('compareEnd');
   const expected=historyGenerationRequest({scope,frequency,start,end,...(compareStart||compareEnd?{compareStart,compareEnd}:{})},testingLatestCompleteDate());
+  // An explicitly configured local staging preview takes precedence only for its matching Overview.
+  if(process.env.NODE_ENV==='development'&&process.env.DEPLOYMENT_ENV==='staging'&&process.env.LOCAL_PRODUCTION_REPORT_DIR&&scope==='overview'&&frequency==='weekly'&&!campaign){
+   const preview=await readLocalPreview(),pair=preview?.reports.overview;
+   const visual=pair?.[query.get('language')==='zh'?'zh':'en'];
+   if(visual&&visual.period.start===start&&visual.period.end===end&&visual.comparison?.start===expected.compareStart&&visual.comparison?.end===expected.compareEnd){
+    const report={title:visual.presentation.title,summary:visual.presentation.summary,sections:[],generatedAt:new Date().toISOString(),visual,visualScope:'channel'};
+    return NextResponse.json({report,untranslated:false,...(query.get('includeBoth')==='1'?{bilingual:pair}:{})},{headers:{'Cache-Control':'private, no-store'}});
+   }
+  }
   const stored=await readStoredHistoricalReport(frequency as HistoryFrequency,start,end,scope,{start:expected.compareStart,end:expected.compareEnd});
   if(stored){
    const pair=stored.report as {en:PmaxReadableReport;zh:PmaxReadableReport};

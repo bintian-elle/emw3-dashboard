@@ -14,6 +14,7 @@ import {captureManualFallback} from '@/lib/testing-manual-fallback.server';
 import {capturePromptTrial} from '@/lib/testing-prompts-input';
 import {validatePromptRun} from '@/lib/testing-prompts-contract';
 import {reportDatabaseEnvironment} from '@/lib/testing-report-environment';
+import {testingReportScope,type TestingReportChannel} from '@/lib/testing-report-scope';
 export const runtime='nodejs';
 const channels=['google-search','google-pmax','google-demand-gen','meta','reddit','edm','social-media'];
 const environment=()=>process.env.DEPLOYMENT_ENV==='staging'?'staging':'production';
@@ -41,7 +42,18 @@ export async function POST(request:Request){
     const report=await findReusableHistory(period.kind,period.start,period.end,period.compareStart,period.compareEnd,channel);if(report){saved[channel]=report;continue;}
    }
    const input=validatePromptRun({channel,prompt:channel,mode:'analysis',start:period.start,end:period.end,compareStart:period.compareStart,compareEnd:period.compareEnd,campaign:campaign||'all',language:'en',versions:{[channel]:'current',readability:'current'}});
-   let frozen:Record<string,unknown>;try{frozen=await capturePromptTrial(input) as Record<string,unknown>;}catch{frozen=await captureManualFallback(input) as Record<string,unknown>;}
+   let frozen:Record<string,unknown>;
+   if(channel==='overview'){
+    // Overview consumes the scoped channel reports assembled by the worker.
+    frozen=await captureManualFallback(input) as Record<string,unknown>;
+   }else{
+    const scope=testingReportScope(channel as TestingReportChannel,{start:period.start,end:period.end},{start:period.compareStart,end:period.compareEnd});
+    const bounded=scope.current&&scope.previous?{...input,start:scope.current.start,end:scope.current.end,comparison:scope.previous}:null;
+    if(bounded&&channel!=='social-media'){
+     try{frozen=await capturePromptTrial(bounded,{allowIntegrated:false}) as Record<string,unknown>;}catch{frozen=await captureManualFallback(input,scope) as Record<string,unknown>;}
+    }else frozen=await captureManualFallback(input,scope) as Record<string,unknown>;
+    frozen.testing_scope=scope;
+   }
    const versions=Object.fromEntries(await Promise.all([channel,'readability'].map(async name=>[name,{content:await readFile(path.join(process.cwd(),'prompts/content-testing',`${name}.md`),'utf8')}] as const)));
    frozen.generation_purpose=temporary?'temporary':'history';frozen.requested_language=language;
    if(temporary&&channel!=='overview'&&!campaign)frozen.campaigns=[];

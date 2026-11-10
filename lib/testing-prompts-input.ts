@@ -51,8 +51,8 @@ async function channelPacket(channel:string,input:TrialInput){
  const current=(now.campaigns??[]).filter(c=>input.campaign==='all'||name(c)===input.campaign),names=current.map(name);if(!names.length)throw Error('Campaign is outside the configured testing scope.');
  return {channel,period,comparison,campaigns:names,current,previous:(before.campaigns??[]).filter(c=>names.includes(name(c))),metric_contract:'Use selected testing ads, including paused ads with historical delivery. Rates are recomputed from sums. EDM CTR uses unique clicks/delivered. Do not sum reach across days.'};
 }
-export async function capturePromptTrial(input:TrialInput):Promise<unknown>{
- const integrated=await captureIntegratedPromptTrial(input);if(integrated)return integrated;
+export async function capturePromptTrial(input:TrialInput,options:{allowIntegrated?:boolean}={}):Promise<unknown>{
+ const integrated=options.allowIntegrated===false?null:await captureIntegratedPromptTrial(input);if(integrated)return integrated;
  if(input.channel!=='overview')return withVisualContext(await channelPacket(input.channel,input),input);
  const packets=await Promise.allSettled(['google-search','google-pmax','google-demand-gen','meta','reddit','edm'].map(channel=>channelPacket(channel,{...input,channel,campaign:'all'})));
  const channels=packets.flatMap(result=>result.status==='fulfilled'?[result.value]:[]);
