@@ -19,6 +19,8 @@ import {getTestingInventory} from '@/lib/testing-inventory';
 import type {TestingInventoryChannel} from '@/lib/testing-inventory-model';
 import {trialMetricRows} from '@/lib/testing-prompt-trial-report';
 import type {PresentationDataset} from '@/lib/testing-insight-presentation';
+import {redditContentPeriod} from '@/lib/reddit-content-testing';
+import {readComparisonPeriod} from '@/lib/testing-comparison.server';
 export const runtime='nodejs';
 const channels=['google-search','google-pmax','google-demand-gen','meta','reddit','edm','social-media'];
 const environment=()=>process.env.DEPLOYMENT_ENV==='staging'?'staging':'production';
@@ -34,18 +36,26 @@ export async function POST(request:Request){
  const localPreview=process.env.LOCAL_PRODUCTION_PREVIEW==='1'&&['localhost','127.0.0.1','[::1]'].includes(new URL(request.url).hostname);
  if(!scheduled&&!generationOriginAllowed(request.url,request.headers.get('origin'),localPreview?new URL(request.url).origin:authOrigin(request.url),localPreview))return reply({error:'Invalid origin'},403);
  let period,body:Record<string,unknown>;try{body=await request.json();period=historyGenerationRequest(body,testingLatestCompleteDate());}catch{return reply({error:'Invalid report selection'},400);}
- const temporary=body.purpose==='temporary',language=temporary&&body.language==='zh'?'zh':'en',campaign=temporary&&typeof body.campaign==='string'?body.campaign:'';if(scheduled&&(temporary||period.scope!=='overview'))return reply({error:'Invalid scheduled request'},400);if(campaign.length>200||campaign&&period.scope==='overview')return reply({error:'Invalid campaign'},400);
+ const temporary=body.purpose==='temporary',language=temporary&&body.language==='zh'?'zh':'en',campaign=temporary&&typeof body.campaign==='string'?body.campaign:'';
+ const lifetime=body.coverage==='lifetime';
+ if(lifetime&&(!scheduled||temporary||period.scope!=='reddit'||period.kind!=='weekly'))return reply({error:'Invalid scheduled request'},400);
+ if(scheduled&&(temporary||!lifetime&&period.scope!=='overview'))return reply({error:'Invalid scheduled request'},400);
+ if(campaign.length>200||campaign&&period.scope==='overview')return reply({error:'Invalid campaign'},400);
+ const jobScope=lifetime?'reddit-lifetime':period.scope;
+ const current=lifetime?redditContentPeriod():{start:period.start,end:period.end};
+ const comparison=lifetime?null:{start:period.compareStart,end:period.compareEnd};
  try{
-  const existing=await findReusableHistory(period.kind,period.start,period.end,period.compareStart,period.compareEnd,period.scope) as {en?:{run_id?:string;analysis?:{campaigns?:Array<{test_id:string}>};media_url_base?:string};zh?:{run_id?:string;analysis?:{campaigns?:Array<{test_id:string}>};media_url_base?:string}}|null;
+  const existing=await findReusableHistory(period.kind,period.start,period.end,period.compareStart,period.compareEnd,jobScope) as {en?:{run_id?:string;analysis?:{campaigns?:Array<{test_id:string}>};media_url_base?:string};zh?:{run_id?:string;analysis?:{campaigns?:Array<{test_id:string}>};media_url_base?:string}}|null;
   if(existing?.en&&existing.zh&&(!campaign||existing.en.analysis?.campaigns?.some(item=>item.test_id===campaign))){for(const report of [existing.en,existing.zh])if(report.run_id)report.media_url_base=`/api/testing/history/media/${encodeURIComponent(report.run_id)}/`;return reply({job:{status:'completed',result:temporary?{[language]:existing[language]}:existing,source:'saved'}});}
   const selected=period.scope==='overview'&&!temporary?[...channels,'overview']:[period.scope];
   const saved:Record<string,unknown>={},jobs:Record<string,unknown>={};
+  if(lifetime&&!await readComparisonPeriod('reddit',current))throw Error('Reddit Lifetime snapshot is not published.');
   if(temporary&&period.scope==='overview')for(const channel of channels){const report=await findReusableHistory(period.kind,period.start,period.end,period.compareStart,period.compareEnd,channel);if(report)saved[channel]=report;}
   for(const channel of selected){
    if(period.scope==='overview'&&channel!=='overview'){
     const report=await findReusableHistory(period.kind,period.start,period.end,period.compareStart,period.compareEnd,channel);if(report){saved[channel]=report;continue;}
    }
-   const input=validatePromptRun({channel,prompt:channel,mode:'analysis',start:period.start,end:period.end,compareStart:period.compareStart,compareEnd:period.compareEnd,campaign:campaign||'all',language:'en',versions:{[channel]:'current',readability:'current'}});
+   const input=validatePromptRun({channel,prompt:channel,mode:'analysis',...current,...(comparison?{compareStart:comparison.start,compareEnd:comparison.end}:{}),campaign:campaign||'all',language:'en',versions:{[channel]:'current',readability:'current'}});
    let frozen:Record<string,unknown>;
    if(channel==='overview'){
     // Overview consumes the scoped channel reports assembled by the worker.
@@ -60,7 +70,7 @@ export async function POST(request:Request){
     const names=inventory.items.filter(item=>item.channelKey===key&&(!campaign||item.name===campaign)).map(item=>item.name);
     if(!names.length)throw Error('Campaign is outside the configured testing scope.');
     const captured=await Promise.all(names.map(async name=>{
-     const scope=testingCampaignReportScope(key,name,{start:period.start,end:period.end},{start:period.compareStart,end:period.compareEnd});
+     const scope=testingCampaignReportScope(key,name,current,comparison);
      const packet=await captureManualFallback({...input,campaign:name},scope);
      return {name,scope,packet};
     }));
@@ -72,18 +82,18 @@ export async function POST(request:Request){
      for(const row of rows)for(const field of Object.keys(row))if(field!=='category')columns[field]=['spend','revenue','cpc','cpa','cpm'].includes(field)?'USD':['ctr','cvr'].includes(field)?'fraction':field==='roas'?'ratio':field;
      const id=name+'.entities';datasets[id]={id,scopes:[name,'channel'],xKey:'category',columns,rows};
     }
-    const context={...template.visual_context,datasets};
+    const context={...template.visual_context,datasets,...(lifetime?{scope:'lifetime'}:{})};
     frozen={...template,campaigns:names,tests:captured.map(({name,scope,packet})=>({test_id:name,testing_scope:scope,dashboard:packet.dashboard})),testing_campaign_scopes:Object.fromEntries(captured.map(({name,scope})=>[name,scope])),dashboard:undefined,testing_scope:undefined,visual_context:context,presentation_datasets:context.datasets,source_data_gaps:captured.flatMap(({name,scope,packet})=>scope.testStart===null?[`${name}: testing start is not verified.`]:packet.source_data_gaps.map(gap=>`${name}: ${gap}`))};
    }
    const versions=Object.fromEntries(await Promise.all([channel,'readability'].map(async name=>[name,{content:await readFile(path.join(process.cwd(),'prompts/content-testing',`${name}.md`),'utf8')}] as const)));
    frozen.generation_purpose=temporary?'temporary':'history';frozen.requested_language=language;
    if(temporary&&channel!=='overview'&&!campaign)frozen.campaigns=[];
    const schema=reportOutputSchema(JSON.parse(await readFile(path.join(process.cwd(),'scripts/content-testing/readable-schema.json'),'utf8')),temporary,language);
-   jobs[channel]={...(temporary&&channel!=='overview'?{_generation_stage:{kind:campaign?'campaign':'channel',campaign:campaign||null}}:{}),mode:'analysis',campaign:campaign||'all',period:{channel,start:period.start,end:period.end},language,versions,frozen_input:frozen,output_schema:schema};
+   jobs[lifetime?jobScope:channel]={...(temporary&&channel!=='overview'?{_generation_stage:{kind:campaign?'campaign':'channel',campaign:campaign||null}}:{}),mode:'analysis',campaign:campaign||'all',period:{channel,...current},language,versions,frozen_input:frozen,output_schema:schema};
   }
   const promptRevision=createHash('sha256').update(JSON.stringify((jobs[period.scope] as {versions:unknown})?.versions??{})).digest('hex');
   const jobEnvironment=temporary?environment():reportDatabaseEnvironment();
-  const id=randomUUID(),payload={period,jobs,saved,temporary,campaign,language},job=temporary?await enqueueTemporaryJob(jobEnvironment,user.sub,period.scope,campaign,language,promptRevision,period,payload):await enqueueHistoryGeneration(id,jobEnvironment,period.scope,period,user.sub,payload);
+  const id=randomUUID(),payload={period,jobs,saved,temporary,campaign,language},job=temporary?await enqueueTemporaryJob(jobEnvironment,user.sub,period.scope,campaign,language,promptRevision,period,payload):await enqueueHistoryGeneration(id,jobEnvironment,jobScope,period,user.sub,payload);
   if(job.status==='queued'){const child=spawn(process.execPath,['--experimental-strip-types',path.join(process.cwd(),'scripts/content-testing/manual-worker.mjs'),job.id,temporary?'temporary':'history',jobEnvironment],{cwd:process.cwd(),env:process.env,detached:true,stdio:'ignore'});child.unref();}
   if(temporary&&job.status==='completed'){const done=await readTemporaryJob(environment(),job.id,user.sub);return reply({job:{id:job.id,status:job.status,result:done?.result,createdAt:done?.createdAt}});}
   return reply({job},202);
