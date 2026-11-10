@@ -69,7 +69,7 @@ function NovaSubpageHeader({section,title,redditDateFilter,showReportingPeriod,b
  </header>;
 }
 
-type Preview={manifest:PromptPreviewManifest;reports:PromptPreviewReport[];status:{status?:string};disabled?:boolean};
+type Preview={disabled:true}|{disabled?:false;manifest:PromptPreviewManifest;reports:PromptPreviewReport[];status:{status?:string}};
 function Question({expanded,detailsId,bottomId}:{expanded:boolean;detailsId:string;bottomId:string}){
  const chat=useTestingPageAiScope();
  return <NovaInsightQuestion scope="channel" expanded={expanded} detailsId={detailsId} bottomId={bottomId} canAsk={chat.canAsk} ask={chat.ask} open={chat.open}/>;
@@ -95,10 +95,10 @@ function CurrentNovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHe
  useEffect(()=>{
   if(!baseId||readable)return;
   let cancelled=false;
-  const load=async()=>{let poll=true;try{const params=new URLSearchParams({...Object.fromEntries(query.entries()),language});if(version.expected)params.set('expected',version.expected);{const data=await fetchTestingReadoutJson<Preview>(`/api/testing/preview?${params}`);if(cancelled)return;setFailedKey(null);if(data.disabled){setPreview({key:requestKey,value:data});poll=false;}else{setPreview({key:requestKey,value:data});poll=data.status.status!=='completed';}}}catch{if(!cancelled)setFailedKey(requestKey);}finally{void poll;}};
+  const load=async()=>{try{const params=new URLSearchParams({...Object.fromEntries(query.entries()),language});if(version.expected)params.set('expected',version.expected);const data=await fetchTestingReadoutJson<Preview>(`/api/testing/preview?${params}`);if(cancelled)return;setFailedKey(null);setPreview({key:requestKey,value:data});}catch{if(!cancelled)setFailedKey(requestKey);}};
   void load();return()=>{cancelled=true;};
  },[baseId,language,query,requestKey,version.revision,version.expected,readable,attempt]);
- const key=readable&&baseId?`${readable.run_id}:${baseId}`:preview&&baseId?`${preview.manifest.run_id}:${baseId}`:null,expanded=!!key&&expandedKey===key;
+ const key=readable&&baseId?`${readable.run_id}:${baseId}`:preview&&!preview.disabled&&baseId?`${preview.manifest.run_id}:${baseId}`:null,expanded=!!key&&expandedKey===key;
  useLayoutEffect(()=>{if(expanded||collapseY.current===null)return;const y=collapseY.current;collapseY.current=null;const button=buttonRef.current;if(!button)return;const rect=button.getBoundingClientRect();scrollTestingContentBy(button,rect.top+rect.height/2-y);button.focus({preventScroll:true});},[expanded]);
  const hide=(event:MouseEvent<HTMLButtonElement>)=>{const rect=event.currentTarget.getBoundingClientRect();collapseY.current=event.clientY>0?event.clientY:rect.top+rect.height/2;setExpandedKey(null);};
  if(readable&&baseId){
@@ -109,7 +109,7 @@ function CurrentNovaChannelReport({overviewMetrics}:{overviewMetrics?:OverviewHe
  if(baseId&&query.get('compare')&&query.get('compare')!=='previousPeriod'&&!readable)return <NovaCard className={reportStyles.loading}><p>{language==='zh'?'当前对比周期暂无匹配分析。':'No analysis matches this comparison period.'}</p><GenerateReadoutButton period={{label:'Custom',...selectedPeriod}} scope={baseId}/></NovaCard>;
  if(!preview&&baseId&&failedKey===requestKey)return <NovaCard className={reportStyles.loading}><p role="alert">{language==='zh'?'分析加载失败，请重试。':'Analysis could not be loaded. Please retry.'}</p><NovaButton variant="outline" onClick={()=>{setFailedKey(null);setAttempt(value=>value+1);}}>{language==='zh'?'重试':'Retry'}</NovaButton></NovaCard>;
  if(preview?.disabled&&baseId)return <NovaCard className={reportStyles.loading}><p>{language==='zh'?'此时间区间暂无可用分析。':'No analysis is available for this period.'}</p><GenerateReadoutButton period={{label:'Custom',...selectedPeriod}} scope={baseId}/></NovaCard>;
- if(!preview||!baseId||(preview.manifest.language==='en')!==(language==='en'))return null;
+ if(!preview||preview.disabled||!baseId||(preview.manifest.language==='en')!==(language==='en'))return null;
  const zh=language==='zh',preset=query.get('period'),lifetime=baseId==='social-media'||(baseId==='reddit'&&(!preset||preset===redditSinceStartPreset));
  const reportId=baseId==='reddit'&&lifetime?'reddit-lifetime':baseId;
  const supported=lifetime||!preset||preset==='lastWeek'||(query.get('start')===preview.manifest.period.start&&query.get('end')===preview.manifest.period.end);
