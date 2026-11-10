@@ -1,6 +1,6 @@
 import { currentSiteUser } from '@/lib/current-site-user';
 import { authOrigin } from '@/lib/site-auth';
-import {canAccessReviewTools,canWriteReviewTools,reviewExpectedOrigin} from '@/lib/review-access';
+import {canWriteReviewTools,reviewExpectedOrigin} from '@/lib/review-access';
 import {isReviewPreview} from '@/lib/review-preview.server';
 import {readStagingReleaseStatus} from '@/lib/staging-release';
 import { createNote, listNotes, resolveNote, validateNote, canDeleteNote, deleteNote } from '@/lib/staging-notes';
@@ -11,7 +11,7 @@ const reply=(body:unknown,status=200)=>Response.json(body,{status,headers});
 async function access(request:Request,mutation=false){
  const user=await currentSiteUser();
  if(!user)return reply({error:'Unauthorized'},401);
- if(!canAccessReviewTools(user))return reply({error:'Not available'},403);
+ if(!await isReviewPreview())return reply({error:'Not available'},403);
  const expected=reviewExpectedOrigin(request.url,authOrigin(request.url),process.env.LOCAL_PRODUCTION_PREVIEW==='1');
  if(mutation&&!canWriteReviewTools(user,request.headers.get('origin'),expected))return reply({error:'Invalid origin'},403);
  return null;
@@ -22,12 +22,11 @@ export async function GET(request:Request){
  const page=new URL(request.url).searchParams.get('page')||'/';
  try{validateNote({page,text:'validation'});}catch{return reply({error:'Invalid page'},400);}
  try{
-  const [notes,preview,user]=await Promise.all([
+  const [notes,release,user]=await Promise.all([
    listNotes(directory(),new URL(request.url).searchParams.get('scope')==='all'?undefined:page),
-   isReviewPreview(),
+   readStagingReleaseStatus(process.env.REVIEW_RELEASE_STATUS_FILE||join(process.cwd(),'.state','review-release.json')),
    currentSiteUser(),
   ]);
-  const release=preview?await readStagingReleaseStatus(process.env.REVIEW_RELEASE_STATUS_FILE||join(process.cwd(),'.state','review-release.json')):undefined;
   return reply({notes:notes.map(note=>({...note,canDelete:canDeleteNote(note,user!)})),release});
  }catch{return reply({error:'Unable to load notes'},503);}
 }
