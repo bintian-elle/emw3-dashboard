@@ -34,21 +34,31 @@ else
   echo "Dependencies unchanged; keeping node_modules."
 fi
 
-echo "3. Building Next.js (using configured cache policy)..."
-npm run build
+echo "3. Building Next.js in a new release directory..."
+commit=$(git rev-parse --short HEAD)
+build_dir=".next-release-${commit}-$(date +%s)-$$"
+test ! -e "$build_dir"
+NEXT_DIST_DIR="$build_dir" npm run build
+test -s "$build_dir/BUILD_ID"
 
 echo "4. Restarting application..."
-# PM2 can retain a different NEXT_DIST_DIR from a prior release. Select the
-# same directory used by this build rather than silently restarting old code.
-build_dir=$(node <<'JS'
-try { require('@next/env').loadEnvConfig(process.cwd()); }
-catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error; }
-console.log(process.env.NEXT_DIST_DIR || '.next');
-JS
-)
 NEXT_DIST_DIR="$build_dir" pm2 restart emw3-dashboard --update-env
 
-echo "5. Saving PM2 state..."
+echo "5. Checking application and pruning old builds..."
+healthy=0
+for attempt in $(seq 1 25); do
+  status=$(curl -s --max-time 3 -o /dev/null -w '%{http_code}' "${DEPLOY_HEALTH_URL:-http://127.0.0.1:3000/bluevua/testing}" || true)
+  if [[ "$status" == 200 || "$status" == 307 ]]; then
+    healthy=1
+    break
+  fi
+  sleep 2
+done
+if [[ "$healthy" != 1 ]]; then
+  echo "Application health check failed. Existing build directories were preserved." >&2
+  exit 1
+fi
 pm2 save
+node scripts/prune-release-builds.mjs "$build_dir"
 echo "=== Deployment completed ==="
 pm2 status

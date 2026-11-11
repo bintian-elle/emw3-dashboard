@@ -4,7 +4,9 @@ The deployment volume is now 16 GiB, but the host still has about 2 GiB RAM
 and no swap. Keep Webpack memory optimizations; do not assume disk expansion
 fixes the previous Turbopack process termination.
 
-- Production builds reuse Next.js filesystem caches instead of deleting them.
+- Each deployment builds in a new release directory. After PM2 starts the new
+  release and the HTTP health check passes, the deployment removes unreferenced
+  older build directories. One Dashboard build remains active between deployments.
 - deploy.sh runs npm ci only when package manifests, .npmrc, Node version,
   platform/architecture, or relevant environment inputs change (or the stamp
   is absent). The first deployment installs once to establish the stamp.
@@ -16,8 +18,8 @@ fixes the previous Turbopack process termination.
 - Security auditing is separate from the hot deployment path: use npm audit.
 
 The tracked script was deployed on 2026-09-29 after preserving the previous
-server-only script under .git/deploy.sh.pre-67476b0. This does not make in-place .next builds
-atomic; active users can still be affected while a build replaces output.
+server-only script under .git/deploy.sh.pre-67476b0. The current version uses a
+separate build directory so the active release remains available during compilation.
 
 Production validation: dependency reuse succeeded. Enabling the filesystem cache
 caused a kernel OOM kill on the 1.9 GiB/no-swap instance, including a retry with
