@@ -2,7 +2,7 @@
 
 import {type MouseEvent,type ReactNode,type RefObject} from 'react';
 import {ChevronDown,ChevronUp,Sparkles} from 'lucide-react';
-import {usePmaxPresentation,InsightPresentation,VisualInsightSummary} from './insight-presentation';
+import {usePmaxPresentation,useConcludedPresentation,InsightPresentation,VisualInsightSummary} from './insight-presentation';
 import {useMatchedReport} from './use-matched-report';
 import {useTemporaryReport} from './use-temporary-report';
 import {useHistoricalPeriod,useHistoricalReport} from './nova-history-readout';
@@ -10,6 +10,7 @@ import {InsightMarkdown} from './insight-assets';
 import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
 import {conclusionOnlyMarkdown} from '@/lib/testing-prompt-presentation';
 import {cleanTestingReadoutCopy} from '@/lib/testing-readout-copy';
+import {insightPresentationGroups} from '@/lib/testing-insight-presentation';
 import {campaignNavigation} from '@/lib/testing-campaign-navigation';
 import {testingReadoutKey,type CachedTestReadout,type CachedPeriodReadout,type ReadoutPeriod} from '@/lib/testing-readout-contract';
 import type {TestingFrameworkKey,ReadoutMetric} from '@/lib/testing-framework';
@@ -39,23 +40,25 @@ function List({title,items,channel}:{title:string;items?:string[];channel?:strin
 /** Presentation only: readout selection and caching stay in the shared TestReadout. */
 export function NovaTestReadout({channel,testIdentity,period,standalone,campaignId,children,summary,test,overview,socialEdmBrief,deltas,loading,loadError,onRetry,translationPending,translationError,ready:cacheReady,canAsk,ask,open,expanded,setExpanded,toggleRef,detailsId,bottomId,preserveCollapsePosition}:Props){
  const {language}=useSiteLanguage(),zh=language==='zh',isOverview=channel==='overview'&&testIdentity==='overview';
+ const concluded=useConcludedPresentation(language);
  const currentReport=usePmaxPresentation(),history=useHistoricalPeriod(),historicalReport=useHistoricalReport();
- const temporary=useTemporaryReport(channel??'overview',isOverview?'':testIdentity??'',period?.start,period?.end);
+ const temporary=useTemporaryReport(channel??'overview',isOverview?'':testIdentity??'',period?.concludedTestId?undefined:period?.start,period?.concludedTestId?undefined:period?.end);
  const scope=channel==='social'?'social-media':channel==='reddit-awareness'||channel==='reddit-conversion'?'reddit':channel??'overview';
- const match=useMatchedReport(scope,period?.start??'',period?.end??'',language,!!period?.start&&!!period?.end&&!history&&scope!=='social-media');
+ const match=useMatchedReport(scope,period?.start??'',period?.end??'',language,!!period?.start&&!!period?.end&&!history&&!period.concludedTestId&&scope!=='social-media');
  const saved=history?historicalReport?.visual:currentReport;
  const readable=saved?.analysis.campaigns.some(item=>item.test_id===testIdentity)?saved:temporary??saved,trial=readable?.analysis.campaigns.find(c=>c.test_id===testIdentity);
- const navigation=trial&&readable&&testIdentity?campaignNavigation(readable.presentation,testIdentity,detailsId):[];
- const ready=history?Boolean(trial):cacheReady||Boolean(trial);
- summary=history?trial?.summary??null:trial?.summary??summary;
+ const navigation=concluded?insightPresentationGroups(concluded.presentation,'channel').map((group,index)=>({title:group.title,target:`${detailsId}-${index}`})):
+  trial&&readable&&testIdentity?campaignNavigation(readable.presentation,testIdentity,detailsId):[];
+ const ready=Boolean(concluded)||(history?Boolean(trial):cacheReady||Boolean(trial));
+ summary=concluded?.presentation.summary??(history?trial?.summary??null:trial?.summary??summary);
  const t=(english:string,chinese:string)=>zh?chinese:english;
  const collapsible=Boolean(children&&!standalone&&testIdentity);
  const noData=match.error?t('Could not check saved reports.','无法核对已保存报告。'):match.checking?t('Checking saved reports…','正在核对已保存报告…'):loadError?t('Analysis could not be loaded. Please retry.','分析加载失败，请重试。'):loading?t('Fetching analysis…','正在获取分析…'):t('Analysis is not available for this reporting period.','此时间区间暂无可用分析。');
  const toggle=<NovaButton data-review-reveal="analysis" ref={toggleRef} variant="outline" disabled={!ready} aria-expanded={expanded} aria-controls={detailsId} onClick={()=>setExpanded(!expanded)}>{expanded?t('Hide details','收起详情'):(isOverview?t('View all insights and data coverage','查看全部洞察与数据覆盖'):t('View detailed analysis','查看详细分析'))}{expanded?<ChevronUp/>:<ChevronDown/>}</NovaButton>;
  const question=<NovaInsightQuestion scope="test" expanded={expanded} detailsId={detailsId} bottomId={bottomId} canAsk={canAsk} ask={ask} open={open}/>;
- const summaryBlock=<div className={styles.summary}><div className={styles.summaryTitle}><Sparkles aria-hidden="true"/><h2>{testingAnalysisTitle(channel,language,isOverview?undefined:testIdentity)}</h2></div>{trial?.summary_html?.trim()&&readable?<VisualInsightSummary html={trial.summary_html} report={readable} scope={testIdentity!}/>:summary?<Text text={summary} channel={channel}/>:<div className={styles.muted} role={loading?'status':undefined}>{noData} {loadError&&onRetry?<NovaButton variant="ghost" size="sm" onClick={onRetry}>{t("Retry","重试")}</NovaButton>:!loading&&!history&&!match.checking&&!match.error&&<GenerateReadoutButton period={period} scope={channel??"overview"} campaign={isOverview?"":testIdentity??""}/>}</div>}{zh&&translationPending&&<p className={styles.muted} role="status">中文翻译正在准备，暂显示英文分析。</p>}{zh&&translationError&&<p className={styles.muted} role="status">中文翻译暂不可用，暂显示英文分析。</p>}</div>;
+ const summaryBlock=<div className={styles.summary}><div className={styles.summaryTitle}><Sparkles aria-hidden="true"/><h2>{testingAnalysisTitle(channel,language,isOverview?undefined:testIdentity)}</h2></div>{concluded?.presentation.summary_html?.trim()?<VisualInsightSummary html={concluded.presentation.summary_html} report={concluded} scope="channel"/>:trial?.summary_html?.trim()&&readable?<VisualInsightSummary html={trial.summary_html} report={readable} scope={testIdentity!}/>:summary?<Text text={summary} channel={channel}/>:<div className={styles.muted} role={loading?'status':undefined}>{noData} {loadError&&onRetry?<NovaButton variant="ghost" size="sm" onClick={onRetry}>{t("Retry","重试")}</NovaButton>:!loading&&!history&&!match.checking&&!match.error&&<GenerateReadoutButton period={period} scope={channel??"overview"} campaign={isOverview?"":testIdentity??""}/>}</div>}{zh&&!concluded&&translationPending&&<p className={styles.muted} role="status">中文翻译正在准备，暂显示英文分析。</p>}{zh&&!concluded&&translationError&&<p className={styles.muted} role="status">中文翻译暂不可用，暂显示英文分析。</p>}</div>;
  const details=<div id={detailsId} hidden={!expanded} className={styles.details}>
-  {trial&&readable?expanded&&<><InsightPresentation report={readable} scope={testIdentity!} anchorPrefix={detailsId}/>{trial.detail_markdown&&<details className={styles.detailGroup}><summary>查看完整分析依据</summary><InsightMarkdown channel={channel}>{trial.detail_markdown}</InsightMarkdown></details>}</>:test?.preview_sections?test.preview_sections.map((section,index)=><section key={index} className={styles.detailGroup}>{section.title&&<h3>{section.title}</h3>}<div className={shared.markdown}><InsightMarkdown channel={channel}>{conclusionOnlyMarkdown(section.markdown)}</InsightMarkdown></div></section>):<>
+  {concluded?expanded&&<InsightPresentation report={concluded} scope="channel" embedded anchorPrefix={detailsId}/>:trial&&readable?expanded&&<><InsightPresentation report={readable} scope={testIdentity!} anchorPrefix={detailsId}/>{trial.detail_markdown&&<details className={styles.detailGroup}><summary>查看完整分析依据</summary><InsightMarkdown channel={channel}>{trial.detail_markdown}</InsightMarkdown></details>}</>:test?.preview_sections?test.preview_sections.map((section,index)=><section key={index} className={styles.detailGroup}>{section.title&&<h3>{section.title}</h3>}<div className={shared.markdown}><InsightMarkdown channel={channel}>{conclusionOnlyMarkdown(section.markdown)}</InsightMarkdown></div></section>):<>
    {period&&!testingReadoutKey(period)&&<p className={styles.muted}>{t('Select Last Week, Week-to-date or Month-to-date to view analysis.','选择上周、本周至今或本月至今，查看分析。')}</p>}
    {!summary&&<p className={styles.muted} role={loading?'status':undefined}>{noData}</p>}
    {test?.recommended_action&&<section className={styles.detailGroup}><h3>{t('Recommended next step','下一步建议')}</h3><Text text={test.recommended_action} channel={channel}/></section>}

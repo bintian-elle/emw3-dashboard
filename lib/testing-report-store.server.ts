@@ -53,6 +53,29 @@ export async function readStoredSocialLifetime(){
  for(const report of [row.report.en,row.report.zh])report.media_url_base=`/api/testing/history/media/${encodeURIComponent(row.id)}/`;
  return row.report;
 }
+/** Keep concluded experiments separate from current campaign and history lookups. */
+export async function readStoredConcludedPresentation(testId:string,period:{start:string;end:string}){
+ if(!/^[a-z0-9-]+$/.test(testId))return null;
+ const valid=(pair:IntegratedReportBundle['reports'][string],id:string)=>[pair.en,pair.zh].every(report=>
+  report?.run_id===id&&report.scope==='lifetime'&&report.period.start===period.start&&report.period.end===period.end&&
+  report.presentation.schema_version==='insight-presentation-v3'&&report.presentation.sections?.length===3&&
+  report.presentation.sections.every(section=>report.presentation.blocks.some(block=>block.scope==='channel'&&block.section_id===section.id)));
+ if(process.env.NODE_ENV==='development'||process.env.LOCAL_PRODUCTION_PREVIEW==='1'){
+  try{
+   const file=path.join(process.cwd(),'.state/content-testing-concluded',`visual-${testId}`,'report.json');
+   const pair=JSON.parse(await readFile(file,'utf8')) as IntegratedReportBundle['reports'][string];
+   if(pair.en?.run_id&&valid(pair,pair.en.run_id))return pair;
+  }catch{/* An unpublished preview is optional. */}
+ }
+ const {rows:[row]}=await database().query<{id:string;report:IntegratedReportBundle['reports'][string]}>(`select r.id,p.report
+ from content_testing_reports.runs r join content_testing_reports.reports p on p.run_id=r.id
+ where r.status='completed' and r.environment=$1 and p.channel=$2 and p.scope='lifetime'
+ and r.period_start=$3 and r.period_end=$4 order by r.completed_at desc,r.id desc limit 1`,[reportEnvironment(),`concluded:${testId}`,period.start,period.end]);
+ if(!row||!valid(row.report,row.id))return null;
+ for(const report of [row.report.en,row.report.zh])report.media_url_base=`/api/testing/history/media/${encodeURIComponent(row.id)}/`;
+ return row.report;
+}
+
 export async function readStoredRedditLifetime(){
  const result=await database().query<{id:string;start:string;end:string;report:{dashboard_snapshot?:unknown}}>(`select r.id,to_char(r.period_start,'YYYY-MM-DD') as start,to_char(r.period_end,'YYYY-MM-DD') as end,p.report from content_testing_reports.runs r join content_testing_reports.reports p on p.run_id=r.id where r.status='completed' and r.environment=$1 and p.channel='reddit-lifetime' and p.scope='lifetime' order by r.completed_at desc,r.id desc limit 1`,[reportEnvironment()]);
  const row=result.rows[0];if(!row)return null;

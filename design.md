@@ -23,9 +23,9 @@
 - Campaign 状态以文字搭配语义色标识：投放中为绿色、暂停为琥珀色、已发送为蓝色、已结束为紫色、未知为灰色；明暗主题均保持可读对比度，不仅依靠颜色传达状态。
 - Testing 侧栏按 Workspace 与 Channels 分组，Test inventory 使用已发布的真实 Campaign 数据及状态并链接到对应页面；Campaign 数量按同一清单中去重后的 Campaign 动态统计，Social Media 保留独立入口，不计入清单或数量。数据不可用时显示占位，避免错误数字。
 - Test inventory 在每条 Campaign 的状态之后展示该 Campaign 已核实的 Content Testing 首次投放日期，EDM 展示测试邮件发送日期；缺乏可靠证据时显示待确认，不用父 Campaign 或渠道起点代替。
-- Overview 与 Test inventory 切换时优先展示目标页面的标题、导航和卡片结构，等待数据的位置显示局部加载状态，并在内容顶部中央显示简短提示；清单复用已发布的共享快照，不为切换触发渠道 API 刷新。
+- Overview 的中英文标题与周期控件固定分行，窄屏操作区可继续换行。Overview 与 Test inventory 切换时优先展示目标页面的标题、导航和卡片结构，等待数据的位置显示局部加载状态，并在内容顶部中央显示简短提示；清单复用已发布的共享快照，不为切换触发渠道 API 刷新。
 - Testing 报表优先使用当前周期的本机缓存，后台轻量核对共享快照版本，只有版本变化时才更新数据；缓存失效或数据源错误时保留最后一次成功的数据，不将不同周期的数据混用。
-- Concluded Test 侧栏入口直接进入主页面并显示已结束 Campaign 总数；主页面使用与 Test inventory 一致的可搜索 Campaign 列表，不显示状态标签；数量按 Campaign 去重，与侧栏使用相同口径。
+- Concluded Test 侧栏入口直接进入主页面并显示已结束 Campaign 总数；主页面使用与 Test inventory 一致的可搜索 Campaign 列表，不显示状态标签；数量按 Campaign 去重，与侧栏使用相同口径。已结束实验采用对应渠道的分析结构和 AI 自由排版，展开后提供三个章节跳转，数据范围固定为定稿后的实验全周期。
 - Analysis、Business Performance 与 Channel Performance 共用卡片头部样式：标题使用高对比度前景色、1.25rem 半粗字，下方为通栏分割线，报告日期保留次要层级并支持换行；数据表默认按 ROAS 从高到低排列并显示排序方向；没有 ROAS 的表按名称排列。渠道名称不提供手动排序，数值列保留表头排序。Social Media 默认展示一张 Lifetime 分析卡片，逐帖诊断放在同一份分析详情中，周报从 View history 查看。单帖表默认按原始 Post 编号顺序展示，数值列仍可手动排序。EDM、Social Media 以各自表头和数据行展示专属指标，保留渠道跳转。
 - Business Performance 的 Total ROAS 和 Total Conversion Rate 趋势图可通过下划线标签切换渠道或素材维度；默认按 Google、Meta、Reddit、EDM 的固定顺序展示渠道，图表仅显示当前维度的图例。切换保留折线动画并尊重减少动态效果设置。素材维度缺少可靠数据时明确展示不可用，不推算缺失数据。
 - 公司动图 Logo 和 Bluevua 品牌标识使用本地资源；顶部公司 Logo 链接到网站主页，减少动态效果时显示静态标识。

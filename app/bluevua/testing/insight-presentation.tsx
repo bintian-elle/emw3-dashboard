@@ -23,6 +23,13 @@ export function PmaxPresentationProvider({report,children}:{report:PmaxReadableR
 const IntegratedContext=createContext<IntegratedReportBundle|null>(null);
 export function IntegratedPresentationProvider({bundle,children}:{bundle:IntegratedReportBundle|null;children:ReactNode}){return <IntegratedContext.Provider value={bundle}>{children}</IntegratedContext.Provider>;}
 type LifetimeReportPair={en:PmaxReadableReport;zh:PmaxReadableReport};
+const ConcludedPresentationContext=createContext<LifetimeReportPair|null>(null);
+export function ConcludedPresentationProvider({reports,children}:{reports:LifetimeReportPair|null;children:ReactNode}){
+ return <ConcludedPresentationContext.Provider value={reports}>{children}</ConcludedPresentationContext.Provider>;
+}
+export function useConcludedPresentation(language:string){
+ return useContext(ConcludedPresentationContext)?.[language==='zh'?'zh':'en']??null;
+}
 const RedditLifetimeContext=createContext<LifetimeReportPair|null>(null);
 export function RedditLifetimePresentationProvider({reports,children}:{reports:LifetimeReportPair|null;children:ReactNode}){return <RedditLifetimeContext.Provider value={reports}>{children}</RedditLifetimeContext.Provider>;}
 const SocialLifetimeContext=createContext<LifetimeReportPair|null>(null);
