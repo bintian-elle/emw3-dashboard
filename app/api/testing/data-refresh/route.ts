@@ -37,7 +37,9 @@ export async function GET(request:NextRequest){
  const input=inputFor(channel,{period:params.get('period')??undefined,start:params.get('start')??undefined,end:params.get('end')??undefined});
  try{
   const [snapshot,refreshing]=await Promise.all([readTestingDataSnapshotStatus(channel,input),isTestingDataRefreshRunning(channel,input)]);
-  const updatedAt=channel==='social'?(snapshot?.sourceUpdatedAt??snapshot?.updatedAt??await socialUpdatedAt(null)):snapshot?.updatedAt??null;
+  const localSocial=channel==='social'?await (await import('@/lib/testing-social')).readSocialLocalPreview():null;
+  const sharedTime=snapshot?.sourceUpdatedAt??snapshot?.updatedAt??null;
+  const updatedAt=channel==='social'?(localSocial&&Date.parse(localSocial.capturedAt)>Date.parse(sharedTime??'1970-01-01')?localSocial.capturedAt:sharedTime??await socialUpdatedAt(null)):snapshot?.updatedAt??null;
   return Response.json({updatedAt,version:snapshot?.updatedAt??null,refreshing,available:true},{headers});
  }catch(error){const setup=(error as {code?:string})?.code==='42P01';const updatedAt=channel==='social'?await socialUpdatedAt(null).catch(()=>null):null;return Response.json({updatedAt,refreshing:false,available:false,message:setup?'Shared cache setup is required.':'Shared data cache is unavailable. Please try again later.',messageCode:setup?'cache_setup_required':'cache_unavailable'},{headers});}
 }

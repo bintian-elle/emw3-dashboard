@@ -1,6 +1,14 @@
 import {readStagingDataSnapshot,clipStagingRedditDaily} from './staging-data-snapshots';
 import 'server-only';
-import {Pool} from 'pg';
+import {externalizeSocialMaterials,restoreSocialMaterials} from './testing-social-materials';
+import {localizeSnapshotThumbnails} from './testing-thumbnail-migration';
+import {localTestingThumbnail} from './testing-thumbnail';
+import localAssets from './testing-insight-assets-local.json';
+import {creativeNamesIndex,externalizeCreativeNames,restoreCreativeNames} from './testing-creative-materials';
+const localCreativeNames=creativeNamesIndex(localAssets);
+export function restoreTestingMaterials<T>(channel:TestingDataChannel,payload:T):T{return restoreCreativeNames(channel,channel==='social'?restoreSocialMaterials(payload):payload,localCreativeNames);}
+function externalizeTestingMaterials<T>(channel:TestingDataChannel,payload:T):T{return localizeSnapshotThumbnails(externalizeCreativeNames(channel,channel==='social'?externalizeSocialMaterials(payload):payload,localCreativeNames),localTestingThumbnail);}
+import {Pool,type PoolClient} from 'pg';
 import {equivalentTestingDataScopes,testingDataSnapshotKey,type TestingDataChannel,type TestingDataInput} from './testing-data-cache-contract';
 import {publishTestingData,type TestingDataPublishOptions} from './testing-data-publication';
 import {VersionedSnapshotMemory} from './testing-memory-snapshot';
@@ -31,6 +39,10 @@ function database(){
  if(!connectionString)throw Error('Shared data cache is not configured.');
  return pool??=new Pool({connectionString,ssl:{rejectUnauthorized:false},max:4,connectionTimeoutMillis:process.env.DEPLOYMENT_ENV==='staging'?30000:5000});
 }
+/** Share the existing database pool with narrowly scoped Testing caches. */
+export async function withTestingDataClient<T>(work:(client:PoolClient)=>Promise<T>):Promise<T>{
+ const client=await database().connect();try{return await work(client);}finally{client.release();}
+}
 async function loadScope<T>(channel:TestingDataChannel,scope:string,livePublished=false):Promise<TestingDataSnapshot<T>|null>{
  const directory=stagingDirectory(),seedKey=JSON.stringify([channel,scope]);
  // In staging, a saved preset and a custom range may identify the exact same dates.
@@ -41,7 +53,7 @@ async function loadScope<T>(channel:TestingDataChannel,scope:string,livePublishe
  if(existing)return existing as Promise<TestingDataSnapshot<T>|null>;
  const request=(async()=>{
   const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 and scope_key=any($2::text[]) order by updated_at desc,array_position($2::text[],scope_key) limit 1',[channel,equivalent]);
-  const row=result.rows[0];return row?{payload:(channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
+  const row=result.rows[0];return row?{payload:restoreTestingMaterials(channel,(channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload)) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
  })();
  memory.loads.set(key,request);
  void request.finally(()=>{if(memory.loads.get(key)===request)memory.loads.delete(key);}).catch(()=>{});
@@ -50,7 +62,7 @@ async function loadScope<T>(channel:TestingDataChannel,scope:string,livePublishe
 async function loadLatest<T>(channel:TestingDataChannel,livePublished=false):Promise<TestingDataSnapshot<T>|null>{
  const directory=stagingDirectory(),seedKey='latest:'+channel;if(directory&&!livePublished&&!memory.seeded.has(seedKey)){memory.seeded.add(seedKey);const seed=await readStagingDataSnapshot<T>(directory,channel,'latest',true);if(seed)return seed;}
  const result=await database().query<{payload:T;updated_at:Date|string}>('select payload,updated_at from testing_data_snapshots where channel=$1 order by updated_at desc limit 1',[channel]);
- const row=result.rows[0];return row?{payload:(channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
+ const row=result.rows[0];return row?{payload:restoreTestingMaterials(channel,(channel==='reddit'?clipStagingRedditDaily(row.payload):row.payload)) as T,updatedAt:new Date(row.updated_at).toISOString()}:null;
 }
 
 /** Return process memory immediately; cold misses wait for the shared snapshot. */
@@ -181,7 +193,7 @@ export async function readTestingDataSnapshotStatus(channel:TestingDataChannel,i
 export async function publishTestingDataSnapshot<T>(channel:TestingDataChannel,input:TestingDataInput,load:()=>Promise<T>,options?:TestingDataPublishOptions):Promise<TestingDataSnapshot<T>&{skipped:boolean}>{
  if(process.env.DEPLOYMENT_ENV==='staging')throw Error('Data refresh is disabled in staging.');
  const client=await database().connect();
- try{const result=await publishTestingData((sql,values)=>client.query(sql,values),channel,testingDataSnapshotKey(channel,input),load,options);const snapshot={payload:result.payload as T,updatedAt:result.updatedAt,skipped:result.skipped};remember(channel,input,snapshot,!result.skipped);return snapshot;}
+ try{const result=await publishTestingData((sql,values)=>client.query(sql,values),channel,testingDataSnapshotKey(channel,input),async()=>{const payload=await load();return externalizeTestingMaterials(channel,payload);},options);const snapshot={payload:restoreTestingMaterials(channel,result.payload) as T,updatedAt:result.updatedAt,skipped:result.skipped};remember(channel,input,snapshot,!result.skipped);return snapshot;}
  finally{client.release();}
 }
 export async function isTestingDataRefreshRunning(channel:TestingDataChannel,input:TestingDataInput={}):Promise<boolean>{
@@ -195,7 +207,7 @@ export async function publishGoogleTestingSnapshots(load:(channel:'google-search
  if(process.env.DEPLOYMENT_ENV==='staging')throw Error('Data refresh is disabled in staging.');
  const {publishGoogleTestingData}=await import('./testing-data-publication');
  const client=await database().connect();
- try{const loaded=new Map<'google-search'|'google-pmax'|'google-demand-gen',unknown>();const result=await publishGoogleTestingData((sql,values)=>client.query(sql,values),async channel=>{const payload=await load(channel);loaded.set(channel,payload);return payload;});for(const [channel,payload] of loaded)remember(channel,{}, {payload,updatedAt:result.updatedAt});return result;}finally{client.release();}
+ try{const loaded=new Map<'google-search'|'google-pmax'|'google-demand-gen',unknown>();const result=await publishGoogleTestingData((sql,values)=>client.query(sql,values),async channel=>{const payload=externalizeTestingMaterials(channel,await load(channel));loaded.set(channel,restoreTestingMaterials(channel,payload));return payload;});for(const [channel,payload] of loaded)remember(channel,{}, {payload,updatedAt:result.updatedAt});return result;}finally{client.release();}
 }
 
 /** Fill a missing scope once, recording only a complete, uncached source read. */

@@ -1,3 +1,4 @@
+import {updateTestingNotices} from './notifications.mjs';
 import env from '@next/env';import {mkdir,readFile,writeFile,rename} from 'node:fs/promises';import path from 'node:path';import {spawn} from 'node:child_process';
 import {easternClock,dueAttempt,collectionPlan,safeReason} from './policy.mjs';
 env.loadEnvConfig(process.cwd());
@@ -28,12 +29,18 @@ for(const item of plan){
   await save();
  }
 }
-const exhausted=Object.entries(state.items).filter(([,item])=>!item.success&&item.attempts>0&&(mode==='data'?hour>=5:item.attempts>=1));
+const failed=Object.entries(state.items).filter(([key,item])=>!item.success&&item.error&&!state.notifiedKeys?.[key]);
+const recovered=Object.entries(state.items).filter(([key,item])=>item.success&&state.notifiedKeys?.[key]&&!state.recoveredKeys?.[key]);
 state.notifiedKeys??={};
-const unnotified=exhausted.filter(([key])=>!state.notifiedKeys[key]);
-if(unnotified.length){
- const text=`Testing Dashboard 每日${mode==='insights'?'AI 分析':'数据刷新'}失败（${day}，东部时间）\n当天计划更新未成功，旧快照和分析已保留。\n${unnotified.map(([key,item])=>`• ${key}（已尝试 ${item.attempts} 次）: ${item.error}`).join('\n')}\nhttps://emw3-dashboard.win/bluevua/testing`;
- try{await execute(process.env.CONTENT_TESTING_PYTHON||'/home/ubuntu/work/anc-slack-bridge/.venv/bin/python',['scripts/testing-refresh/notify.py',text]);for(const [key] of unnotified)state.notifiedKeys[key]=new Date().toISOString();await save();}catch{console.error('Slack delivery failed; notification will retry on the next timer tick.');}
-}
-if(unnotified.some(([key])=>!state.notifiedKeys[key]))process.exitCode=1;
-console.log(JSON.stringify({phase:mode,day,complete:plan.every(item=>state.items[item.key]?.success),failed:exhausted.map(([key])=>key)}));
+state.recoveredKeys??={};
+const link='https://emw3-dashboard.win/bluevua/testing';
+try{
+ await updateTestingNotices({
+  items:{...state,
+   failureText:entries=>`Testing Dashboard 数据刷新失败（${day}，美东）\n${entries.map(([key,item])=>`• ${key}（第 ${item.attempts} 次）: ${item.error}`).join('\n')}\n${link}`,
+   recoveryText:entries=>`Testing Dashboard 数据补跑成功（${day}，美东）\n${entries.map(([key])=>`• ${key}`).join('\n')}\n${link}`,
+  },
+  failed,recovered,save,
+ });
+}catch{console.error('Slack delivery failed; notification will retry on the next timer tick.');process.exitCode=1;}
+console.log(JSON.stringify({phase:mode,day,complete:plan.every(item=>state.items[item.key]?.success),failed:plan.filter(item=>!state.items[item.key]?.success).map(item=>item.key)}));

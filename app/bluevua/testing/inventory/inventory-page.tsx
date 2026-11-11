@@ -11,29 +11,10 @@ import TestingLink from '../testing-link';
 import {TestingWorkspaceTabs} from '../testing-workspace-tabs';
 import {useTestingInventory} from '../testing-inventory-context';
 import {NovaButton,NovaCard,NovaInput} from '../nova-preview-ui';
+import {CampaignStatusChip} from '../campaign-status-chip';
 import styles from './inventory.module.css';
 
 const names:Record<string,string>={'google-search':'Google Search','google-pmax':'Google PMAX','google-demand-gen':'Google Demand Gen',meta:'Meta',reddit:'Reddit',edm:'EDM'};
-function statusLabel(status:string,zh:boolean){
- const normalized=status.trim().toUpperCase();
- if(['ACTIVE','ENABLED','SERVING'].includes(normalized))return zh?'投放中':'Active';
- if(['PAUSED','CAMPAIGN_PAUSED'].includes(normalized))return zh?'已暂停':'Paused';
- if(['SENT','COMPLETED'].includes(normalized))return zh?'已发送':'Sent';
- if(['ENDED','REMOVED','ARCHIVED'].includes(normalized))return zh?'已结束':'Ended';
- if(normalized==='CONCLUDED')return zh?'已结束':'Concluded';
- if(normalized==='UNKNOWN')return zh?'状态未知':'Unknown';
- return status;
-}
-
-function statusTone(status:string){
- const normalized=status.trim().toUpperCase();
- if(['ACTIVE','ENABLED','SERVING'].includes(normalized))return 'active';
- if(['PAUSED','CAMPAIGN_PAUSED'].includes(normalized))return 'paused';
- if(['SENT','COMPLETED'].includes(normalized))return 'sent';
- if(['ENDED','REMOVED','ARCHIVED','CONCLUDED'].includes(normalized))return 'ended';
- return 'unknown';
-}
-
 function InventoryRows({search,zh,onReset}:{search:string;zh:boolean;onReset:()=>void}){
  const inventory=useTestingInventory();
  const params=useSearchParams();
@@ -41,7 +22,7 @@ function InventoryRows({search,zh,onReset}:{search:string;zh:boolean;onReset:()=
  const href=(item:TestingInventoryItem)=>{const url=new URL(item.href,'https://testing.local');for(const key of ['period','start','end']){const value=params.get(key);if(value)url.searchParams.set(key,value);}return `${url.pathname}${url.search}`;};
  return <>
    {inventory.unavailable.length>0&&<p className={styles.unavailable} role="status">{zh?'以下渠道的数据暂不可用：':'Data is temporarily unavailable for: '}{inventory.unavailable.map(channel=>names[channel]).join('、')}</p>}
-   <div className={styles.list}>{items.map(item=>{const start=testingCampaignStart(item.channelKey,item.name);return <NovaButton key={item.id} variant="ghost" asChild className={styles.item}><TestingLink href={href(item)} prefetch={false}><span className={styles.symbol}><TestingChannelBrand name={item.channel}/></span><span className={styles.identity}><strong>{item.name}</strong><span>{item.channel} <span className={styles.separator}>/</span> <span className={styles.statusBadge} data-tone={statusTone(item.status)}><span className={styles.statusDot} aria-hidden="true"/>{statusLabel(item.status,zh)}</span> <span className={styles.separator}>/</span> {zh?'测试开始':'Test started'} {start?<time dateTime={start}>{start.replaceAll('-','/')}</time>:(zh?'待确认':'Not confirmed')}</span></span><ArrowUpRight aria-hidden="true"/></TestingLink></NovaButton>;})}</div>
+   <div className={styles.list}>{items.map(item=>{const start=testingCampaignStart(item.channelKey,item.name);return <NovaButton key={item.id} variant="ghost" asChild className={styles.item}><TestingLink href={href(item)} prefetch={false}><span className={styles.symbol}><TestingChannelBrand name={item.channel}/></span><span className={styles.identity}><strong>{item.name}</strong><span>{item.channel} <span className={styles.separator}>/</span> <CampaignStatusChip status={item.status}/> <span className={styles.separator}>/</span> {zh?'测试开始':'Test started'} {start?<time dateTime={start}>{start.replaceAll('-','/')}</time>:(zh?'待确认':'Not confirmed')}</span></span><ArrowUpRight aria-hidden="true"/></TestingLink></NovaButton>;})}</div>
    {!items.length&&(search||!inventory.unavailable.length)&&<div className={styles.empty}><strong>{search?(zh?'没有匹配的 Campaign':'No matching campaigns'):(zh?'暂无 Campaign':'No campaigns available')}</strong>{search&&<><p>{zh?'请清除搜索后重试。':'Clear the search and try again.'}</p><NovaButton variant="outline" onClick={onReset}>{zh?'清除搜索':'Reset filters'}</NovaButton></>}</div>}
  </>;
 }

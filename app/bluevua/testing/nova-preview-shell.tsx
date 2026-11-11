@@ -27,6 +27,8 @@ import { SiteHomeLogo } from "@/components/brand/site-home-logo";
 import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 import styles from "./nova-preview-shell.module.css";
 import {useReviewPreview} from "@/components/application/review/review-preview-context";
+import {ChannelRouteLoading} from "./channel-route-loading";
+import {ChannelNavigationContext} from "./channel-navigation-context";
 
 const channels = [
   ["Google Search", "/bluevua/testing/google/search", "google-search"],
@@ -51,12 +53,22 @@ export function NovaPreviewShell({children,account,promptsEnabled=false}:{childr
  const zh=language==='zh';
  const {collapsed,setCollapsed}=useTestingSidebarState();
  const [menuOpen,setMenuOpen]=useState(false);
- const pathname=usePathname();
+ const pathname=usePathname(),router=useRouter();
+ const [navigating,startNavigation]=useTransition();
+ const [target,setTarget]=useState<{path:string;title:string}|null>(null);
+ const pendingTarget=navigating&&target&&target.path!==pathname?target:null;
+ const visiblePath=pendingTarget?.path??pathname;
  const params=useSearchParams();
  const query=new URLSearchParams();
  for(const key of ["period","start","end","compare","compareStart","compareEnd","history"]){const value=params.get(key);if(value)query.set(key,value);}
- const concludedContext=isConcludedTestingNavigation(pathname,params.get("returnTo"));
- const refreshChannel=pathname==="/bluevua/testing/inventory"?null:testingRefreshChannel(pathname,concludedContext);
+ const concludedContext=!pendingTarget&&isConcludedTestingNavigation(pathname,params.get("returnTo"));
+ const refreshChannel=visiblePath==="/bluevua/testing/inventory"?null:testingRefreshChannel(visiblePath,concludedContext);
+ const navigateChannel=(href:string)=>{
+  const path=href.split(/[?#]/,1)[0],channel=channels.find(([,destination])=>destination===path);
+  if(!channel||path===pathname){setTarget(null);return false;}
+  const label=channel[0];setTarget({path,title:label==='Social Media'?'Social Media Performance':`${label} Testing Performance`});
+  startNavigation(()=>router.push(href));return true;
+ };
  const sidebarContent=(compact:boolean,onNavigate?:()=>void)=><>
    <div className={styles.brandRow}>
     <Link href="/bluevua" className={styles.wordmark} aria-label={zh?"Bluevua 项目主页":"Bluevua project home"} onClick={onNavigate}><Image className={styles.brandMark} src="/brand/bluevua-logo.svg" alt="" width={32} height={32} loading={onNavigate?"eager":"lazy"}/>{!compact&&<>Bluevua<b>.</b></>}</Link>
@@ -66,16 +78,16 @@ export function NovaPreviewShell({children,account,promptsEnabled=false}:{childr
    <div className={promptsEnabled?styles.sidebarNavigation:styles.defaultNavigation}>
    {!compact&&<p className={styles.navLabel}>{zh?'工作区':'Workspace'}</p>}
    <nav aria-label={zh?'工作区':'Workspace'} className={styles.nav}>
-    {workspaceLinks.map(([label,href,Icon])=>{const active=!concludedContext&&pathname===href;const name=zh?(label==='Overview'?'总览':'测试清单'):label;return <TestingLink key={href} href={`${href}${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={name} title={compact?name:undefined}><span className={styles.iconSlot}><Icon/></span>{!compact&&<><span>{name}</span>{label==="Test inventory"&&<InventoryCount badge/>}</>}</TestingLink>;})}
-   {promptsEnabled&&reviewPreview&&<Link href="/bluevua/testing/prompts" onClick={onNavigate} className={`${styles.navItem} ${pathname==='/bluevua/testing/prompts'?styles.active:''}`} aria-current={pathname==='/bluevua/testing/prompts'?'page':undefined} aria-label="Prompts" title={compact?'Prompts':undefined}><span className={styles.iconSlot}><FileText/></span>{!compact&&<span>Prompts</span>}</Link>}
+    {workspaceLinks.map(([label,href,Icon])=>{const active=!concludedContext&&visiblePath===href;const name=zh?(label==='Overview'?'总览':'测试清单'):label;return <TestingLink key={href} href={`${href}${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={name} title={compact?name:undefined}><span className={styles.iconSlot}><Icon/></span>{!compact&&<><span>{name}</span>{label==="Test inventory"&&<InventoryCount badge/>}</>}</TestingLink>;})}
+   {promptsEnabled&&reviewPreview&&<TestingLink href="/bluevua/testing/prompts" onClick={onNavigate} className={`${styles.navItem} ${pathname==='/bluevua/testing/prompts'?styles.active:''}`} aria-current={pathname==='/bluevua/testing/prompts'?'page':undefined} aria-label="Prompts" title={compact?'Prompts':undefined}><span className={styles.iconSlot}><FileText/></span>{!compact&&<span>Prompts</span>}</TestingLink>}
    </nav>
    {!compact&&<p className={`${styles.navLabel} ${styles.channelsLabel}`}>{zh?'渠道':'Channels'}</p>}
-   <nav aria-label={zh?"内容测试渠道":"Content testing channels"} className={styles.nav}>{channels.map(([label,href,channel])=>{const active=!concludedContext&&(pathname===href||pathname.startsWith(`${href}/`)||(label==="Google Search"&&pathname==="/bluevua/testing/google"));const displayLabel=label==="Google Demand Gen"?"Demand Gen":label;return <Link key={href} href={`${href}${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={label} title={compact?label:undefined}><span className={styles.iconSlot}><TestingChannelBrand name={label} eager={!!onNavigate}/></span>{!compact&&<><span>{displayLabel}</span>{channel&&<InventoryCount channel={channel}/>}</>}</Link>;})}</nav>
-   <div className={styles.concluded}><Link href={`/bluevua/testing/concluded${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${concludedContext?styles.active:""}`} aria-current={concludedContext?"page":undefined} aria-label={zh?`已结束测试，${concludedCount} 个活动`:`Concluded Test, ${concludedCount} ${concludedCount===1?"campaign":"campaigns"}`} title={compact?(zh?'已结束测试':'Concluded Test'):undefined}><span className={styles.iconSlot}><Archive/></span>{!compact&&<><span>{zh?'已结束测试':'Concluded Test'}</span><span className={styles.navCount}>{concludedCount}</span></>}</Link></div>
+   <nav aria-label={zh?"内容测试渠道":"Content testing channels"} className={styles.nav}>{channels.map(([label,href,channel])=>{const active=!concludedContext&&(visiblePath===href||visiblePath.startsWith(`${href}/`)||(label==="Google Search"&&visiblePath==="/bluevua/testing/google"));const displayLabel=label==="Google Demand Gen"?"Demand Gen":label;const targetHref=`${href}${query.size?`?${query}`:""}`;return <TestingLink key={href} href={targetHref} onClick={onNavigate} className={`${styles.navItem} ${active?styles.active:""}`} aria-current={active?"page":undefined} aria-label={label} title={compact?label:undefined}><span className={styles.iconSlot}><TestingChannelBrand name={label} eager={!!onNavigate}/></span>{!compact&&<><span>{displayLabel}</span>{channel&&<InventoryCount channel={channel}/>}</>}</TestingLink>;})}</nav>
+   <div className={styles.concluded}><TestingLink href={`/bluevua/testing/concluded${query.size?`?${query}`:""}`} onClick={onNavigate} className={`${styles.navItem} ${concludedContext?styles.active:""}`} aria-current={concludedContext?"page":undefined} aria-label={zh?`已结束测试，${concludedCount} 个活动`:`Concluded Test, ${concludedCount} ${concludedCount===1?"campaign":"campaigns"}`} title={compact?(zh?'已结束测试':'Concluded Test'):undefined}><span className={styles.iconSlot}><Archive/></span>{!compact&&<><span>{zh?'已结束测试':'Concluded Test'}</span><span className={styles.navCount}>{concludedCount}</span></>}</TestingLink></div>
    </div>
    {refreshChannel&&(!menuOpen||onNavigate)&&<TestingDataRefresh channel={refreshChannel} collapsed={compact} variant="nova"/>}
  </>;
- return <div className={styles.root}>
+ return <ChannelNavigationContext.Provider value={navigateChannel}><div className={styles.root}>
   <aside className={`${styles.sidebar} ${collapsed?styles.collapsed:""} ${promptsEnabled?styles.reviewSidebar:""}`} aria-label={zh?"测试导航":"Testing navigation"}>{sidebarContent(collapsed)}</aside>
   <Dialog.Root open={menuOpen} onOpenChange={setMenuOpen}>
    <Dialog.Portal><Dialog.Overlay className={styles.sheetOverlay}/><Dialog.Content className={styles.mobileSheet}><Dialog.Title className={styles.visuallyHidden}>{zh?"导航":"Navigation"}</Dialog.Title><Dialog.Description className={styles.visuallyHidden}>{zh?"选择渠道或页面。":"Choose a channel or view."}</Dialog.Description>{sidebarContent(false,()=>setMenuOpen(false))}</Dialog.Content></Dialog.Portal>
@@ -83,15 +95,15 @@ export function NovaPreviewShell({children,account,promptsEnabled=false}:{childr
     <header className={styles.topbar}>
      <nav className={styles.topbarBreadcrumb} aria-label={zh?"面包屑导航":"Breadcrumb"}>
       <Dialog.Trigger asChild><NovaButton variant="ghost" size="icon" className={styles.mobileMenu} aria-label={zh?"打开导航":"Open navigation"}><Menu aria-hidden="true"/></NovaButton></Dialog.Trigger>
-      <SiteHomeLogo/><Link href="/bluevua">Bluevua</Link><ChevronRight aria-hidden="true"/><Link href={`/bluevua/testing?${query}`}>{zh?"内容测试":"Content testing"}</Link>
+      <SiteHomeLogo/><Link href="/bluevua">Bluevua</Link><ChevronRight aria-hidden="true"/><TestingLink href={`/bluevua/testing?${query}`}>{zh?"内容测试":"Content testing"}</TestingLink>
      </nav>
      <NovaAccountControls account={account}/>
     </header>
-    <main data-testing-content className={styles.main}>{children}</main>
+    <main data-testing-content className={styles.main}>{pendingTarget?<ChannelRouteLoading title={pendingTarget.title} destination={pendingTarget.path}/>:children}</main>
    </div>
   </Dialog.Root>
   <CampaignNavigator variant="nova"/>
- </div>;
+ </div></ChannelNavigationContext.Provider>;
 }
 
 export function NovaPreviewHeader({sharePeriod}:{sharePeriod:{start:string;end:string}}) {

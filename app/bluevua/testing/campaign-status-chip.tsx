@@ -1,11 +1,10 @@
-import styles from "./channel-content.module.css";
+'use client';
+import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
+import {testingCampaignStatus} from '@/lib/testing-campaign-status';
+import styles from './inventory/inventory.module.css';
 
 export function CampaignStatusChip({status}:{status:string}){
- const normalized=status.trim().toUpperCase();
- const label=normalized==="CONCLUDED"?"Concluded":
-  ["ACTIVE","ENABLED","SERVING"].includes(normalized)?"Active":
-  ["PAUSED","CAMPAIGN_PAUSED"].includes(normalized)?"Paused":
-  ["SENT","COMPLETED"].includes(normalized)?"Sent":
-  ["ENDED","REMOVED","ARCHIVED"].includes(normalized)?"Ended":status;
- return <span className={styles.badge}>{label}</span>;
+ const {language}=useSiteLanguage();
+ const {tone,label}=testingCampaignStatus(status,language==='zh');
+ return <span className={styles.statusBadge} data-tone={tone}>{label}</span>;
 }

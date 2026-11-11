@@ -11,6 +11,12 @@ fixes the previous Turbopack process termination.
   platform/architecture, or relevant environment inputs change (or the stamp
   is absent). The first deployment installs once to establish the stamp.
 - A lock prevents concurrent deployments. Build failures do not run PM2 restart.
+- Each deployment also compares and synchronizes installed Dashboard schedule
+  units, reloads systemd, restarts changed active timers, and checks their next
+  run. Existing host drop-ins and enabled/disabled states are preserved; changed
+  units are backed up. Scheduled failure notifications use the existing private
+  AI Bluevua bot. A requested one-day report skip can be supplied through
+  `CONTENT_TESTING_SKIP_REPORT_DAY=YYYY-MM-DD` during deployment.
 - FORCE_INSTALL=1 ./deploy.sh forces a dependency reinstall if needed.
 - npm run clean:build-cache manually clears the disposable Next build cache.
 - npm run build:turbo is available for controlled testing on a sufficiently

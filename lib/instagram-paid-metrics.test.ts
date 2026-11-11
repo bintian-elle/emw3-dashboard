@@ -11,3 +11,9 @@ test("paid video views use plays and Meta deduplicated reach; missing follows ar
  const metrics=paidInstagramMetrics({impressions:"1901",reach:"1648",video_play_actions:[{action_type:"video_view",value:"1200"}],actions:[{action_type:"onsite_conversion.post_net_like",value:"45"},{action_type:"post_reaction",value:"45"},{action_type:"onsite_conversion.post_save",value:"20"}]},true);
  assert.equal(metrics.views,1200);assert.equal(metrics.reach,1648);assert.equal(metrics.likes,45);assert.equal(metrics.saved,20);assert.equal(metrics.follows,null);
 });
+test("paid follows come from the dedicated Ads Insights field",()=>{
+ assert.equal(paidInstagramMetrics({instagram_profile_follow:'37'},true).follows,37);
+ assert.equal(paidInstagramMetrics({instagram_profile_follow:'0'},true).follows,0);
+ assert.equal(paidInstagramMetrics({instagram_profile_follow:'invalid'},true).follows,null);
+ assert.equal(paidInstagramMetrics({actions:[{action_type:'instagram_profile_follow',value:'37'}]},true).follows,null);
+});

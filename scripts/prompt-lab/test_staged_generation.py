@@ -21,6 +21,28 @@ def report(scope, marker):
 
 
 class StagedGenerationTests(unittest.TestCase):
+    def test_staged_campaign_uses_authoritative_section_ids(self):
+        schema = json.loads((Path(__file__).parents[1] / 'content-testing' / 'readable-schema.json').read_text())
+        job = {'mode': 'analysis', 'period': {'channel': 'google-pmax'},
+               'versions': {'google-pmax': {'content': 'CHANNEL'}, 'readability': {'content': 'READABILITY'}},
+               'output_schema': schema, 'frozen_input': {'campaigns': ['A'], 'visual_context': {
+                   'sections': [{'id': 'google-pmax-2', 'title': 'Creative'}, {'id': 'google-pmax-3', 'title': 'Performance'}]}}}
+        stage = stage_input(job, 'campaign', 'A', [])
+        for lang in ('en', 'zh'):
+            presentation = stage['output_schema']['properties'][lang]['properties']['presentation']['properties']
+            self.assertEqual(presentation['blocks']['items']['properties']['section_id']['enum'], ['google-pmax-2', 'google-pmax-3'])
+            self.assertEqual(presentation['blocks']['items']['properties']['scope']['enum'], ['A'])
+        self.assertIn('google-pmax-2', staged_generation.visual_analysis_instructions(stage))
+        value = report('A', 'campaign')
+        with self.assertRaisesRegex(ValueError, 'section'):
+            staged_generation.validate_stage_result(stage, value)
+        for lang in ('en', 'zh'):
+            value[lang]['presentation']['sections'] = [{'id': 'google-pmax-2', 'title': 'Creative'}, {'id': 'google-pmax-3', 'title': 'Performance'}]
+            value[lang]['presentation']['blocks'] = [
+                {'id': f'{lang}-{section}', 'scope': 'A', 'section_id': section}
+                for section in ('google-pmax-2', 'google-pmax-3')]
+        staged_generation.validate_stage_result(stage, value)
+
     def test_visual_analysis_sends_only_selected_prompt_contents(self):
         job = {'mode': 'analysis', 'period': {'channel': 'google-pmax'},
                'versions': {'google-pmax': {'content': 'CHANNEL'}, 'readability': {'content': 'READABILITY'}, 'master': {'content': 'OLD'}},
@@ -83,6 +105,28 @@ class StagedGenerationTests(unittest.TestCase):
             self.assertEqual([x['test_id'] for x in value['en']['campaigns']], ['A', 'B'])
             asyncio.run(module.run_staged(root, self.job))
             self.assertEqual(len(calls), 3)
+
+    def test_invalid_campaign_sections_retry_only_that_completed_stage(self):
+        bridge, sdk = types.ModuleType('anc_bridge'), types.ModuleType('anc_bridge.sdk')
+        sdk.SafeCodex = sdk.native_config = sdk.NativeControlResult = object
+        with mock.patch.dict(sys.modules, {'anc_bridge': bridge, 'anc_bridge.sdk': sdk}):
+            spec = importlib.util.spec_from_file_location('native_preview_section_retry', Path(__file__).with_name('native-preview.py'))
+            module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        calls = []
+        async def fake_run(root, parent=None, parallel=False):
+            job = json.loads((root / 'input.json').read_text())
+            stage = job['_generation_stage']; calls.append((stage['kind'], root.name))
+            value = report(stage['campaign'] if parallel else 'channel', root.name)
+            if parallel and len(calls) == 1:
+                for lang in ('en', 'zh'):
+                    value[lang]['presentation']['blocks'][0]['section_id'] = 'invented'
+            module.save(root / 'result.json', value)
+        module.run = fake_run
+        job = {**self.job, 'frozen_input': {**self.job['frozen_input'], 'campaigns': ['A'],
+                'visual_context': {'sections': [{'id': 'one', 'title': 'One'}]}}}
+        with tempfile.TemporaryDirectory() as folder:
+            asyncio.run(module.run_staged(Path(folder), job))
+        self.assertEqual([kind for kind, _ in calls], ['campaign', 'campaign', 'channel'])
 
     def test_campaigns_run_concurrently_and_channel_waits_for_all(self):
         bridge, sdk = types.ModuleType('anc_bridge'), types.ModuleType('anc_bridge.sdk')

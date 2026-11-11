@@ -12,6 +12,7 @@ import { highResolutionCreativeUrl } from "@/lib/creative-image";
 import type { MetaAdGroupMetric, MetaCampaignTest } from "@/lib/testing-meta";
 import { CampaignStatusChip } from "./campaign-status-chip";
 import { TestReadout } from "./test-readout";
+import {activeCampaignsFirst} from "@/lib/testing-campaign-status";
 
 const currency=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
 const decimal=new Intl.NumberFormat("en-US",{maximumFractionDigits:2});
@@ -24,7 +25,7 @@ function metric(value:number|null,format:"currency"|"decimal"|"percent"|"roas"|"
 function displayDate(value:string){return new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"}).format(new Date(`${value}T00:00:00Z`));}
 
 export function MetaCampaignSection({data,query="",returnTo}:{data:MetaCampaignTest;query?:string;returnTo?:string}){
- return <section className={styles.list}>{data.campaigns.map(campaign=><article key={campaign.campaignId} id={testingCampaignAnchor("meta",campaign.campaignName)} className={styles.card}>
+ return <section className={styles.list}>{activeCampaignsFirst(data.campaigns,campaign=>campaign.effectiveStatus||campaign.campaignStatus).map(campaign=><article key={campaign.campaignId} id={testingCampaignAnchor("meta",campaign.campaignName)} className={styles.card}>
   <header className={styles.header}><div className={styles.heading}><span className={styles.headingIcon}><TestingChannelBrand name="Meta"/></span><div className={styles.headingText}><div className={styles.eyebrow}>META <span className={styles.badge}>STRATEGY</span> CAMPAIGN <CampaignStatusChip status={campaign.effectiveStatus}/></div><h2 className={styles.title}><CampaignName name={campaign.campaignName} channel="meta"/></h2></div></div><p className={styles.date}>{data.periodLabel} · {displayDate(data.period.start)} – {displayDate(data.period.end)}</p></header>
   <TestReadout channel="meta" testIdentity={campaign.campaignName} period={{label:data.periodLabel,...data.period}}>
    {campaign.adGroups.length?<MetricSortScope defaultRoas><div className={styles.tableWrap}><table className={`${styles.table} ${styles.performanceTable}`} aria-label="Meta ad group performance"><thead><tr><th scope="col">Ad group</th>{metrics.map(item=><MetricSortHeader key={item.key} metric={item.key} label={item.label}/>)}</tr></thead><MetricSortedRows as="tbody" rows={campaign.adGroups.map(group=>{const cover=group.activeAds[0];const href=withTestingReturnTo(`/bluevua/testing/meta/${group.adGroupId}${query?`?${query}`:""}`,returnTo??`/bluevua/testing/meta${query?`?${query}`:""}`);return {id:group.adGroupId,name:group.name,values:Object.fromEntries(metrics.map(item=>[item.key,group[item.key] as number|null])),content:<tr key={group.adGroupId}>

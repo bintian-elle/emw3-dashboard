@@ -39,9 +39,11 @@ export function usePmaxPresentation(){
  const redditLifetime=useContext(RedditLifetimeContext),socialLifetime=useContext(SocialLifetimeContext);
  const scope=previewReportForPath(pathname),preset=query.get('period'),latest=testingLatestCompleteDate();
  const selected=resolveTestingPeriod(latest,{preset:preset==='custom'?'custom':(preset??'lastWeek') as 'lastWeek',start:query.get('start')??undefined,end:query.get('end')??undefined});
- const matched=useMatchedReport(scope,selected.start,selected.end,language,!!scope&&!query.get('history')&&scope!=='social-media'&&!(scope==='reddit'&&(!preset||preset==='sinceSep24')));
+ const socialLifetimeSelected=scope==='social-media'&&(!preset||preset==='lifetime');
+ const matched=useMatchedReport(scope,selected.start,selected.end,language,!!scope&&!query.get('history')&&!socialLifetimeSelected&&!(scope==='reddit'&&(!preset||preset==='sinceSep24')));
  if(query.get('history'))return null;
  if(scope==='social-media'){
+  if(!socialLifetimeSelected)return matched.report;
   const lang=language==='zh'?'zh':'en';
   const report=(socialLifetime??bundle?.reports['social-lifetime']??bundle?.reports['social-media'])?.[lang];
   return report?.scope==='lifetime'?report:null;

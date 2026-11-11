@@ -1,0 +1,15 @@
+[Unit]
+Description=Notify the Dashboard owner about a failed scheduled task
+StartLimitIntervalSec=0
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/testing-refresh/systemd-failure.mjs %i
+Restart=on-failure
+RestartSec=5min
+UMask=0077
+NoNewPrivileges=true

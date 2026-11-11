@@ -2,7 +2,7 @@ import 'server-only';
 import {readdir,readFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {Pool} from 'pg';
-import {readTestingDataSnapshot} from './testing-data-cache';
+import {readTestingDataSnapshot,restoreTestingMaterials} from './testing-data-cache';
 import type {TestingDataChannel} from './testing-data-cache-contract';
 import type {ComparisonRange} from './testing-comparison';
 let pool:Pool|undefined;
@@ -19,7 +19,7 @@ export async function readComparisonPeriod(channel:TestingDataChannel,range:Comp
  const connectionString=process.env.KLAVIYO_DATABASE_URL?.trim();
  if(!connectionString)return null;
  pool??=new Pool({connectionString,ssl:{rejectUnauthorized:false},max:2,connectionTimeoutMillis:5000,statement_timeout:5000});
- try{const result=await pool.query('SELECT payload FROM testing_data_snapshots WHERE channel=$1 AND payload #>> \'{data,period,start}\'=$2 AND payload #>> \'{data,period,end}\'=$3 ORDER BY updated_at DESC LIMIT 1',[channel,range.start,range.end]);return result.rows[0]?.payload?.data??null;}catch{return null;}
+ try{const result=await pool.query('SELECT payload FROM testing_data_snapshots WHERE channel=$1 AND payload #>> \'{data,period,start}\'=$2 AND payload #>> \'{data,period,end}\'=$3 ORDER BY updated_at DESC LIMIT 1',[channel,range.start,range.end]);return result.rows[0]?.payload?restoreTestingMaterials(channel,result.rows[0].payload).data??null:null;}catch{return null;}
 }
 export async function hasComparisonGoogleSnapshot(channel:TestingDataChannel,range:ComparisonRange){
  try{const stored=await readTestingDataSnapshot<{end?:string;performance?:{start?:string;end?:string}}>(channel,{}),payload=stored?.payload;if(!payload)return false;const start=payload.performance?.start??'2025-01-01',end=payload.performance?.end??payload.end;return Boolean(end&&range.start>=start&&range.end<=end);}catch{return false;}

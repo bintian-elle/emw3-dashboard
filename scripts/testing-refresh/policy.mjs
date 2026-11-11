@@ -1,11 +1,13 @@
+export function shouldSkipReportDay(day,skipDay){return /^\d{4}-\d{2}-\d{2}$/.test(skipDay??'')&&day===skipDay;}
 export function easternClock(now=new Date()){
  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(now).map(p=>[p.type,p.value]));
  return {day:`${parts.year}-${parts.month}-${parts.day}`,hour:Number(parts.hour)};
 }
 export function dueAttempt(state,hour,startHour,now=Date.now(),mode='data'){
- const limit=mode==='data'?2:1;
+ const limit=mode==='data'?2:mode==='google'?4:1;
  if(state.success||(state.attempts??0)>=limit||hour<startHour)return false;
  if(mode==='data'&&![4,5].includes(hour))return false;
+ if(mode==='google'&&![5,6,7,8].includes(hour))return false;
  return !state.lastAttempt||easternClock(new Date(state.lastAttempt)).day!==easternClock(new Date(now)).day||easternClock(new Date(state.lastAttempt)).hour!==hour;
 }
 export function collectionPlan(){return [

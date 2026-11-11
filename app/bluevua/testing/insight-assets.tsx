@@ -11,12 +11,13 @@ import {mermaid} from '@streamdown/mermaid';
 import {useSiteLanguage} from '@/components/application/dashboard/site-language-provider';
 import {splitInsightAssetText,normalizeInsightAssetMarkdown,type InsightAsset} from '@/lib/testing-insight-assets';
 import styles from './insight-assets.module.css';
+import {localTestingThumbnail} from '@/lib/testing-thumbnail';
 const Context=createContext<readonly InsightAsset[]>([]);
 export function InsightAssetsProvider({assets,children}:{assets:InsightAsset[];children:ReactNode}){return <Context.Provider value={assets}>{children}</Context.Provider>;}
 export function InsightAssetReference({asset}:{asset:InsightAsset}){
  const {language}=useSiteLanguage(),zh=language==='zh';const [failed,setFailed]=useState(false),[hovered,setHovered]=useState(false),[expanded,setExpanded]=useState(false);
  const name=asset.channel==='unknown'?(zh?'素材信息待补全':'Creative · details pending'):asset.name;
- const content=<><strong>{name}</strong>{asset.image&&!failed&&<Image unoptimized src={asset.image} alt={asset.name} width={296} height={180} onError={()=>setFailed(true)}/>}<small>{asset.kind} · ID: {asset.id}</small>{asset.description&&<p>{asset.description}</p>}{asset.url?<a href={asset.url} target="_blank" rel="noopener noreferrer">{zh?'打开素材 / 原帖':'Open creative / original post'}<ExternalLink aria-hidden="true"/></a>:<small>{zh?'暂无可用预览链接':'Preview link unavailable'}</small>}</>;
+ const content=<><strong>{name}</strong>{asset.image&&!failed&&<Image unoptimized src={localTestingThumbnail(asset.image)!} alt={asset.name} width={296} height={180} onError={()=>setFailed(true)}/>}<small>{asset.kind} · ID: {asset.id}</small>{asset.description&&<p>{asset.description}</p>}{asset.url?<a href={asset.url} target="_blank" rel="noopener noreferrer">{zh?'打开素材 / 原帖':'Open creative / original post'}<ExternalLink aria-hidden="true"/></a>:<small>{zh?'暂无可用预览链接':'Preview link unavailable'}</small>}</>;
  return <Popover.Root open={expanded} onOpenChange={value=>{setExpanded(value);setHovered(false);}}><HoverCard.Root open={hovered&&!expanded} onOpenChange={setHovered} openDelay={250} closeDelay={150}><HoverCard.Trigger asChild><Popover.Trigger asChild><button data-review-target="creative-previews" className={styles.trigger} type="button">{name}</button></Popover.Trigger></HoverCard.Trigger><HoverCard.Portal><HoverCard.Content sideOffset={6} collisionPadding={16} className={styles.preview}>{content}</HoverCard.Content></HoverCard.Portal></HoverCard.Root><Popover.Portal><Popover.Content sideOffset={6} collisionPadding={16} className={styles.preview}>{content}</Popover.Content></Popover.Portal></Popover.Root>;
 }
 export function InsightText({children,channel}:{children:ReactNode;channel?:string}){

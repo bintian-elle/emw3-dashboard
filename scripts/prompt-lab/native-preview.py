@@ -2,7 +2,7 @@
 import argparse,asyncio,json,time,re
 from pathlib import Path
 from anc_bridge.sdk import SafeCodex,native_config,NativeControlResult
-from staged_generation import generation_plan,stage_input,merge_reports,analysis_prompt_contents,visual_analysis_instructions
+from staged_generation import generation_plan,stage_input,merge_reports,analysis_prompt_contents,visual_analysis_instructions,validate_stage_result
 BRAND=Path('/home/ubuntu/work/emw3-anc/bluevua')
 THREAD='01a15a87-c768-7fa3-a874-28123fc46413'
 def save(path,value):
@@ -31,12 +31,18 @@ async def final_text(sdk,turn_id,thread_id=THREAD):
 async def run_staged(root,job):
  plan=generation_plan(job);campaigns=plan[:-1];semaphore=asyncio.Semaphore(3)
  async def generate(index,kind,campaign,completed,parallel):
-  stage_root=root/f'stage-{index:03d}';stage_root.mkdir(exist_ok=True,mode=0o700)
-  output=stage_root/'result.json'
-  if not output.exists():
-   save(stage_root/'input.json',stage_input(job,kind,campaign,completed))
-   async with semaphore:await run(stage_root,parent=root,parallel=parallel)
-  return json.loads(output.read_text())
+  stage_job=stage_input(job,kind,campaign,completed)
+  for attempt in range(2):
+   stage_root=root/(f'stage-{index:03d}' + (f'-retry-{attempt}' if attempt else ''));stage_root.mkdir(exist_ok=True,mode=0o700)
+   output=stage_root/'result.json'
+   if not output.exists():
+    save(stage_root/'input.json',stage_job)
+    async with semaphore:await run(stage_root,parent=root,parallel=parallel)
+   result=json.loads(output.read_text())
+   try:validate_stage_result(stage_job,result);return result
+   except ValueError:
+    if attempt:raise
+    emit('retrying_invalid_section_structure',scope_kind=kind)
  outcomes=await asyncio.gather(*(generate(index,kind,name,[],True) for index,(kind,name) in enumerate(campaigns)),return_exceptions=True)
  for outcome in outcomes:
   if isinstance(outcome,BaseException):raise outcome

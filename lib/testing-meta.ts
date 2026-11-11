@@ -7,6 +7,7 @@ import {isMetaVideo,type MetaCreative} from "@/lib/meta-creative-type";
 import { connection } from "next/server";
 import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } from "@/lib/testing-google";
 import type { OverviewDailySource } from "./overview-daily-metrics";
+import {readInsightAssets} from "./testing-insight-assets.server";
 
 const META_API_VERSION="v25.0";
 const META_CAMPAIGN_IDS=["120251709189500383","120252186354960383"] as const;
@@ -54,7 +55,8 @@ async function campaignTest(campaignId:string,period:{start:string;end:string},r
   const insightByAd=new Map(adInsights.data.map(row=>[row.ad_id,row]));
   const testingAds=metaTestingAdInventory(ads.data,adInsights.data);
   const videoIds=new Set(testingAds.filter(ad=>isMetaVideo(ad.name,ad.creative)).map(ad=>ad.id));
-  const mediaEntries=await Promise.all(testingAds.map(async ad=>[ad.id,{...(ad.creative?await resolveMetaCreativeLinks(ad.id,ad.creative.id,read):{postUrl:null,previewUrl:null}),thumbnailUrl:await creativeThumbnail(ad.creative?.id,ad.creative?.thumbnail_url??null,read),videoUrl:videoIds.has(ad.id)&&ad.creative?await adPreviewUrl(ad.id,read).catch(()=>null):null}] as const));
+  const localThumbnails=new Map((await readInsightAssets()).filter(asset=>asset.channel==='meta'&&asset.image?.startsWith('/testing/thumbnails/')).map(asset=>[asset.id,asset.image!]));
+  const mediaEntries=await Promise.all(testingAds.map(async ad=>[ad.id,{...(ad.creative?await resolveMetaCreativeLinks(ad.id,ad.creative.id,read):{postUrl:null,previewUrl:null}),thumbnailUrl:localThumbnails.get(ad.id)??await creativeThumbnail(ad.creative?.id,ad.creative?.thumbnail_url??null,read),videoUrl:videoIds.has(ad.id)&&ad.creative?await adPreviewUrl(ad.id,read).catch(()=>null):null}] as const));
   const mediaByAd=new Map(mediaEntries);const adsByGroup=new Map<string,MetaActiveAd[]>();
   for(const ad of testingAds){const insight=insightByAd.get(ad.id);const isVideo=videoIds.has(ad.id);const media=mediaByAd.get(ad.id);const item={adId:ad.id,name:ad.name,status:ad.configured_status,effectiveStatus:ad.effective_status,creativeContent:ad.creative,mediaType:isVideo?"Video" as const:"Image" as const,thumbnailUrl:media?.thumbnailUrl??null,videoUrl:media?.videoUrl??null,postUrl:media?.postUrl??null,previewUrl:media?.previewUrl??media?.videoUrl??null,...performance(insight??{adset_id:ad.adset_id,adset_name:""})};adsByGroup.set(ad.adset_id,[...(adsByGroup.get(ad.adset_id)??[]),item]);}
   for(const items of adsByGroup.values())items.sort((a,b)=>b.spend-a.spend);

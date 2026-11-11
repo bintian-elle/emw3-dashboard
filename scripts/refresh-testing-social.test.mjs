@@ -39,11 +39,7 @@ test('missing credential, network failure, or missing commit timestamp fails saf
   await assert.rejects(refreshTestingSocial({ secret: 'secret', request: async () => ({ ok: true, json: async () => ({}) }) }), /update time/);
 });
 
-test('Social timer runs one hour before the existing Testing readout timer', async () => {
-  const [social, readout] = await Promise.all([
-    readFile(new URL('../ops/emw3-testing-social-refresh.timer', import.meta.url), 'utf8'),
-    readFile(new URL('../ops/emw3-testing-readouts.timer', import.meta.url), 'utf8'),
-  ]);
-  assert.match(social, /^OnCalendar=\*-\*-\* 08:15:00 UTC$/m);
-  assert.match(readout, /^OnCalendar=\*-\*-\* 09:15:00 UTC$/m);
+test('legacy Social timer is separate from the active shared snapshot timer',async()=>{
+ const timer=await readFile(new URL('../ops/emw3-testing-data-refresh.timer',import.meta.url),'utf8');
+ assert.match(timer,/^OnCalendar=\*-\*-\* 04,05:00:00 America\/New_York$/m);
 });

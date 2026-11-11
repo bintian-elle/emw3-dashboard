@@ -9,6 +9,7 @@ import {emptyGoogleAdMetrics,type GoogleAdMetrics} from '@/lib/google-ad-perform
 import {orderTestingMetrics} from '@/lib/testing-metric-order';
 import {NovaButton,NovaCard,NovaTable,NovaTableBody,NovaTableCell,NovaTableHead,NovaTableHeader,NovaTableRow} from '../../nova-preview-ui';
 import {NovaSearchAdPreview} from './nova-search-ad-preview';
+import {CampaignStatusChip} from '../../campaign-status-chip';
 import styles from './nova-search-detail.module.css';
 
 type AdRow=CreativeArchive['ads'][number];
@@ -19,7 +20,7 @@ export function NovaAdPerformanceList({ads,metrics,businessName,logo,sitelinks}:
  const [sorting,setSorting]=useState<SortingState>([{id:'roas',desc:true}]),[previewId,setPreviewId]=useState<string|null>(null);
  const defs=useMemo<ColumnDef<AdRow>[]>(()=>[
   {id:'ad',header:'Ad',enableSorting:false,cell:({row})=>{const ad=row.original.adGroupAd.ad,open=previewId===ad.id;return <div className={styles.adName}><NovaButton variant="ghost" onClick={()=>setPreviewId(open?null:ad.id)} aria-expanded={open} aria-controls={`preview-${ad.id}`}>{open?<ChevronDown/>:<ChevronRight/>}<span>{ad.name||ad.responsiveSearchAd?.headlines?.[0]?.text||`Ad ${ad.id}`}</span></NovaButton><small>Ad {ad.id}</small></div>;}},
-  {id:'status',header:'Status',enableSorting:false,cell:({row})=><span className={styles.status} data-enabled={['ENABLED','ACTIVE'].includes(row.original.adGroupAd.status)}>{row.original.adGroupAd.status}</span>},
+  {id:'status',header:'Status',enableSorting:false,cell:({row})=><CampaignStatusChip status={row.original.adGroupAd.status}/>},
   ...columns.map(column=>({id:column.key,accessorFn:(row:AdRow)=>value(metrics?(metrics[row.adGroupAd.ad.id]??emptyGoogleAdMetrics):null,column.key)??undefined,header:column.label,sortUndefined:'last' as const,cell:({row}:{row:{original:AdRow}})=><>{format(value(metrics?(metrics[row.original.adGroupAd.ad.id]??emptyGoogleAdMetrics):null,column.key),column.format)}<ComparisonDelta entity={`google-search:${row.original.adGroupAd.ad.id}`} metric={column.key} value={value(metrics?(metrics[row.original.adGroupAd.ad.id]??emptyGoogleAdMetrics):null,column.key)}/></>})),
  ],[metrics,previewId]);
  const table=useReactTable({data:ads,columns:defs,state:{sorting},onSortingChange:setSorting,getCoreRowModel:getCoreRowModel(),getSortedRowModel:getSortedRowModel(),enableSortingRemoval:true});

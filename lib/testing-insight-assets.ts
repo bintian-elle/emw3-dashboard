@@ -2,7 +2,7 @@
 export type InsightAsset={id:string;channel:string;name:string;kind:string;image?:string;url?:string;description?:string;aliases?:string[]};
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const string=(value:unknown)=>typeof value==='string'?value:undefined;
-export function safeInsightUrl(value:unknown){if(typeof value!=='string')return undefined;try{const url=new URL(value);return /^https?:$/.test(url.protocol)?url.href:undefined;}catch{return undefined;}}
+export function safeInsightUrl(value:unknown){if(typeof value!=='string')return undefined;if(/^\/(?:testing\/thumbnails\/[a-f0-9]{64}|social\/instagram\/[a-zA-Z0-9_-]{11})\.webp$/.test(value))return value;try{const url=new URL(value);return /^https?:$/.test(url.protocol)?url.href:undefined;}catch{return undefined;}}
 export function buildInsightAssets(channel:string,payload:unknown):InsightAsset[]{
  const found=new Map<string,InsightAsset>();
  function walk(value:unknown){

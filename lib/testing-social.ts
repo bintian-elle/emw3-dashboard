@@ -4,11 +4,10 @@ import {connection} from "next/server";
 import {readFile} from "node:fs/promises";
 import path from "node:path";
 import {matchesInstagramPost,paidInstagramMetrics,type PaidInsight,type InstagramAdCreative} from "@/lib/instagram-paid-metrics";
-import {instagramPostCodes,insightValues,socialMetrics,type SocialPost,type MediaInsight} from "@/lib/instagram-posts";
+import {instagramPostCodes,insightValues,socialMetrics,cachedInstagramPosts,type SocialPost,type MediaInsight} from "@/lib/instagram-posts";
 import {fetchInstagramInsights,InstagramUnsupportedMetric,isInstagramUnsupportedMetric} from "@/lib/testing-social-insights";
 import {isSocialSnapshot} from "@/lib/testing-social-snapshot";
 
-type Media={id:string;permalink:string;caption?:string;timestamp:string;media_type:string;media_product_type?:string;media_url?:string;thumbnail_url?:string};
 type Snapshot={version?:number;capturedAt:string;posts:SocialPost[]};
 export type SocialPerformance=Snapshot&{stale:boolean;error:boolean};
 const filename=path.join(process.cwd(),".state/social/instagram-posts.json");
@@ -23,27 +22,20 @@ async function graph<T>(endpoint:string,params:Record<string,string>={}):Promise
 }
 function emptyPost(code:string):SocialPost{return {code,url:`https://www.instagram.com/p/${code}/`,caption:"",publishedAt:null,mediaType:null,thumbnailUrl:null,metrics:insightValues([]),status:"unavailable"};}
 export async function readSocialLocalSnapshot():Promise<Snapshot|null>{try{return JSON.parse(await readFile(filename,"utf8"));}catch{return null;}}
+export async function readSocialLocalPreview():Promise<Snapshot|null>{
+ if(process.env.NODE_ENV==='production'&&process.env.LOCAL_PRODUCTION_PREVIEW!=='1')return null;
+ try{const snapshot=JSON.parse(await readFile(path.join(process.cwd(),'.state/social/instagram-posts-preview.json'),"utf8"));return isSocialSnapshot(snapshot)&&typeof snapshot.capturedAt==='string'?snapshot as Snapshot:null;}catch{return null;}
+}
 async function refresh():Promise<SocialPerformance>{
-  const pages=await graph<{data:Array<{instagram_business_account?:{id:string;username:string}}>}>('me/accounts',{fields:'instagram_business_account{id,username}',limit:'100'});
-  const account=pages.data.find(page=>page.instagram_business_account?.username.toLowerCase()==="bluevua")?.instagram_business_account;
-  if(!account)throw Error("Bluevua Instagram account unavailable");
-  const media=new Map<string,Media>();let after:string|undefined;
-  // Stop immediately once the explicit post selection is found. Never load account insights.
-  for(let page=0;page<15;page++){
-   const result=await graph<{data:Media[];paging?:{next?:string;cursors:{after:string}}}>(`${account.id}/media`,{fields:"id,permalink,caption,timestamp,media_type,media_product_type,media_url,thumbnail_url",limit:"100",...(after?{after}:{})});
-   for(const row of result.data){const code=instagramPostCodes.find(value=>row.permalink.includes(`/${value}/`));if(code)media.set(code,row);}
-   if(media.size===instagramPostCodes.length||!result.paging?.next)break;after=result.paging.cursors.after;
-  }
-  if(media.size!==instagramPostCodes.length)throw Error("Instagram selected posts are incomplete");
   const posts:SocialPost[]=[];
-  // Sequential requests keep the Insights request rate bounded; each combines supported metrics.
-  for(const code of instagramPostCodes){
-   const item=media.get(code);if(!item)throw Error("Instagram selected posts are incomplete");
-   const metrics=item.media_product_type==="REELS"?socialMetrics.filter(metric=>metric!=="follows"):socialMetrics;
+  // The post identity and thumbnails are fixed locally; only metrics are refreshed.
+  for(const item of cachedInstagramPosts){
+   if(!item.id)throw Error("Instagram post identity is unavailable locally");
+   const metrics=item.mediaType==="Reel"?socialMetrics.filter(metric=>metric!=="follows"):socialMetrics;
    const values=await fetchInstagramInsights(metrics,async metric=>(await graph<{data:MediaInsight[]}>(`${item.id}/insights`,{metric})).data);
    if(!values.length)throw Error("Instagram post insights are unavailable");
    const parsed=insightValues(values);
-   posts.push({code,id:item.id,url:item.permalink,caption:item.caption??"",publishedAt:item.timestamp,mediaType:item.media_product_type==="REELS"?"Reel":item.media_type==="CAROUSEL_ALBUM"?"Carousel":item.media_type==="VIDEO"?"Video":"Image",thumbnailUrl:item.thumbnail_url??(item.media_type==="VIDEO"?null:item.media_url)??null,metrics:parsed,status:socialMetrics.every(metric=>parsed[metric]!=null)?"available":values.length?"partial":"unavailable"});
+   posts.push({...item,metrics:parsed,status:socialMetrics.every(metric=>parsed[metric]!=null)?"available":values.length?"partial":"unavailable"});
   }
   if(posts.every(post=>post.status==="unavailable"))throw Error("Instagram post insights unavailable");
   await addPaidPerformance(posts);
@@ -56,13 +48,19 @@ export async function fetchFreshSocialPerformance():Promise<SocialPerformance>{
 export async function getSocialPerformance():Promise<SocialPerformance>{
  await connection();
  const published=await readTestingDataSnapshot<SocialPerformance>("social");
- if(isSocialSnapshot(published?.payload))return published!.payload;
+ const localPreview=await readSocialLocalPreview();
+ if(localPreview&&Date.parse(localPreview.capturedAt)>Date.parse(published?.payload?.capturedAt??'1970-01-01'))return withSelectedPosts({...localPreview,stale:false,error:false});
+ if(isSocialSnapshot(published?.payload))return withSelectedPosts(published!.payload);
  const cached=await readSocialLocalSnapshot();
  if(isSocialSnapshot(cached)){
   const stale=!Number.isFinite(Date.parse(cached.capturedAt))||Date.now()-Date.parse(cached.capturedAt)>=ttl;
-  return {...cached,stale,error:false};
+  return withSelectedPosts({...cached,stale,error:false});
  }
  return {capturedAt:"",posts:instagramPostCodes.map(emptyPost),stale:false,error:true};
+}
+function withSelectedPosts(snapshot:SocialPerformance):SocialPerformance{
+ const byCode=new Map(snapshot.posts.map(post=>[post.code,post]));
+ return {...snapshot,posts:instagramPostCodes.map(code=>byCode.get(code)??emptyPost(code))};
 }
 
 async function adCreatives(ids:string[]){
@@ -97,9 +95,9 @@ async function addPaidPerformance(posts:SocialPost[],period?:{start:string;end:s
  const ads=await adCreatives([...ids]);
  for(const post of posts){
   const linked=ads.filter(ad=>ad.creative&&matchesInstagramPost(post,ad.creative));
-  if(!linked.length){post.paid={metrics:{views:0,reach:0,likes:0,comments:0,shares:0,saved:0,follows:null},adCount:0,status:"available"};continue;}
+  if(!linked.length){post.paid={metrics:{views:0,reach:0,likes:0,comments:0,shares:0,saved:0,follows:0},adCount:0,status:"available"};continue;}
   // Meta deduplicates reach across all ads for this post; never add ad-level reach values.
-  const result=await graph<{data:PaidInsight[]}>(`act_${account}/insights`,{fields:"impressions,reach,actions,video_play_actions",time_range:JSON.stringify({since:period?.start??post.publishedAt?.slice(0,10)??since,until}),filtering:JSON.stringify([platform,{field:"ad.id",operator:"IN",value:linked.map(ad=>ad.id)}])});
+  const result=await graph<{data:PaidInsight[]}>(`act_${account}/insights`,{fields:"impressions,reach,actions,video_play_actions,instagram_profile_follow",time_range:JSON.stringify({since:period?.start??post.publishedAt?.slice(0,10)??since,until}),filtering:JSON.stringify([platform,{field:"ad.id",operator:"IN",value:linked.map(ad=>ad.id)}])});
   post.paid={metrics:paidInstagramMetrics(result.data[0]??{},post.mediaType==="Reel"||post.mediaType==="Video"),adCount:linked.length,status:"available"};
  }
 }

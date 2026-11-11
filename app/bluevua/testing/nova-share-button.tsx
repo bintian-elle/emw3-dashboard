@@ -21,7 +21,8 @@ export function NovaShareButton({disabled=false,freezePeriod=true,period}:{disab
   try{
    const current=new URL(window.location.href);
    const isRedditLifetime=pageScope?.channel==='reddit'&&(!current.searchParams.get('period')||current.searchParams.get('period')===redditSinceStartPreset);
-   const range=freezePeriod&&pageScope&&!isRedditLifetime?{start:pageScope.period.start,end:pageScope.period.end}:undefined;
+   const isSocialLifetime=pageScope?.channel==='social'&&(!current.searchParams.get('period')||current.searchParams.get('period')==='lifetime');
+   const range=freezePeriod&&pageScope&&!isRedditLifetime&&!isSocialLifetime?{start:pageScope.period.start,end:pageScope.period.end}:undefined;
    await navigator.clipboard.writeText(testingShareHref(current.toString(),range,range?period:undefined));
    setStatus('copied');
   }catch{setStatus('error');}

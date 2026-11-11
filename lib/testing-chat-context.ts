@@ -8,7 +8,7 @@ import { getMetaCampaignTest } from "@/lib/testing-meta";
 import { redditContentPeriod } from "@/lib/reddit-content-testing";
 import { getRedditContentTestingData } from "@/lib/testing-reddit";
 import { getEdmTestingData } from "@/lib/testing-edm";
-import { getSocialPerformance } from "@/lib/testing-social";
+import { fetchSocialPaidForPeriod,getSocialPerformance } from "@/lib/testing-social";
 import { concludedTestsForChannel } from "@/lib/concluded-tests";
 import { readConcludedSnapshot } from "@/lib/concluded-test-snapshot";
 import { readTestingReadoutCache } from "@/lib/ai-job-queue";
@@ -73,7 +73,7 @@ export async function loadTestingChatContext(scope: TestingChatScope, comparison
   for(const campaign of data.campaigns.filter(c=>chosen(c.name))){add('reddit',campaign.name,campaign);for(const group of campaign.groups)for(const ad of group.activeAds)links.push({label:ad.name,entityId:ad.adId,href:`/bluevua/testing/reddit/${group.adGroupId}?${query}#ad-${ad.adId}`});}
  })());
  if(wanted('edm')&&scope.channel!=='concluded')tasks.push((async()=>{const data=await getEdmTestingData(input);exactPeriod(data.period);for(const campaign of data.campaigns.filter(c=>chosen(c.campaignName))){add('edm',campaign.campaignName,campaign);links.push({label:campaign.campaignName,href:`/bluevua/testing/edm?${query}`});}})());
- if(scope.channel==='social')tasks.push((async()=>{const data=await getSocialPerformance();add('social','social-selected-posts',{...data,metric_period:'Lifetime, independent of reporting selector'});for(const post of data.posts)links.push({label:post.caption.slice(0,80)||post.code,entityId:post.code,href:post.url});})());
+ if(scope.channel==='social')tasks.push((async()=>{const data=await getSocialPerformance();if(scope.period.label.toLowerCase().startsWith('lifetime'))add('social','social-selected-posts',{...data,metric_period:'Lifetime'});else{const paid=await fetchSocialPaidForPeriod(data.posts,input);add('social','social-selected-posts',{period:input,posts:paid,metric_period:'Paid in selected period; Organic historical period metrics unavailable'});gaps.push('Organic historical period metrics are unavailable; do not use cumulative values for the selected period.');}for(const post of data.posts)links.push({label:post.caption.slice(0,80)||post.code,entityId:post.code,href:post.url});})());
  if(scope.channel==='concluded'||scope.period.concludedTestId)tasks.push((async()=>{for(const definition of concludedTestsForChannel('Google Search').filter(t=>chosen(t.campaignName))){const snapshot=await readConcludedSnapshot(definition.id);if(!snapshot?.finalized)continue;if(scope.campaign&&(snapshot.report.period?.start!==input.start||snapshot.report.period.end!==input.end))throw Error('Select the finalized test lifetime.');add('concluded',definition.campaignName,{definition,report:snapshot.report,dailyGroups:snapshot.dailyGroups});links.push({label:definition.name,href:'/bluevua/testing/concluded/google-search'});if(definition.resourcesHref)links.push({label:'Google Drive · Test materials',href:definition.resourcesHref});}})());
  const results=await Promise.allSettled(tasks);results.forEach(result=>{if(result.status==='rejected')gaps.push(result.reason instanceof Error?result.reason.message:'Channel data unavailable');});
  if(!tests.length)throw Error(gaps[0]||'The selected campaign has no available data for this scope.');

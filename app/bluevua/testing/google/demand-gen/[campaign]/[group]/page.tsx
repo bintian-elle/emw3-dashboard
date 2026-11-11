@@ -1,3 +1,4 @@
+import {localTestingThumbnail} from '@/lib/testing-thumbnail';
 import {orderTestingMetrics} from "@/lib/testing-metric-order";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -18,7 +19,7 @@ function value(input:number|null,format:"currency"|"decimal"|"percent"|"roas"){i
 type SearchParams={period?:string|string[];start?:string|string[];end?:string|string[];returnTo?:string|string[]};
 
 function AdThumbnail({ad,mediaType}:{ad:DemandGenAd;mediaType:"image"|"video"}) {
-  const content=<>{ad.previewUrl?<Image src={ad.previewUrl} alt={ad.name} fill sizes="80px" className={styles.thumbnailImage} />:mediaType==="image"?<ImageIcon aria-hidden />:<CirclePlay aria-hidden />}{ad.videoUrl&&<span className={styles.play}><Play aria-hidden /></span>}</>;
+  const content=<>{ad.previewUrl?<Image unoptimized src={localTestingThumbnail(ad.previewUrl)!} alt={ad.name} fill sizes="80px" className={styles.thumbnailImage} />:mediaType==="image"?<ImageIcon aria-hidden />:<CirclePlay aria-hidden />}{ad.videoUrl&&<span className={styles.play}><Play aria-hidden /></span>}</>;
   return <span className={styles.thumbnail}>{content}</span>;
 }
 

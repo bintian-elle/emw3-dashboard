@@ -8,5 +8,5 @@ Type=oneshot
 User=ubuntu
 WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
 Environment=NODE_ENV=production
-ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/concluded-test-snapshots.mjs
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/testing-refresh/report-task.mjs concluded
 UMask=0077

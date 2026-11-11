@@ -1,4 +1,5 @@
-export const instagramPostCodes=["Dc_e4Z-BK5c","DdEoeBPAfCh","DdHC5tMlDYj","DdJyCDsAEhZ","DdWfe6gm0qZ","Ddbq5u9m4MQ","Ddg4Hnzz8sr","DdmD9fETqmA","DdwXrfWT7ci","Dd9OpQ6FI6x"] as const;
+import postMetadata from './instagram-post-metadata.ts';
+export const instagramPostCodes=["Dc_e4Z-BK5c","DdEoeBPAfCh","DdHC5tMlDYj","DdJyCDsAEhZ","DdWfe6gm0qZ","Ddbq5u9m4MQ","Ddg4Hnzz8sr","DdmD9fETqmA","DdwXrfWT7ci","Dd9OpQ6FI6x","DeXHEJtviEW","Deeslonv6bA","De17FAyzMUU","DfAPwh3ztBl"] as const;
 export const socialMetrics=["views","reach","likes","comments","shares","saved","follows"] as const;
 export type SocialMetric=(typeof socialMetrics)[number];
 export type SocialPost={code:string;id?:string;url:string;caption:string;publishedAt:string|null;mediaType:string|null;thumbnailUrl:string|null;metrics:Record<SocialMetric,number|null>;paid?:{metrics:Record<SocialMetric,number|null>;adCount:number;status:"available"|"unavailable"};status:"available"|"partial"|"unavailable"};
@@ -6,3 +7,7 @@ export type MediaInsight={name:string;values?:Array<{value:unknown}>;total_value
 export function insightValues(rows:MediaInsight[]):Record<SocialMetric,number|null>{
  return Object.fromEntries(socialMetrics.map(metric=>{const row=rows.find(item=>item.name===metric);const raw=row?.total_value?.value??row?.values?.[0]?.value;return [metric,typeof raw==="number"&&Number.isFinite(raw)?raw:null];})) as Record<SocialMetric,number|null>;
 }
+
+/** Post identities are bundled locally; metrics continue to come from the published snapshot. */
+export const cachedInstagramPosts:SocialPost[]=postMetadata.map(post=>({...post,metrics:insightValues([]),status:'unavailable'}));
+export function cachedInstagramThumbnail(code:string){return postMetadata.find(post=>post.code===code)?.thumbnailUrl??null;}

@@ -66,7 +66,7 @@ export function useTestingPageShareScope(){return useContext(Context)?.pageScope
 export function useTestingAiScope(channel:string|undefined,campaign:string|undefined,period:ReadoutPeriod|null|undefined,pageContext?:string){
  const context=useContext(Context),id=useId(),page=usePathname();
  const mapped=channel?.startsWith('reddit')?'reddit':channel as TestingChatChannel|undefined;
- const normalizedPeriod=mapped==='social'?{label:'Lifetime snapshot',start:'2026-09-01',end:new Date().toISOString().slice(0,10)}:period;
+ const normalizedPeriod=period;
  const serialized=JSON.stringify(normalizedPeriod&&mapped?{channel:normalizedPeriod.concludedTestId?'concluded':mapped,...(campaign&&campaign!=='overview'?{campaign}:{}),period:normalizedPeriod,page,...(pageContext?{pageContext}:{})}:null);
  const register=context?.register;
  useEffect(()=>{const scope=JSON.parse(serialized) as TestingChatScope|null;if(scope&&register)return register(id,scope);},[serialized,register,id]);
@@ -88,7 +88,7 @@ export function TestingAiProvider({owner,children}:{owner:string;children:ReactN
  const fallbackPeriod=resolveTestingPeriod(testingLatestCompleteDate(),{preset:requestedPeriod as 'lastWeek',start:params.get('start')??undefined,end:params.get('end')??undefined});
  const basePeriod=pageEntries.find(s=>s.channel==='overview')?.period??pageEntries[0]?.period??{label:requestedPeriod,...fallbackPeriod};
  const socialPeriod={label:'Lifetime',start:'2026-09-01',end:new Date().toISOString().slice(0,10)};
- const selectedPeriod=pageChannel==='social'?socialPeriod:basePeriod;
+ const selectedPeriod=pageChannel==='social'&&(!params.get('period')||params.get('period')==='lifetime')?socialPeriod:basePeriod;
  const periodStart=selectedPeriod.start,periodEnd=selectedPeriod.end,periodLabel=selectedPeriod.label,concludedTestId='concludedTestId' in selectedPeriod?selectedPeriod.concludedTestId as string|undefined:undefined;
  const detailCampaign=/\/testing\/(?:meta|reddit)\/[^/]+|\/testing\/google\/(?:search|pmax|demand-gen)\/[^/]+/.test(pathname)?pageEntries.find(entry=>entry.campaign)?.campaign:undefined;
  const pageScope:TestingChatScope={channel:concludedTestId?'concluded':pageChannel,...(detailCampaign?{campaign:detailCampaign}:{}),period:{start:periodStart,end:periodEnd,label:periodLabel,...(concludedTestId?{concludedTestId}:{})},page:pathname};

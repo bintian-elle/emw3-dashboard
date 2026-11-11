@@ -11,6 +11,7 @@ import {testingCampaignAnchor,withTestingReturnTo} from '@/lib/testing-navigatio
 import TestingLink from './testing-link';
 import {TestingChannelBrand} from './testing-channel-brand';
 import {TestReadout} from './test-readout';
+import {CampaignStatusChip} from './campaign-status-chip';
 import {NovaButton,NovaCard,NovaTable,NovaTableBody,NovaTableCell,NovaTableHead,NovaTableHeader,NovaTableRow} from './nova-preview-ui';
 import styles from './nova-google-expanded.module.css';
 
@@ -25,7 +26,7 @@ export function NovaExpandedGate({data,returnTo}:{children:ReactNode;data:Expand
 function NovaRows({rows,data,parent,periodQuery}:{rows:ExpandedTestRow[];data:ExpandedTestingData;parent:string;periodQuery:string}){
  const [sorting,setSorting]=useState<SortingState>([{id:'roas',desc:true}]),pmax=data.channel==='pmax';
  const defs=useMemo<ColumnDef<ExpandedTestRow>[]>(()=>[
-  {id:'name',header:pmax?'Asset group':'Ad',enableSorting:false,cell:({row})=><div className={styles.assetName}><TestingLink prefetch={false} href={withTestingReturnTo(`/bluevua/testing/google/${data.channel}/${row.original.id}${periodQuery}`,parent)}>{row.original.name}</TestingLink><span className={styles.status} data-enabled={row.original.status==='ENABLED'}>{row.original.status}</span></div>},
+  {id:'name',header:pmax?'Asset group':'Ad',enableSorting:false,cell:({row})=><div className={styles.assetName}><TestingLink prefetch={false} href={withTestingReturnTo(`/bluevua/testing/google/${data.channel}/${row.original.id}${periodQuery}`,parent)}>{row.original.name}</TestingLink><CampaignStatusChip status={row.original.status}/></div>},
   ...columns.map(column=>({id:column.key,accessorFn:(row:ExpandedTestRow)=>row.metrics[column.key as keyof GoogleAdMetrics]??undefined,header:column.label,sortUndefined:'last' as const,cell:({row}:{row:{original:ExpandedTestRow}})=><>{format(row.original.metrics,column.key)}<ComparisonDelta entity={`google-${data.channel}:${row.original.id}`} metric={column.key} value={row.original.metrics[column.key as keyof GoogleAdMetrics]}/></>})),
  ],[data.channel,parent,periodQuery,pmax]);
  const table=useReactTable({data:rows,columns:defs,state:{sorting},onSortingChange:setSorting,getCoreRowModel:getCoreRowModel(),getSortedRowModel:getSortedRowModel(),enableSortingRemoval:true});
@@ -38,7 +39,7 @@ function NovaExpanded({data,returnTo}:{data:ExpandedTestingData;returnTo?:string
  for(const key of ['period','start','end','compare','compareStart','compareEnd']){const value=parentParams.get(key);if(value)periodParams.set(key,value);}
  const periodQuery=periodParams.size?`?${periodParams}`:'';
  return <div className={styles.campaigns}>{data.campaigns.map(campaign=><NovaCard key={campaign.id} className={styles.campaign} id={testingCampaignAnchor(`google-${data.channel}`,campaign.name)}>
-  <header className={styles.campaignHeader}><div className={styles.campaignIdentity}><span className={styles.brand}><TestingChannelBrand name={pmax?'Google PMAX':'Google Demand Gen'}/></span><div><div className={styles.eyebrow}>GOOGLE · {pmax?'PMAX':'DEMAND GEN'} <span className={styles.status} data-enabled={campaign.status==='ENABLED'}>{campaign.status}</span></div><h2>{campaign.name}</h2></div></div><span className={styles.period}>{data.periodLabel} · {date(data.period.start)} – {date(data.period.end)}</span></header>
+  <header className={styles.campaignHeader}><div className={styles.campaignIdentity}><span className={styles.brand}><TestingChannelBrand name={pmax?'Google PMAX':'Google Demand Gen'}/></span><div><div className={styles.eyebrow}>GOOGLE · {pmax?'PMAX':'DEMAND GEN'} <CampaignStatusChip status={campaign.status}/></div><h2>{campaign.name}</h2></div></div><span className={styles.period}>{data.periodLabel} · {date(data.period.start)} – {date(data.period.end)}</span></header>
   <TestReadout channel={pmax?'google-pmax':'google-demand-gen'} testIdentity={campaign.name} period={{label:data.periodLabel,...data.period}}>{(pmax?[{id:campaign.id,name:campaign.name,rows:campaign.groups.flatMap(group=>group.rows)}]:campaign.groups).map(group=><div key={group.id}>{!pmax&&<h3 className={styles.groupName}>Ad group · {group.name}</h3>}<NovaRows rows={group.rows} data={data} parent={parent} periodQuery={periodQuery}/></div>)}</TestReadout>
  </NovaCard>)}{!data.campaigns.length&&<NovaCard className={styles.empty}>No matching content testing assets are available.</NovaCard>}</div>;
 }

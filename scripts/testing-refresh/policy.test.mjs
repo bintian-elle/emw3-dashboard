@@ -9,7 +9,8 @@ test('only retries other channels in the 05:00 window, with no third API attempt
  assert.equal(dueAttempt({attempts:1,lastAttempt:'2026-10-28T08:00:05Z'},5,4,now),true);
  assert.equal(dueAttempt({attempts:1,lastAttempt:'2026-10-28T09:00:05Z'},5,4,now),false);
  assert.equal(dueAttempt({attempts:2},5,4,now),false);assert.equal(dueAttempt({attempts:1},6,4,now),false);
- assert.equal(dueAttempt({attempts:1},6,5,now,'google'),false);
+ assert.equal(dueAttempt({attempts:1},6,5,now,'google'),true);
+ assert.equal(dueAttempt({attempts:4},8,5,now,'google'),false);
 });
 test('refreshes every required period and both lifetime sources',()=>{
  const plan=collectionPlan();assert.equal(plan.length,11);assert.ok(plan.some(i=>i.key==='reddit:sinceSep24'));

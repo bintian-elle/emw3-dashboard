@@ -58,6 +58,8 @@ if [[ "$healthy" != 1 ]]; then
   echo "Application health check failed. Existing build directories were preserved." >&2
   exit 1
 fi
+echo "6. Synchronizing installed Dashboard schedules and failure alerts..."
+bash scripts/sync-dashboard-schedules.sh
 pm2 save
 node scripts/prune-release-builds.mjs "$build_dir"
 echo "=== Deployment completed ==="

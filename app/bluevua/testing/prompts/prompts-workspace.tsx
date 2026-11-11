@@ -74,7 +74,7 @@ function PromptConsumers({selected}:{selected:PromptId}){
  const global=['translation','ask-ai'].includes(selected);
  const items=inventory.items.filter(item=>global||item.channelKey===selected||(selected==='readability'&&['google-search','google-pmax'].includes(item.channelKey)));
  if(selected==='overview')return <p className={styles.muted}><Link href="/bluevua/testing" target="_blank" rel="noopener noreferrer">{zh?'使用位置：Overview 执行摘要与跨渠道建议':'Used by: Overview executive summary and cross-channel recommendations'}</Link></p>;
- if(selected==='social-media')return <p className={styles.muted}><Link href="/bluevua/testing/social" target="_blank" rel="noopener noreferrer">{zh?'使用位置：Social Media 的 10 条 Posts lifetime 分析':'Used by: Social Media lifetime analysis of the 10 selected Posts'}</Link></p>;
+ if(selected==='social-media')return <p className={styles.muted}><Link href="/bluevua/testing/social" target="_blank" rel="noopener noreferrer">{zh?'使用位置：Social Media 所选帖子的 lifetime 分析':'Used by: Social Media lifetime analysis of the selected Posts'}</Link></p>;
  return <details className={styles.consumers} open={items.length<=3}><summary>{zh?'对应的分析页面与 Campaign':'Related insight pages and Campaigns'} · {items.length}</summary>{selected==='readability'&&<p className={styles.muted}>{zh?'用于本地表达试稿及本页的 Readability 试跑，尚未替换正式日更表达。':'Used for presentation trials and Readability previews here; production presentation is unchanged.'}</p>}<ul>{items.map(item=><li key={item.id}><Link href={item.href} target="_blank" rel="noopener noreferrer">{item.name}</Link></li>)}</ul></details>;
 }
 

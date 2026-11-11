@@ -11,7 +11,7 @@ Environment=NODE_ENV=production
 Environment=DEPLOYMENT_ENV=production
 Environment=PYTHONPATH=/home/ubuntu/work/anc-slack-bridge/src
 Environment=CONTENT_TESTING_PYTHON=/home/ubuntu/work/anc-slack-bridge/.venv/bin/python
-ExecStart=/opt/node-v24.21.0-linux-x64/bin/node --experimental-strip-types scripts/content-testing/scheduled-runner.mjs
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/testing-refresh/report-task.mjs reports
 TimeoutStartSec=20h
 Nice=10
 UMask=0077

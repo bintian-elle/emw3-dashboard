@@ -27,8 +27,7 @@
 .identity strong { font-size:.75rem; font-weight:550; overflow-wrap:anywhere; }
 .identity > span { color:var(--nova-muted,#68717e); font-size:.65rem; font-weight:400; }
 .separator { padding-inline:.2rem; opacity:.65; }
-.statusBadge { display:inline-flex; align-items:center; gap:.3rem; padding:.12rem .4rem; border-radius:999px; font-size:.625rem; font-weight:500; line-height:1.25; vertical-align:middle; color:#555f6f; background:#edf0f4; }
-.statusDot { width:.3rem; height:.3rem; flex:none; border-radius:50%; background:currentColor; }
+.statusBadge { display:inline-flex; align-items:center; gap:.3rem; padding:.12rem .4rem; border-radius:999px; font-size:.625rem; font-weight:500; line-height:1.25; letter-spacing:0; vertical-align:middle; color:#555f6f; background:#edf0f4; }
 .statusBadge[data-tone="active"] { color:#14663d; background:#e5f5eb; }
 .statusBadge[data-tone="paused"] { color:#855808; background:#fcf1d3; }
 .statusBadge[data-tone="sent"] { color:#175a96; background:#e8f2ff; }
