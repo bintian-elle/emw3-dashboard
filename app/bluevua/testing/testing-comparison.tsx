@@ -41,7 +41,14 @@ export function TestingComparisonControls({children,reportingRange}:{children:Re
  const [pending,startTransition]=useTransition(),[custom,setCustom]=useState<'main'|'compare'|null>(null);
  const latest=testingLatestCompleteDate(),current=(path.startsWith('/bluevua/testing/reddit')&&(!query.get('period')||query.get('period')==='sinceSep24')?reportingRange??redditContentPeriod():resolveTestingPeriod(latest,{preset:(query.get('period')??'lastWeek') as TestingPeriodInput['preset'],start:query.get('start')??undefined,end:query.get('end')??undefined}));
  const compare=query.get('compare')??'previousPeriod',previous=comparisonRange(current,compare,latest,{start:query.get('compareStart')??current.start,end:query.get('compareEnd')??current.end});
- if(!context.enabled)return <>{children}</>;
+ if(!context.enabled){
+  if(path==='/bluevua/testing/social'){
+   const lifetime=!query.get('period')||query.get('period')==='lifetime';
+   const range=lifetime?reportingRange:current;
+   return <div className={styles.controls} data-comparison-controls><div className={styles.picker}>{children}<span className={styles.dates}>{range?`${range.start} – ${range.end}`:'—'}</span></div></div>;
+  }
+  return <>{children}</>;
+ }
  const update=(next:URLSearchParams)=>startTransition(()=>router.replace(`${path}?${next}`,{scroll:false}));
  const setRange=(which:'main'|'compare',range:ComparisonRange)=>{
   const next=new URLSearchParams(query.toString());

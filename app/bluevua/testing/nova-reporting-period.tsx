@@ -28,7 +28,7 @@ export function useNovaPeriodDraft(period:string|null,startParam:string|null,end
 export function NovaReportingPeriodSelect({value,onValueChange,disabled,id,ariaLabel,options=novaReportingPeriods}:{value:string;onValueChange:(value:string)=>void;disabled?:boolean;id?:string;ariaLabel:string;options?:readonly NovaPeriodOption[]}){
  const {language}=useSiteLanguage();
  const zhLabels:Record<string,string>={lastWeek:'上周（周二至周一）',wtd:'本周至今',mtd:'本月至今',ytd:'今年至今',last7:'最近 7 天',last30:'最近 30 天',last90:'最近 90 天',custom:'自定义',sinceSep24:'全周期（2026 年 9 月 24 日至今）',lifetime:'全周期'};
- const display=(key:string,label:string)=>language==='zh'?(zhLabels[key]??label):label;
+ const display=(key:string,label:string)=>language==='zh'?(key==='lifetime'&&label!=='Lifetime'?label:zhLabels[key]??label):label;
  const selected=options.find(([option])=>option===value)??options.find(([option])=>option==='lastWeek')??options[0];
  return <Select.Root value={selected?.[0]} onValueChange={onValueChange} disabled={disabled}><Select.Trigger id={id} className={styles.selectTrigger} aria-label={ariaLabel}><Select.Value>{selected&&display(selected[0],selected[1])}</Select.Value><Select.Icon><ChevronDown/></Select.Icon></Select.Trigger><Select.Portal><Select.Content position="popper" className={styles.selectContent}><Select.Viewport>{options.map(([option,label])=><Select.Item key={option} value={option} className={styles.selectItem}><Select.ItemText>{display(option,label)}</Select.ItemText><Select.ItemIndicator><Check/></Select.ItemIndicator></Select.Item>)}</Select.Viewport></Select.Content></Select.Portal></Select.Root>;
 }
