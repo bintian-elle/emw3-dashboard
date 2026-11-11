@@ -7,7 +7,7 @@ import localAssets from './testing-insight-assets-local.json';
 import {creativeNamesIndex,externalizeCreativeNames,restoreCreativeNames} from './testing-creative-materials';
 const localCreativeNames=creativeNamesIndex(localAssets);
 export function restoreTestingMaterials<T>(channel:TestingDataChannel,payload:T):T{return restoreCreativeNames(channel,channel==='social'?restoreSocialMaterials(payload):payload,localCreativeNames);}
-function externalizeTestingMaterials<T>(channel:TestingDataChannel,payload:T):T{return localizeSnapshotThumbnails(externalizeCreativeNames(channel,channel==='social'?externalizeSocialMaterials(payload):payload,localCreativeNames),localTestingThumbnail);}
+export function externalizeTestingMaterials<T>(channel:TestingDataChannel,payload:T):T{return localizeSnapshotThumbnails(externalizeCreativeNames(channel,channel==='social'?externalizeSocialMaterials(payload):payload,localCreativeNames),localTestingThumbnail);}
 import {Pool,type PoolClient} from 'pg';
 import {equivalentTestingDataScopes,testingDataSnapshotKey,type TestingDataChannel,type TestingDataInput} from './testing-data-cache-contract';
 import {publishTestingData,type TestingDataPublishOptions} from './testing-data-publication';

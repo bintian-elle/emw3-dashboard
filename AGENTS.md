@@ -11,3 +11,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 # Website design
 
 For every page or UI change, read and follow the repository-root [`design.md`](./design.md), including its component, theme, typography, interaction, and accessibility rules. Keep the rules in that document up to date when the design system changes.
+
+# Campaign and post data
+
+When adding a Campaign or post, integrate it with the existing production data sources, identifiers, cache coverage, refresh and reporting flows, and page behavior. Validate the real shared-cache/API path and production-equivalent rendering for every new item; a local preview or bundled metadata alone is not sufficient. Preserve existing cached data on failed refreshes, and verify the deployed result when deployment is requested.

@@ -1,5 +1,5 @@
 import "server-only";
-import {readTestingDataSnapshot} from "@/lib/testing-data-cache";
+import {externalizeTestingMaterials,readTestingDataSnapshot,readTestingDataSnapshotStatus,withTestingDataClient} from "@/lib/testing-data-cache";
 import {connection} from "next/server";
 import {readFile} from "node:fs/promises";
 import path from "node:path";
@@ -7,6 +7,7 @@ import {matchesInstagramPost,paidInstagramMetrics,type PaidInsight,type Instagra
 import {instagramPostCodes,insightValues,socialMetrics,cachedInstagramPosts,type SocialPost,type MediaInsight} from "@/lib/instagram-posts";
 import {fetchInstagramInsights,InstagramUnsupportedMetric,isInstagramUnsupportedMetric} from "@/lib/testing-social-insights";
 import {isSocialSnapshot} from "@/lib/testing-social-snapshot";
+import {repairSocialCoverage,type SocialCoverageQuery} from "@/lib/testing-social-coverage";
 
 type Snapshot={version?:number;capturedAt:string;posts:SocialPost[]};
 export type SocialPerformance=Snapshot&{stale:boolean;error:boolean};
@@ -56,11 +57,22 @@ export async function getSocialPerformance():Promise<SocialPerformance>{
   const stale=!Number.isFinite(Date.parse(cached.capturedAt))||Date.now()-Date.parse(cached.capturedAt)>=ttl;
   return withSelectedPosts({...cached,stale,error:false});
  }
- return {capturedAt:"",posts:instagramPostCodes.map(emptyPost),stale:false,error:true};
+ return {capturedAt:"",posts:cachedInstagramPosts.map(post=>({...post})),stale:false,error:true};
 }
 function withSelectedPosts(snapshot:SocialPerformance):SocialPerformance{
  const byCode=new Map(snapshot.posts.map(post=>[post.code,post]));
- return {...snapshot,posts:instagramPostCodes.map(code=>byCode.get(code)??emptyPost(code))};
+ const local=new Map(cachedInstagramPosts.map(post=>[post.code,post]));
+ return {...snapshot,posts:instagramPostCodes.map(code=>byCode.get(code)??local.get(code)??emptyPost(code))};
+}
+
+/** Only missing coverage triggers a shared, rate-limited repair; old data remains visible. */
+export async function repairMissingSocialCoverage(){
+ const result=await withTestingDataClient(client=>{
+  const query:SocialCoverageQuery=async(sql,values)=>{const response=await client.query(sql,values);return {rows:response.rows};};
+  return repairSocialCoverage(query,refresh,payload=>externalizeTestingMaterials('social',payload));
+ });
+ if(result.status==='updated')await readTestingDataSnapshotStatus('social').catch(()=>null);
+ return result;
 }
 
 async function adCreatives(ids:string[]){
