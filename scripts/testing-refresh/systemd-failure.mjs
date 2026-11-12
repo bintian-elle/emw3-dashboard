@@ -6,6 +6,7 @@ import path from 'node:path';
 import {easternClock} from './policy.mjs';
 import {notifyTesting} from './notifications.mjs';
 import {failureAlreadyReported,failureMessage,monitoredTasks} from './systemd-failure-policy.mjs';
+import {trackingFailureDetails,trackingNoticeDirectory} from '../website-tracking-notices.mjs';
 
 const service=process.argv[2];
 if(!Object.hasOwn(monitoredTasks,service))throw Error('Unknown scheduled task');
@@ -26,5 +27,9 @@ const key=createHash('sha256').update(`${service}:${invocation}`).digest('hex');
 const folder=path.resolve('.state/testing-refresh/systemd-notices');await mkdir(folder,{recursive:true,mode:0o700});
 const marker=path.join(folder,key);
 try{await readFile(marker);process.exit(0);}catch(error){if(error.code!=='ENOENT')throw error;}
-await notifyTesting(failureMessage(service,properties.Result));
+let details='';
+if(service==='emw3-website-tracking-cache.service'){
+ try{details=trackingFailureDetails(JSON.parse(await readFile(path.join(trackingNoticeDirectory(),'status.json'),'utf8')),startedAt);}catch{/* A crash before state persistence still gets the generic alert. */}
+}
+await notifyTesting(failureMessage(service,properties.Result)+(details?`\n失败范围与原因：\n${details}`:''));
 await writeFile(marker,new Date().toISOString(),{mode:0o600,flag:'wx'});

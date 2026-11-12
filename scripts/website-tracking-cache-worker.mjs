@@ -1,4 +1,5 @@
 import nextEnv from '@next/env';
+import {recordTrackingRun} from './website-tracking-notices.mjs';
 nextEnv.loadEnvConfig(process.cwd());
 const {trackingPeriod}=await import('../lib/website-tracking.ts');
 const {readTrackingCache,refreshTrackingCache}=await import('../lib/website-tracking-cache.ts');
@@ -10,19 +11,30 @@ if(process.argv.includes('--check')){
  console.log('Website Tracking cache worker configuration loaded; no GA4 requests submitted.');
 }else{
  const period=trackingPeriod({});
- let refreshed=0,failed=0;
+ let refreshed=0,failed=0;const failures=[];
+ async function collect(device,scope,read,refresh){
+  try{
+   if(await refresh()){refreshed++;return;}
+   const state=await read();
+   if(!state.error&&state.data)return;
+   failed++;failures.push({device,scope,...(state.failure??{code:'refresh_failed'})});
+  }catch(error){
+   const {trackingFailure}=await import('../lib/website-tracking-errors.ts');
+   failed++;failures.push({device,scope,...trackingFailure(error)});
+  }
+ }
  // The shared data tool has a global query lock. Warm scopes sequentially.
  for(const device of ['all','desktop','mobile','tablet']){
-  const state=await readTrackingCache(period,device);
   const scheduled=process.argv.includes('--scheduled');
-  const completed=scheduled||state.needsRefresh?await refreshTrackingCache(period,device,()=>fetchWebsiteTracking(period,device),{force:scheduled}):false;
-  if(completed)refreshed++;
-  else if((await readTrackingCache(period,device)).error)failed++;
+  await collect(device,'overview',()=>readTrackingCache(period,device),async()=>{
+   const state=await readTrackingCache(period,device);
+   return scheduled||state.needsRefresh?refreshTrackingCache(period,device,()=>fetchWebsiteTracking(period,device),{force:scheduled}):false;
+  });
   const scope=trackingPageScope();
-  const pageUpdated=await refreshTrackingPageCache(period,device,scope,()=>fetchTrackingPage(period,device,scope),{force:scheduled});
-  if(pageUpdated)refreshed++;
-  else if((await readTrackingPageCache(period,device,scope)).error)failed++;
+  await collect(device,'collection',()=>readTrackingPageCache(period,device,scope),()=>refreshTrackingPageCache(period,device,scope,()=>fetchTrackingPage(period,device,scope),{force:scheduled}));
  }
- console.log(JSON.stringify({job:'website-tracking-cache',refreshed,failed}));
+ const result={job:'website-tracking-cache',refreshed,failed,failures,period};
+ console.log(JSON.stringify(result));
+ await recordTrackingRun(result);
  if(failed)process.exitCode=1;
 }

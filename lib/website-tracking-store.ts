@@ -3,6 +3,7 @@ import {mkdir,readFile,writeFile,rename,rm} from 'node:fs/promises';
 import path from 'node:path';
 import {acquireTrackingLease} from './website-tracking-lease.ts';
 import {trackingFilter,trackingPeriod,type TrackingPeriod} from './website-tracking.ts';
+import {trackingFailure,reportFailure} from './website-tracking-errors.ts';
 export const CACHE_TTL_MS=60*60*1000;
 const RETRY_MS=5*60*1000;
 // Metadata freshness only; kernel leases protect the complete sequential refresh.
@@ -12,10 +13,10 @@ export type CacheValue={property:string;fetchedAt:string};
 export type CacheContract<T extends CacheValue>={identity:CacheIdentity;complete:(data:T|undefined)=>boolean};
 export type CacheOptions={directory?:string;now?:number;force?:boolean};
 type Snapshot<T>=CacheIdentity&{data:T};
-type Failure={failedAt:number};
+type Failure={failedAt:number;code?:string;reason?:string;section?:string};
 type Owner={pid:number;token:string;startedAt:number};
 function alive(pid:number){try{process.kill(pid,0);return true;}catch(error){return (error as NodeJS.ErrnoException).code==='EPERM';}}
-export type SnapshotState<T>={data?:T;stale:boolean;refreshing:boolean;needsRefresh:boolean;error?:string};
+export type SnapshotState<T>={data?:T;stale:boolean;refreshing:boolean;needsRefresh:boolean;error?:string;failure?:Failure};
 export function snapshotPaths(identity:CacheIdentity,directory=process.env.WEBSITE_TRACKING_CACHE_DIR||path.join(process.cwd(),'.state/website-tracking')){
  trackingPeriod(identity.period);trackingFilter(identity.device);
  const key=createHash('sha256').update(JSON.stringify(identity)).digest('hex');
@@ -33,7 +34,7 @@ export async function readSnapshot<T extends CacheValue>(contract:CacheContract<
  const refreshing=!!owner&&Number.isSafeInteger(owner.pid)&&owner.pid>0&&Number.isFinite(owner.startedAt)&&Date.now()-owner.startedAt<LOCK_TTL_MS&&alive(owner.pid);
  const failedAt=failure?.failedAt;
  const cooldown=typeof failedAt==='number'&&Number.isFinite(failedAt)&&now-failedAt<RETRY_MS;
- return {data,stale,refreshing,needsRefresh:stale&&!refreshing&&!cooldown,...(failedAt&&(!data||failedAt>=Date.parse(data.fetchedAt))?{error:'The background update failed. The last successful data is retained when available.'}:{})};
+ return {data,stale,refreshing,needsRefresh:stale&&!refreshing&&!cooldown,...(failedAt&&(!data||failedAt>=Date.parse(data.fetchedAt))?{error:'The background update failed. The last successful data is retained when available.',failure}:{})};
 }
 async function atomic(file:string,value:unknown){
  const temporary=`${file}.${randomUUID()}.tmp`;
@@ -52,12 +53,17 @@ export async function refreshSnapshot<T extends CacheValue>(contract:CacheContra
 
  try{
   const data=await load();
-  if(!complete(data)||!lease.isHeld())throw Error('Incomplete report or lost lock');
+  if(!complete(data)){
+   const detail=reportFailure(data)??trackingFailure('Incomplete report');
+   if(lease.isHeld())await atomic(files.failure,{failedAt:options.now??Date.now(),...detail} satisfies Failure);
+   return false;
+  }
+  if(!lease.isHeld())throw Error('Refresh lost lock');
   await atomic(files.snapshot,{...identity,data} satisfies Snapshot<T>);
   await rm(files.failure,{force:true});
   return true;
- }catch{
-  if(lease.isHeld())await atomic(files.failure,{failedAt:options.now??Date.now()} satisfies Failure);
+ }catch(error){
+  if(lease.isHeld())await atomic(files.failure,{failedAt:options.now??Date.now(),...trackingFailure(error)} satisfies Failure);
   return false;
  }finally{
   try{if((await json<Owner>(files.owner))?.token===token)await rm(files.owner,{force:true});}finally{await lease.release();}
