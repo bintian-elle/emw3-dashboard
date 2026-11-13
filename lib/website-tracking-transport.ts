@@ -34,16 +34,18 @@ export function trackingExportCommand(file:string,host?:string):Command|null{
 async function execute(command:Command,input:string,timeout:number):Promise<{stdout:string;code:number|null}>{
  return new Promise((resolve,reject)=>{
   const child=spawn(command.file,command.args,{stdio:['pipe','pipe','pipe']});
-  let stdout='',settled=false,killTimer:ReturnType<typeof setTimeout>|undefined;
+  let stdout='',settled=false,inputFailed=false,killTimer:ReturnType<typeof setTimeout>|undefined;
   const terminate=()=>{child.kill('SIGTERM');killTimer=setTimeout(()=>child.kill('SIGKILL'),2000);killTimer.unref();};
   const timer=setTimeout(()=>{terminate();fail(trackingError('query_timeout',{elapsedSeconds:timeout/1000}));},timeout);
   function fail(error:Error){if(settled)return;settled=true;clearTimeout(timer);reject(error);}
   child.on('error',()=>fail(Error('The shared GA4 reporting connection could not be started.')));
-  child.stdin.on('error',()=>fail(Error('The shared GA4 reporting connection closed before receiving the query.')));
+  // A CLI can reject input and exit before consuming stdin. Preserve its JSON
+  // error envelope instead of letting EPIPE race and mask the real failure.
+  child.stdin.on('error',()=>{inputFailed=true;});
   child.stdout.on('data',chunk=>{stdout+=chunk;if(stdout.length>8000000){terminate();fail(Error('GA4 response exceeded the transport limit.'));}});
   // Never expose SSH diagnostics or authentication information in a report.
   child.stderr.resume();
-  child.on('close',code=>{clearTimeout(killTimer);if(settled)return;settled=true;clearTimeout(timer);resolve({stdout,code});});
+  child.on('close',code=>{clearTimeout(killTimer);if(settled)return;if(inputFailed&&!stdout.trim()){fail(Error('The shared GA4 reporting connection closed before receiving the query.'));return;}settled=true;clearTimeout(timer);resolve({stdout,code});});
   child.stdin.end(input);
  });
 }
