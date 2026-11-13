@@ -10,6 +10,8 @@ test('quota formatting includes only allowed quota, limits and official retry ti
  const text=formatTrackingQuota(quota);assert.match(text,/服务器错误/);assert.match(text,/=10/);assert.match(text,/120 秒/);assert.match(text,/美东时间/);assert.doesNotMatch(text,/SECRET|Bearer|projects/);
  assert.match(formatTrackingQuota(undefined),/Google 未明确返回.*Google 未提供重试时间/);
  assert.equal(sanitizeTrackingQuota({retryAfterSeconds:Infinity,retrySource:'SECRET'})?.retryProvided,false);
+ const future=formatTrackingQuota({categories:[],metrics:['analyticsdata.googleapis.com/new_requests_per_hour','https://SECRET'],limitNames:['NewRequestsPerHour'],namedLimits:[{name:'NewRequestsPerHour',limit:250}],consumer:'projects/SECRET'});
+ assert.match(future,/new_requests_per_hour/);assert.match(future,/NewRequestsPerHour=250/);assert.match(future,/暂未归类/);assert.doesNotMatch(future,/SECRET|projects/);
 });
 test('quota evidence survives CLI error -> reader -> retained cache -> Slack alert',async()=>{
  const directory=await mkdtemp(join(tmpdir(),'tracking-quota-'));const now=Date.now(),period={start:'2026-11-01',end:'2026-11-07'};
