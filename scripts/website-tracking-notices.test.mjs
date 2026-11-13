@@ -28,3 +28,8 @@ test('alerts contain precise safe GA4 cause and numeric queue timing only',()=>{
  const text=trackingFailureDetails({failed:1,updatedAt:new Date().toISOString(),failures:[{device:'all',scope:'overview',code:'queue_timeout',section:'overview',queueWaitSeconds:45.429,elapsedSeconds:120.001,httpStatus:429,reason:'SECRET Bearer private'}]},0);
  assert.match(text,/queue_timeout/);assert.match(text,/排队 45.4s/);assert.match(text,/总耗时 120s/);assert.match(text,/HTTP 429/);assert.doesNotMatch(text,/SECRET|Bearer|private/);
 });
+
+test('retained quota on a later 502 is explicitly identified as the previous 429',()=>{
+ const text=trackingFailureDetails({failed:1,updatedAt:new Date().toISOString(),failures:[{device:'all',scope:'collection',code:'upstream_unavailable',httpStatus:502,quota:{categories:['concurrentRequests']}}]},0);
+ assert.match(text,/HTTP 502.*先前 429.*并发请求/);
+});

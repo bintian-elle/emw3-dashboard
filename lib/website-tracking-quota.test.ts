@@ -11,6 +11,7 @@ test('quota formatting includes only allowed quota, limits and official retry ti
  assert.match(formatTrackingQuota(undefined),/Google 未明确返回.*结构化重试时间.*Google 未提供/);
  const explained=formatTrackingQuota({googleMessage:'Server errors quota for project SECRET and property 123456 exceeded. Bearer abc123 contact secret@example.com'});
  assert.match(explained,/Server errors quota/);assert.doesNotMatch(explained,/SECRET|123456|abc123|secret@example.com/);
+ assert.doesNotMatch(formatTrackingQuota({googleMessage:'Concurrent requests quota exceeded; SECRET'}),/SECRET/);
  assert.equal(sanitizeTrackingQuota({retryAfterSeconds:Infinity,retrySource:'SECRET'})?.retryProvided,false);
  const future=formatTrackingQuota({categories:[],metrics:['analyticsdata.googleapis.com/new_requests_per_hour','https://SECRET'],limitNames:['NewRequestsPerHour'],namedLimits:[{name:'NewRequestsPerHour',limit:250}],consumer:'projects/SECRET'});
  assert.match(future,/new_requests_per_hour/);assert.match(future,/NewRequestsPerHour=250/);assert.match(future,/暂未归类/);assert.doesNotMatch(future,/SECRET|projects/);
