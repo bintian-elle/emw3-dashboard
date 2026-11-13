@@ -1,5 +1,6 @@
 import nextEnv from '@next/env';
 import {recordTrackingRun} from './website-tracking-notices.mjs';
+import {trackingRefreshCircuit} from './website-tracking-circuit.mjs';
 nextEnv.loadEnvConfig(process.cwd());
 const {trackingPeriod}=await import('../lib/website-tracking.ts');
 const {readTrackingCache,refreshTrackingCache}=await import('../lib/website-tracking-cache.ts');
@@ -11,16 +12,18 @@ if(process.argv.includes('--check')){
  console.log('Website Tracking cache worker configuration loaded; no GA4 requests submitted.');
 }else{
  const period=trackingPeriod({});
- let refreshed=0,failed=0;const failures=[];
+ let refreshed=0,failed=0;const failures=[],circuit=trackingRefreshCircuit();
  async function collect(device,scope,read,refresh){
+  const skipped=circuit.skipped(device,scope);
+  if(skipped){failed++;failures.push(skipped);return;}
   try{
    if(await refresh()){refreshed++;return;}
    const state=await read();
    if(!state.error&&state.data)return;
-   failed++;failures.push({device,scope,...(state.failure??{code:'refresh_failed'})});
+   failed++;failures.push(circuit.failure(device,scope,state.failure??{code:'refresh_failed'}));
   }catch(error){
    const {trackingFailure}=await import('../lib/website-tracking-errors.ts');
-   failed++;failures.push({device,scope,...trackingFailure(error)});
+   failed++;failures.push(circuit.failure(device,scope,trackingFailure(error)));
   }
  }
  // The shared data tool has a global query lock. Warm scopes sequentially.
