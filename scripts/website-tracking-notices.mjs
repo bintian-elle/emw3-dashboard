@@ -23,6 +23,7 @@ export function trackingFailureDetails(state,startedAt){
  if(!state?.failed||Date.parse(state.updatedAt)<startedAt||!Array.isArray(state.failures))return '';
  // Revalidate persisted values before sending them outside the host.
  const devices=new Set(['all','desktop','mobile','tablet','worker']);
- const reasons=new Set(['query_timeout','incomplete_report','property_mismatch','invalid_response','connection_or_tool_failure','upstream_unavailable','refresh_lock_lost','refresh_failed']);
- return state.failures.slice(0,8).map(f=>`${devices.has(f.device)?f.device:'worker'} / ${['overview','collection'].includes(f.scope)?f.scope:'refresh'}: ${reasons.has(f.code)?f.code:'refresh_failed'}${/^[a-zA-Z.]{1,80}$/.test(f.section??'')?` (${f.section})`:''}`).join('\n');
+ const reasons=new Set(['queue_timeout','query_timeout','rate_limited','authentication_failed','permission_denied','network_error','incomplete_report','property_mismatch','invalid_response','connection_or_tool_failure','upstream_unavailable','refresh_lock_lost','refresh_failed']);
+ const timing=(name,value)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=3600?` · ${name} ${Math.round(value*10)/10}s`:'';
+ return state.failures.slice(0,8).map(f=>`${devices.has(f.device)?f.device:'worker'} / ${['overview','collection'].includes(f.scope)?f.scope:'refresh'}: ${reasons.has(f.code)?f.code:'refresh_failed'}${/^[a-zA-Z.]{1,80}$/.test(f.section??'')?` (${f.section})`:''}${timing('排队',f.queueWaitSeconds)}${timing('总耗时',f.elapsedSeconds)}${Number.isInteger(f.httpStatus)&&f.httpStatus>=100&&f.httpStatus<=599?` · HTTP ${f.httpStatus}`:''}`).join('\n');
 }

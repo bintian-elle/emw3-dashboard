@@ -8,7 +8,7 @@ import {refreshTrackingCache,readTrackingCache,trackingCachePaths} from './websi
 test('diagnostics classify known errors without persisting arbitrary text',()=>{
  assert.equal(trackingFailure(Error('GA4 query timed out. Bearer SECRET')).code,'query_timeout');
  assert.doesNotMatch(JSON.stringify(trackingFailure(Error('password=SECRET https://private'))),/SECRET|https/);
- assert.deepEqual(reportFailure({features:{coupons:{error:'GA4 query timed out. password=SECRET'}}}),{code:'query_timeout',reason:'GA4 query exceeded its time limit.',section:'features.coupons'});
+ assert.deepEqual(reportFailure({features:{coupons:{error:'GA4 query timed out. password=SECRET'}}}),{code:'query_timeout',reason:'GA4 query exceeded its execution time limit.',section:'features.coupons'});
 });
 test('failed report records section and category, preserves exact good snapshot, successful refresh clears failure',async()=>{
  const directory=await mkdtemp(path.join(tmpdir(),'tracking-diagnostics-'));

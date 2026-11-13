@@ -23,3 +23,8 @@ test('failure details reject stale records and cannot expose arbitrary persisted
  const text=trackingFailureDetails(state,0);assert.match(text,/mobile \/ overview: query_timeout \(actions\)/);assert.doesNotMatch(text,/secret|private|Bearer/);
  assert.equal(trackingFailureDetails(state,Date.now()+1000),'');
 });
+
+test('alerts contain precise safe GA4 cause and numeric queue timing only',()=>{
+ const text=trackingFailureDetails({failed:1,updatedAt:new Date().toISOString(),failures:[{device:'all',scope:'overview',code:'queue_timeout',section:'overview',queueWaitSeconds:45.429,elapsedSeconds:120.001,httpStatus:429,reason:'SECRET Bearer private'}]},0);
+ assert.match(text,/queue_timeout/);assert.match(text,/排队 45.4s/);assert.match(text,/总耗时 120s/);assert.match(text,/HTTP 429/);assert.doesNotMatch(text,/SECRET|Bearer|private/);
+});

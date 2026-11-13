@@ -36,3 +36,19 @@ test('a failed report with property metadata cannot be displayed as zero activit
   await assert.rejects(transport.query({}),/unavailable/);
  }finally{if(previous===undefined)delete process.env.GA4_CLI_PATH;else process.env.GA4_CLI_PATH=previous;await rm(directory,{recursive:true,force:true});}
 });
+
+test('nonzero CLI exit preserves safe queue timeout evidence instead of a generic connection error',async()=>{
+ const {mkdtemp,writeFile,rm}=await import('node:fs/promises');
+ const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+ const {websiteTrackingTransport}=await import('./website-tracking-transport.ts');
+ const {trackingFailure}=await import('./website-tracking-errors.ts');
+ const directory=await mkdtemp(join(tmpdir(),'tracking-timeout-')),file=join(directory,'ga4');
+ const previous=process.env.GA4_CLI_PATH;
+ try{
+  await writeFile(file,'#!/bin/sh\nprintf \'%s\' \'{"status":"queue_timeout","queue_wait_seconds":120,"elapsed_seconds":120.001,"message":"Bearer SECRET"}\'\nexit 2\n',{mode:0o700});
+  process.env.GA4_CLI_PATH=file;const transport=await websiteTrackingTransport();
+  await assert.rejects(transport.query({}),error=>{
+   const detail=trackingFailure(error);assert.equal(detail.code,'queue_timeout');assert.equal(detail.queueWaitSeconds,120);assert.doesNotMatch(String(error),/SECRET|Bearer/);return true;
+  });
+ }finally{if(previous===undefined)delete process.env.GA4_CLI_PATH;else process.env.GA4_CLI_PATH=previous;await rm(directory,{recursive:true,force:true});}
+});

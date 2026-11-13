@@ -1,6 +1,19 @@
 import { spawn } from 'node:child_process';
 import { constants } from 'node:fs';
 import { access, readFile } from 'node:fs/promises';
+import {trackingError} from './website-tracking-errors.ts';
+
+// Shared CLI allows up to 120s queued + 120s executing; include startup grace.
+export const GA4_TRANSPORT_TIMEOUT_MS=250000;
+export function ga4EnvelopeError(envelope:Record<string,unknown>){
+ const status=envelope.status;
+ const code=status==='queue_timeout'?'queue_timeout':status==='timeout'?'query_timeout'
+  :['throttled','quota_near_limit','request_limit'].includes(String(status))?'rate_limited'
+  :status==='auth_failed'?'authentication_failed'
+  :['scope_missing','permission_denied','access_denied'].includes(String(status))?'permission_denied'
+  :status==='transport_error'?'network_error':status==='upstream_unavailable'?'upstream_unavailable':'upstream_unavailable';
+ return trackingError(code,{queueWaitSeconds:envelope.queue_wait_seconds,elapsedSeconds:envelope.elapsed_seconds,httpStatus:envelope.http_status});
+}
 
 type Command={file:string;args:string[]};
 const defaultCli='/home/ubuntu/.agents/skills/anc-ga4-data-readonly/scripts/anc-ga4';
@@ -21,15 +34,16 @@ export function trackingExportCommand(file:string,host?:string):Command|null{
 async function execute(command:Command,input:string,timeout:number):Promise<{stdout:string;code:number|null}>{
  return new Promise((resolve,reject)=>{
   const child=spawn(command.file,command.args,{stdio:['pipe','pipe','pipe']});
-  let stdout='',settled=false;
-  const timer=setTimeout(()=>{child.kill('SIGTERM');fail(Error('GA4 query timed out. Please retry shortly.'));},timeout);
+  let stdout='',settled=false,killTimer:ReturnType<typeof setTimeout>|undefined;
+  const terminate=()=>{child.kill('SIGTERM');killTimer=setTimeout(()=>child.kill('SIGKILL'),2000);killTimer.unref();};
+  const timer=setTimeout(()=>{terminate();fail(trackingError('query_timeout',{elapsedSeconds:timeout/1000}));},timeout);
   function fail(error:Error){if(settled)return;settled=true;clearTimeout(timer);reject(error);}
   child.on('error',()=>fail(Error('The shared GA4 reporting connection could not be started.')));
   child.stdin.on('error',()=>fail(Error('The shared GA4 reporting connection closed before receiving the query.')));
-  child.stdout.on('data',chunk=>{stdout+=chunk;if(stdout.length>8000000){child.kill('SIGTERM');fail(Error('GA4 response exceeded the transport limit.'));}});
+  child.stdout.on('data',chunk=>{stdout+=chunk;if(stdout.length>8000000){terminate();fail(Error('GA4 response exceeded the transport limit.'));}});
   // Never expose SSH diagnostics or authentication information in a report.
   child.stderr.resume();
-  child.on('close',code=>{if(settled)return;settled=true;clearTimeout(timer);resolve({stdout,code});});
+  child.on('close',code=>{clearTimeout(killTimer);if(settled)return;settled=true;clearTimeout(timer);resolve({stdout,code});});
   child.stdin.end(input);
  });
 }
@@ -43,11 +57,12 @@ export async function websiteTrackingTransport(){
  const command=trackingCommand(cli,host);
  return {
   async query(input:Record<string,unknown>){
-   const result=await execute(command,JSON.stringify(input),125000);
-   if(result.code!==0&&result.code!==3)throw Error('The shared GA4 query failed. Check the server connection and read-only tool access.');
+   const result=await execute(command,JSON.stringify(input),GA4_TRANSPORT_TIMEOUT_MS);
    let envelope;
    try{envelope=JSON.parse(result.stdout);}catch{throw Error('The shared GA4 tool returned an invalid response.');}
-   if(!['ok','empty','partial'].includes(envelope.status))throw Error('GA4 returned an unavailable report.');
+   if(!envelope||typeof envelope!=='object'||Array.isArray(envelope))throw Error('The shared GA4 tool returned an invalid response.');
+   if(!['ok','empty','partial'].includes(envelope.status))throw ga4EnvelopeError(envelope);
+   if(result.code!==0&&result.code!==3)throw trackingError('connection_or_tool_failure');
    return envelope;
   },
   async readExport(file:string){
