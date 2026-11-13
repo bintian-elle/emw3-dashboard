@@ -1,4 +1,6 @@
 // Only allowlisted codes and bounded numeric timings leave the GA4 tool boundary.
+import {sanitizeTrackingQuota} from './website-tracking-quota.mjs';
+type Quota=NonNullable<ReturnType<typeof sanitizeTrackingQuota>>;
 export const trackingFailureReasons={
  query_timeout:'GA4 query exceeded its execution time limit.',
  queue_timeout:'GA4 shared query queue wait limit was reached.',
@@ -15,12 +17,12 @@ export const trackingFailureReasons={
  refresh_failed:'Refresh failed; upstream text was omitted for privacy.',
 };
 type Code=keyof typeof trackingFailureReasons;
-export type TrackingFailure={code:Code;reason:string;queueWaitSeconds?:number;elapsedSeconds?:number;httpStatus?:number};
+export type TrackingFailure={code:Code;reason:string;queueWaitSeconds?:number;elapsedSeconds?:number;httpStatus?:number;quota?:Quota};
 function seconds(value:unknown){return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=3600?Math.round(value*1000)/1000:undefined;}
-export function trackingError(code:Code,details:{queueWaitSeconds?:unknown;elapsedSeconds?:unknown;httpStatus?:unknown}={}){
+export function trackingError(code:Code,details:{queueWaitSeconds?:unknown;elapsedSeconds?:unknown;httpStatus?:unknown;quota?:unknown}={}){
  const queue=seconds(details.queueWaitSeconds),elapsed=seconds(details.elapsedSeconds);
  const http=typeof details.httpStatus==='number'&&Number.isInteger(details.httpStatus)&&details.httpStatus>=100&&details.httpStatus<=599?details.httpStatus:undefined;
- return Error(`GA4 ${code}; ${trackingFailureReasons[code]}${queue===undefined?'':`; queue_wait_seconds=${queue}`}${elapsed===undefined?'':`; elapsed_seconds=${elapsed}`}${http===undefined?'':`; http_status=${http}`}`);
+ return Object.assign(Error(`GA4 ${code}; ${trackingFailureReasons[code]}${queue===undefined?'':`; queue_wait_seconds=${queue}`}${elapsed===undefined?'':`; elapsed_seconds=${elapsed}`}${http===undefined?'':`; http_status=${http}`}`),{quota:sanitizeTrackingQuota(details.quota)});
 }
 export function trackingFailure(error:unknown):TrackingFailure{
  const message=error instanceof Error?error.message:typeof error==='string'?error:'';
@@ -36,11 +38,14 @@ export function trackingFailure(error:unknown):TrackingFailure{
  const number=(key:string)=>seconds(Number(message.match(new RegExp(`; ${key}=([0-9.]+)(?:;|$)`))?.[1]??NaN));
  const queue=explicit?number('queue_wait_seconds'):undefined,elapsed=explicit?number('elapsed_seconds'):undefined;
  const http=explicit?number('http_status'):undefined;
- return {code,reason:trackingFailureReasons[code],...(queue===undefined?{}:{queueWaitSeconds:queue}),...(elapsed===undefined?{}:{elapsedSeconds:elapsed}),...(http!==undefined&&Number.isInteger(http)&&http>=100&&http<=599?{httpStatus:http}:{})};
+ const quota=sanitizeTrackingQuota(error&&typeof error==='object'?(error as {quota?:unknown}).quota:undefined);
+ return {code,reason:trackingFailureReasons[code],...(queue===undefined?{}:{queueWaitSeconds:queue}),...(elapsed===undefined?{}:{elapsedSeconds:elapsed}),...(http!==undefined&&Number.isInteger(http)&&http>=100&&http<=599?{httpStatus:http}:{}),...(quota?{quota}:{})};
 }
 export function reportFailure(value:unknown,section='report'):(TrackingFailure&{section:string})|undefined{
  if(!value||typeof value!=='object')return;
  const report=value as Record<string,unknown>;
+ const diagnostic=report.diagnostic as TrackingFailure|undefined;
+ if(report.error&&diagnostic&&Object.hasOwn(trackingFailureReasons,diagnostic.code))return {...trackingFailure(trackingError(diagnostic.code,diagnostic)),section};
  if(report.error)return {...trackingFailure(report.error),section};
  if(Array.isArray(report.warnings)&&report.warnings.some(w=>typeof w==='string'&&w.startsWith('Partial GA4 report')))return {...trackingFailure('Partial GA4 report'),section};
  for(const key of ['overview','devices','events','actions','lists','purchases','features','items','coupons','collection','visitors','clicks','collectionDaily','comparison','daily','paths']){

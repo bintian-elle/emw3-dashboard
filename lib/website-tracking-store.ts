@@ -3,7 +3,7 @@ import {mkdir,readFile,writeFile,rename,rm} from 'node:fs/promises';
 import path from 'node:path';
 import {acquireTrackingLease} from './website-tracking-lease.ts';
 import {trackingFilter,trackingPeriod,type TrackingPeriod} from './website-tracking.ts';
-import {trackingFailure,reportFailure} from './website-tracking-errors.ts';
+import {trackingFailure,reportFailure,type TrackingFailure} from './website-tracking-errors.ts';
 export const CACHE_TTL_MS=60*60*1000;
 const RETRY_MS=5*60*1000;
 // Metadata freshness only; kernel leases protect the complete sequential refresh.
@@ -13,7 +13,7 @@ export type CacheValue={property:string;fetchedAt:string};
 export type CacheContract<T extends CacheValue>={identity:CacheIdentity;complete:(data:T|undefined)=>boolean};
 export type CacheOptions={directory?:string;now?:number;force?:boolean};
 type Snapshot<T>=CacheIdentity&{data:T};
-type Failure={failedAt:number;code?:string;reason?:string;section?:string};
+type Failure={failedAt:number;section?:string}&Partial<TrackingFailure>;
 type Owner={pid:number;token:string;startedAt:number};
 function alive(pid:number){try{process.kill(pid,0);return true;}catch(error){return (error as NodeJS.ErrnoException).code==='EPERM';}}
 export type SnapshotState<T>={data?:T;stale:boolean;refreshing:boolean;needsRefresh:boolean;error?:string;failure?:Failure};

@@ -1,9 +1,10 @@
 import type {FeatureTrackingReports} from './website-tracking-inventory.ts';
 import type {CollectionActivity,TrackingComparison} from './website-tracking-metrics.ts';
+import type {TrackingFailure} from './website-tracking-errors.ts';
 export type TrackingPeriod = { start: string; end: string };
 export type TrackingDevice = 'all' | 'desktop' | 'mobile' | 'tablet';
 export type TrackingRow = { dimensions: string[]; metrics: number[] };
-export type TrackingReport = { rows: TrackingRow[]; error?: string; warnings: string[] };
+export type TrackingReport = { rows: TrackingRow[]; error?: string; warnings: string[]; diagnostic?:TrackingFailure };
 export type TrackingData={overview:TrackingReport;devices?:TrackingReport;events:TrackingReport;actions:TrackingReport;purchases:TrackingReport;lists:TrackingReport;timeZone?:string;currency?:string;fetchedAt:string;property:string;collection?:CollectionActivity;comparison?:TrackingComparison;collectionDaily?:TrackingReport;features?:Partial<FeatureTrackingReports>};
 export const trackingEvents = ['cart_feature_action', 'cart_feature_result', 'view_item_list', 'select_item', 'compare_entry_view', 'compare_click', 'compare_view'];
 export const trackingFeatures = ['Switch to Bundle', 'You May Also Like', 'PDP Add-ons', 'Compare', 'Promo Code'];

@@ -12,7 +12,7 @@ export function ga4EnvelopeError(envelope:Record<string,unknown>){
   :status==='auth_failed'?'authentication_failed'
   :['scope_missing','permission_denied','access_denied'].includes(String(status))?'permission_denied'
   :status==='transport_error'?'network_error':status==='upstream_unavailable'?'upstream_unavailable':'upstream_unavailable';
- return trackingError(code,{queueWaitSeconds:envelope.queue_wait_seconds,elapsedSeconds:envelope.elapsed_seconds,httpStatus:envelope.http_status});
+ return trackingError(code,{queueWaitSeconds:envelope.queue_wait_seconds,elapsedSeconds:envelope.elapsed_seconds,httpStatus:envelope.http_status,quota:envelope.quota});
 }
 
 type Command={file:string;args:string[]};

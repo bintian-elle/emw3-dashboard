@@ -1,13 +1,13 @@
 import {websiteTrackingTransport} from './website-tracking-transport.ts';
 import {parseTrackingExport,trackingFilter,type TrackingPeriod,type TrackingReport} from './website-tracking.ts';
-import {trackingFailure,trackingError} from './website-tracking-errors.ts';
+import {trackingFailure,trackingError,type TrackingFailure} from './website-tracking-errors.ts';
 type Envelope={status:string;resource_id?:string;timezone?:string;currency?:string;data?:Record<string,unknown>[];error?:{message?:string};coverage?:{complete?:boolean;cursor?:string};display?:{complete?:boolean};export_file?:string;response_metadata?:{subjectToThresholding?:boolean;dataLossFromOtherRow?:boolean;samplingMetadatas?:unknown[]}};
 export async function trackingReportReader(period:TrackingPeriod,device:string,providedTransport?:Awaited<ReturnType<typeof websiteTrackingTransport>>){
  const filter=trackingFilter(device),transport=providedTransport??await websiteTrackingTransport();
- let failure:string|undefined;
+ let failure:TrackingFailure|undefined;
  const metadata:{timeZone?:string;currency?:string}={};
  async function report(dimensions:string[],metrics:string[],events?:string[],range:TrackingPeriod=period,extra:unknown[]=[]):Promise<TrackingReport>{
-  if(failure)return {rows:[],warnings:[],error:failure};
+  if(failure)return {rows:[],warnings:[],error:trackingError(failure.code,failure).message,diagnostic:failure};
   try{
    const expressions:unknown[]=[...filter.andGroup.expressions,...extra];if(events)expressions.push({filter:{fieldName:'eventName',inListFilter:{values:events}}});
    const end=new Date(`${range.end}T12:00:00Z`);end.setUTCDate(end.getUTCDate()+1);
@@ -25,7 +25,7 @@ export async function trackingReportReader(period:TrackingPeriod,device:string,p
    if(envelope.response_metadata?.dataLossFromOtherRow)warnings.push('GA4 grouped some dimension values into (other).');
    if(envelope.response_metadata?.samplingMetadatas?.length)warnings.push('GA4 returned sampled data.');
    return {rows:data.map(row=>({dimensions:dimensions.map(name=>String(row[name]??'')),metrics:metrics.map(name=>Number(row[name])||0)})),warnings};
-  }catch(error){const detail=trackingFailure(error);failure=trackingError(detail.code,detail).message;return {rows:[],warnings:[],error:failure};}
+  }catch(error){failure=trackingFailure(error);return {rows:[],warnings:[],error:trackingError(failure.code,failure).message,diagnostic:failure};}
  }
  return {report,metadata};
 }
