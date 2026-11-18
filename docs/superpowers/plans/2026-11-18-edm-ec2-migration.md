@@ -24,16 +24,16 @@
 - A failed Slack send stays pending; recovery follows a genuine successful refresh.
 
 ### Task 1: Source selection and warehouse copy
-- [ ] Add failing tests for EDM database selection/local SSL, then implement a shared config module and adapt EDM database consumers.
-- [ ] Build an allowlisted historical copy tool, copy tables to a new local database and compare row counts/date coverage.
+- [x] Add failing tests for EDM database selection/local SSL, then implement a shared config module and adapt EDM database consumers.
+- [x] Build an allowlisted historical copy tool, copy tables to a new local database and compare row counts/date coverage.
 
 ### Task 2: Validated collector and backfill
-- [ ] Add tests for date windows, aggregate/report mappings, pagination completeness and atomic replacement.
-- [ ] Implement collection of daily account metrics, campaign/flow reporting, subscriber inventory, clicked links and current creative metadata using existing credentials and API throttling.
-- [ ] Backfill November 10 through the latest complete Eastern day; verify all data domains and actual dashboard reads.
+- [x] Add tests for date windows, aggregate/report mappings, pagination completeness and atomic replacement.
+- [x] Implement collection of daily account metrics, campaign/flow reporting, subscriber inventory, clicked links and current creative metadata using existing credentials and API throttling.
+- [x] Backfill November 10 through the latest complete Eastern day; verify all data domains and actual dashboard reads.
 
 ### Task 3: Durable scheduled operation and cutover
-- [ ] Test daily/retry scheduling and failure/recovery delivery; implement persistent status and exclusive locking.
-- [ ] Install daily systemd collection with retry and notifications; preserve existing refresh schedules for other channels.
-- [ ] Run targeted tests/type checks, publish only owned changes, build/restart website, and validate formal/Preview API rendering from EC2 data.
-- [ ] Disable only the superseded Klaviyo Supabase schedules after validated cutover, retaining their configuration privately for rollback.
+- [x] Test daily/retry scheduling and failure/recovery delivery; implement persistent status and exclusive locking.
+- [x] Install daily systemd collection with retry and notifications; preserve existing refresh schedules for other channels.
+- [x] Run targeted tests/type checks, publish only owned changes, build/restart website, and validate formal/Preview API rendering from EC2 data.
+- [x] Disable only the superseded Klaviyo Supabase schedules after validated cutover, retaining their configuration privately for rollback.

@@ -19,6 +19,8 @@ The normal refresh revisits the last 14 complete days for attribution updates, e
 
 Failure after the retry sends a sanitized domain-level reason to the existing owner DM. Recovery is sent only after all five domains succeed and remains pending if Slack delivery fails. Startup/timeouts receive the existing systemd fallback alert, deduplicated against a notice the collector already delivered.
 
+The existing EDM bilingual Insights task runs at **05:30 America/New_York**, after both data attempts. It checks all five coverage receipts before requesting analysis; incomplete data leaves existing Insights intact. This migration does not regenerate the existing AI reports.
+
 Private operational state is `.state/edm-refresh/status.json`; extraction receipts are `edm_refresh_coverage` and `edm_refresh_runs` in the local warehouse. Only successful collection advances the completeness date. Database credentials, state, data and environment backups are excluded from Git.
 
 ## Manual operations
@@ -33,3 +35,7 @@ node scripts/edm/run.mjs --start 2026-11-10 --end 2026-11-18 --resume --force-do
 End dates are exclusive. Never substitute today's partial data for a completed day. Local development uses an SSH tunnel to the same EC2 PostgreSQL warehouse; PostgreSQL itself remains inaccessible from the public internet.
 
 The superseded Supabase `klaviyo-*` cron jobs should be disabled only after the EC2 backfill and deployed website have been verified. Keep their configuration and the former source data available for rollback; do not delete historical data during cutover.
+
+## Cutover verification (2026-11-18)
+
+All five domains cover November 10–17 (end-exclusive November 18). Production dashboard, comparison, creative and preview requests returned HTTP 200; dashboard freshness is November 17. Local development reads the same warehouse through a private SSH tunnel. The 26 superseded Supabase Klaviyo jobs are disabled, with their original configuration saved privately for rollback. Failure and subsequent recovery notifications were delivered to Slack. Targeted collector tests passed, and the website build and type checks completed successfully.
