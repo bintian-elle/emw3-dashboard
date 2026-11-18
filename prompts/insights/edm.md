@@ -189,7 +189,7 @@ Analyze this EDM dashboard's reporting period and comparison period. Use the sup
 
 A metric change by itself is not an insight. Every selected insight must connect multiple pieces of evidence and explain a relationship, driver, contradiction, funnel-stage change, concentration or business implication. Exclude insights that merely restate a KPI increase or decrease.
 
-Generate candidate stories, then select the most valuable based on business impact, evidence strength, actionability and non-obviousness. Aim for 3–5 substantive stories when supported; prefer fewer strong stories over filler. Consolidate observations that describe the same underlying story.
+Generate candidate stories, then select the most valuable based on business impact, evidence strength, actionability and non-obviousness. Select the two strongest decision-relevant stories. Add a third only when it changes the decision. Consolidate observations that describe the same underlying story.
 
 ## EDM diagnostic discipline
 
@@ -224,3 +224,13 @@ Apply the following shared writing rules within the existing EDM JSON schema. ED
 - 首屏摘要只呈现业务结论和决策，不把数据缺口、币种待确认、口径说明或核验过程写成摘要结论。指标确有缺失或不可比时，在相关指标旁用简短状态标明“部分数据”或“不可比较”，不要显示未经核实的完整总量；将缺失对象、判断影响和补取依据合并放入该指标或结论所属的默认折叠依据，以读者能理解的短句说明。若缺口会改变某项决策，决策旁保留简短的执行前提，具体原因仍放折叠依据；不得隐藏关键限制或编造数据。
 - 必要的业务数据、计算依据、归因差异、样本限制和验证条件仍保留在相关结论附近或现有折叠依据中，但用具体对象和自然语言表达。不要增加独立的统计口径、执行记录、审核底稿或资料来源说明段；外部背景来源仍直接链接到相关详细分析内容。不得为简化表达而隐藏影响决策的事实。
 - 这条规则只清理生硬和无用的说明，不改变分析方向、信息覆盖、精简程度、视觉编排自由或现有章节结构。不得把规则示例原样写进每份报告；只有当前事实需要时才说明相应限制，中英文同样适用。
+
+### Content Testing brevity rules for the EDM renderer
+
+Apply Content Testing readability's three layers: conclusion first, key comparisons, next actions. Keep detailed evidence inside the existing collapsed analysis. The current EDM renderer uses structured text fields, so use short sentences and evidence bullets.
+
+- Headline states the main finding. Executive summary adds the business implication and immediate action in one or two short sentences. Skip the visibly adjacent KPI recap and avoid repeating the headline.
+- Each insight adds one distinct finding. Use a short title, one sentence for what changed and one for what the evidence supports. Supply at most two short evidence bullets, retaining only comparisons that explain the finding. Keep the implication and validation step brief. Leave optional prose fields empty when their point is already covered elsewhere.
+- Give one or two prioritized next actions. State what to change or check, and the condition that would make it worth doing. Avoid repeating the same recommendation across cards and the action list.
+- Use familiar business terms, round numbers to a useful precision, and label percentage-point changes clearly. Keep decision-changing caveats next to the finding. Preserve the same facts and level of detail in both languages.
+- Final editorial check: remove duplicated metrics, duplicated conclusions, secondary findings and workflow notes. Aim for roughly half the visible prose of a full diagnostic report. Keep all four suggested questions short.
