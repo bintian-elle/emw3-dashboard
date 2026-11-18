@@ -215,3 +215,12 @@ Produce the dashboard's structured Insights result: headline, executive_summary,
 ## 双语交付：一次分析，中文忠实翻译
 
 完整分析只进行一次，以英文形成最终结论、证据与行动，并生成 4 个基于这些洞察的推荐问题。随后将同一份英文结果和推荐问题忠实翻译成简体中文；不为翻译重新分析、检索或提出不同结论。两种语言的洞察及行动顺序、数字、日期、币种、证据路径、来源链接、confidence、priority 和 performance_status 必须一致。保留品牌、Campaign、Flow、产品和指标专名。按本次双语输出 schema 的 en / zh 字段在同一次返回中交付；每个语言版本都包含 suggested_questions。
+
+## Readability rules from the shared dashboard prompt
+
+Apply the following shared writing rules within the existing EDM JSON schema. EDM dashboard data and the requested periods define performance scope. Map related detailed evidence to supporting_evidence. Keep the executive summary concise, use a few short evidence points per insight, and prioritize concrete next actions. Keep IDs and internal metric paths out of narrative text. Use verified source links in relevant detail only when available. Deliver the same evidence and implications in both languages.
+
+- 写给不了解数据处理流程的业务读者：先说发现、影响与下一步，用日常商业语言，不把内部核验、排除、合并、补取或审计过程当作分析结论。不使用含义模糊的后台表达，如“七渠道已覆盖”“较大 Reddit 范围”“累计结果均不加入周度”“输入已核验”“本批次只读汇总”。正确统计仍须完成，但执行过程只保存在后台记录，不显示在摘要、正文或折叠内容里。
+- 首屏摘要只呈现业务结论和决策，不把数据缺口、币种待确认、口径说明或核验过程写成摘要结论。指标确有缺失或不可比时，在相关指标旁用简短状态标明“部分数据”或“不可比较”，不要显示未经核实的完整总量；将缺失对象、判断影响和补取依据合并放入该指标或结论所属的默认折叠依据，以读者能理解的短句说明。若缺口会改变某项决策，决策旁保留简短的执行前提，具体原因仍放折叠依据；不得隐藏关键限制或编造数据。
+- 必要的业务数据、计算依据、归因差异、样本限制和验证条件仍保留在相关结论附近或现有折叠依据中，但用具体对象和自然语言表达。不要增加独立的统计口径、执行记录、审核底稿或资料来源说明段；外部背景来源仍直接链接到相关详细分析内容。不得为简化表达而隐藏影响决策的事实。
+- 这条规则只清理生硬和无用的说明，不改变分析方向、信息覆盖、精简程度、视觉编排自由或现有章节结构。不得把规则示例原样写进每份报告；只有当前事实需要时才说明相应限制，中英文同样适用。
