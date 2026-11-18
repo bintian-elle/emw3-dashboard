@@ -6,10 +6,12 @@ export const monitoredTasks={
  'emw3-concluded-tests.service':'已结束测试快照',
  'emw3-ai-insights-refresh.service':'EDM AI Insights',
  'emw3-website-tracking-cache.service':'Website Tracking 数据刷新',
+ 'emw3-edm-refresh.service':'EDM 数据采集',
 };
 
 export function failureAlreadyReported(service,state,startedAt=0){
  const afterStart=value=>!!value&&(!startedAt||Date.parse(value)>=startedAt);
+ if(service==='emw3-edm-refresh.service')return afterStart(state.updatedAt)&&((state.attempts===1&&!state.success&&!!state.outcomes)||afterStart(state.failureSentAt));
  if(service==='emw3-content-testing-reports.service'||service==='emw3-concluded-tests.service')return !!state.error&&afterStart(state.failureSent);
  if(service==='emw3-testing-data-refresh.service'||service==='emw3-testing-google-refresh.service'){
   const failed=Object.entries(state.items??{}).filter(([,item])=>item.error&&!item.success);

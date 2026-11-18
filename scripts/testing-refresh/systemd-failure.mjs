@@ -16,6 +16,9 @@ const startedAt=Date.parse(properties.ExecMainStartTimestamp??'');
 const day=easternClock(Number.isFinite(startedAt)?new Date(startedAt):new Date()).day;
 const phase=service==='emw3-content-testing-reports.service'?'reports':service==='emw3-concluded-tests.service'?'concluded':service==='emw3-testing-data-refresh.service'?'data':service==='emw3-testing-google-refresh.service'?'google':null;
 let state={};
+if(service==='emw3-edm-refresh.service'){
+ try{state=JSON.parse(await readFile(path.join(process.env.EDM_REFRESH_STATE_DIR||'.state/edm-refresh','status.json'),'utf8'));}catch{/* A startup failure must still notify. */}
+}
 if(phase){
  const folder=phase==='concluded'?'concluded':day;
  try{state=JSON.parse(await readFile(path.join('.state/testing-refresh',folder,`${phase}.json`),'utf8'));}catch{/* Notify when the task failed before recording its state. */}

@@ -2,7 +2,7 @@
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 sudo -n true
-units=(emw3-ai-insights-refresh emw3-concluded-tests emw3-content-testing-reports emw3-testing-data-refresh emw3-testing-google-refresh emw3-testing-social-refresh emw3-website-tracking-cache)
+units=(emw3-ai-insights-refresh emw3-concluded-tests emw3-content-testing-reports emw3-testing-data-refresh emw3-testing-google-refresh emw3-testing-social-refresh emw3-website-tracking-cache emw3-edm-refresh)
 changed=0
 changed_timers=()
 backup_dir=".state/deployment-schedule-backups/$(date -u +%Y%m%dT%H%M%SZ)-$$"

@@ -6,6 +6,7 @@ import type {EdmTestingSnapshot} from "@/lib/edm-live-refresh";
 export {fetchFreshEdmTestingSnapshot} from "@/lib/edm-live-refresh";
 import {edmUniqueRecipients} from "@/lib/edm-unique-recipients";
 import { Pool } from "pg";
+import {edmDatabaseConfig} from './edm-database.mjs';
 import { connection } from "next/server";
 import { resolveTestingPeriod, testingPeriodLabels, type TestingPeriodInput } from "@/lib/testing-google";
 
@@ -23,9 +24,7 @@ export type EdmTestingData={period:{start:string;end:string};periodLabel:string;
 
 let pool:Pool|undefined;
 function database(){
-  const connectionString=process.env.KLAVIYO_DATABASE_URL?.trim();
-  if(!connectionString)throw new Error("KLAVIYO_DATABASE_URL is not configured.");
-  pool??=new Pool({connectionString,ssl:{rejectUnauthorized:false},max:3,idleTimeoutMillis:30_000,connectionTimeoutMillis:12_000});
+  pool??=new Pool({...edmDatabaseConfig(),max:3,idleTimeoutMillis:30_000,connectionTimeoutMillis:12_000});
   return pool;
 }
 
