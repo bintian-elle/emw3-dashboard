@@ -1,0 +1,17 @@
+[Unit]
+Description=Collect EDM data into EC2 PostgreSQL
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/work/bintian/emw3-dashboard
+Environment=NODE_ENV=production
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node scripts/edm/run.mjs --scheduled
+TimeoutStartSec=50min
+Nice=10
+UMask=0077
+NoNewPrivileges=true
+

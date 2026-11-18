@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh EDM daily at 04:00 Eastern; retry at 05:00
+
+[Timer]
+# Cheap hourly controller tick: API collection is allowed only once from 04:00,
+# plus one later-hour retry. Other ticks only retry pending Slack delivery.
+OnCalendar=*-*-* *:00:00 America/New_York
+Persistent=true
+AccuracySec=1s
+Unit=emw3-edm-refresh.service
+
+[Install]
+WantedBy=timers.target
