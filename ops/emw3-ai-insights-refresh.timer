@@ -1,8 +1,8 @@
 [Unit]
-Description=Daily Dashboard Insights at 07:45 UTC
+Description=Daily EDM Insights after collection and retry at 05:30 Eastern
 
 [Timer]
-OnCalendar=*-*-* 07:45:00 UTC
+OnCalendar=*-*-* 05:30:00 America/New_York
 Persistent=false
 AccuracySec=1min
 Unit=emw3-ai-insights-refresh.service
