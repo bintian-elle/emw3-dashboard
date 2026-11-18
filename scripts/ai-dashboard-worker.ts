@@ -45,7 +45,7 @@ async function main(){
   const config=(key:string,value:unknown)=>['-c',`${key}=${JSON.stringify(value)}`];
   const catalog=await dashboardCodexCatalog(directory);
   const args=['exec','--ignore-user-config','--ephemeral','--skip-git-repo-check','--sandbox','read-only','--json','--cd',directory,'--output-schema',schema,'--output-last-message',output,
-   ...catalog?config('model_catalog_json',catalog):[],...config('approval_policy','never'),...config('model_reasoning_effort','low'),...config('features.fast_mode',true),...config('service_tier','fast'),
+   ...catalog?config('model_catalog_json',catalog):[],...config('approval_policy','never'),...config('model','gpt-6.2-sol'),...config('model_reasoning_effort','xhigh'),...config('features.fast_mode',true),...config('service_tier','priority'),
    ...config('features.shell_tool',false),...config('features.unified_exec',false),...config('features.js_repl',false),...config('web_search','disabled'),...config('project_doc_max_bytes',0),
    ...job.contentTesting?config('mcp_servers.snapshot.env.AI_DASHBOARD_CONTENT_TESTING_FILE',contentTestingFile):[],
    ...config('mcp_servers.snapshot.env.AI_DASHBOARD_PROJECT',job.project||'bluevua'),...config('mcp_servers.snapshot.env.AI_DASHBOARD_PROJECTS_DIR',process.env.AI_DASHBOARD_PROJECTS_DIR||path.join(process.cwd(),'.state/ai-dashboard/projects')),
