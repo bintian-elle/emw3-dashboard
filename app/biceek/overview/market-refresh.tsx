@@ -72,5 +72,6 @@ export function MarketRefresh({collapsed,state}:{collapsed:boolean;state:ReturnT
     :state.error==="busy"?(zh?"刚刚发起过刷新，请稍后再试。":"A refresh was requested recently. Try again shortly."):undefined;
   return <NovaDataRefresh collapsed={collapsed} updatedAt={state.updatedAt} updating={state.updating}
     disabled={!state.canRefresh} detail={detail} onRefresh={() => void state.refresh()}
-    schedule={zh?"每日美东时间 10:00 自动刷新":"Daily refresh at 10:00 a.m. ET"} />;
+    timeZone="Europe/London" timeZoneLabel={zh?"（伦敦时间）":"(London time)"}
+    schedule={zh?"每日伦敦时间 08:00 开始刷新":"Daily refresh starts at 08:00 London time"} />;
 }

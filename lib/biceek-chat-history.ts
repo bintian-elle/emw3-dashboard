@@ -4,7 +4,7 @@ import path from "node:path";
 import type { ComparisonRange } from "./testing-comparison";
 
 export type BiceekChatScope = ComparisonRange & { market?: "GB"; comparison?: ComparisonRange };
-export type BiceekChatTurn = { id: string; conversation: string; scope: BiceekChatScope; question: string; answer: string | null; at: string };
+export type BiceekChatTurn = { id: string; conversation: string; scope: BiceekChatScope; question: string; attachments?: string[]; attachmentHash?: string; answer: string | null; at: string };
 
 export const validChatId = (value: unknown): value is string =>
   typeof value === "string" && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);

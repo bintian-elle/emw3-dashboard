@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Biceek market performance daily at 08:00 London time
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 Europe/London
+Persistent=true
+Unit=biceek-market-overview.service
+
+[Install]
+WantedBy=timers.target

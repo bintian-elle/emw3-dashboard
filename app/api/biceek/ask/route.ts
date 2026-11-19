@@ -1,9 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { listBiceekChat, saveBiceekChat, sameBiceekChatScope, validChatId, type BiceekChatTurn } from "@/lib/biceek-chat-history";
 import { currentSiteUser } from "@/lib/current-site-user";
 import { consultBrandAssistant, runBrandAssistant } from "@/lib/ai-dashboard-brand-assist";
 import { firstMarketDay, marketNames } from "@/lib/biceek-market-model";
 import { biceekRunsOnEc2, readMarketSnapshot } from "@/lib/biceek-market-snapshot";
+
+import { validImageAttachments } from "@/lib/ai-chat-attachment-contract";
 
 export const maxDuration = 120;
 
@@ -24,6 +26,11 @@ export async function POST(request: Request) {
   const user = await currentSiteUser();
   if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
   const input = await request.json().catch(() => null);
+  const images = input?.attachments ?? [];
+  if (!validImageAttachments(images)) {
+    return Response.json({ error: "invalid_attachments" }, { status: 400 });
+  }
+  const attachmentHash = images.length ? createHash("sha256").update(JSON.stringify(images)).digest("hex") : undefined;
   const question = typeof input?.question === "string" ? input.question.trim() : "";
   const { start, end, market } = input ?? {};
   if ((market !== undefined && market !== "GB") || !question || question.length > 2000 || !isoDay(start) || !isoDay(end) || start < firstMarketDay || start > end ||
@@ -44,13 +51,13 @@ export async function POST(request: Request) {
   const scope = { start, end, market, ...(hasComparison ? { comparison: { start: comparisonStart, end: comparisonEnd } } : {}) };
   const id = validChatId(input.id) ? input.id : randomUUID();
   const conversation = validChatId(input.conversation) ? input.conversation : randomUUID();
-  const turn: BiceekChatTurn = { id, conversation, scope, question, answer: null, at: new Date().toISOString() };
+  const turn: BiceekChatTurn = { id, conversation, scope, question, ...(images.length ? { attachments: images.map(image => image.name), attachmentHash } : {}), answer: null, at: new Date().toISOString() };
   let history: Array<{ role: string; text: string }>;
   try {
     const saved = await listBiceekChat(user.sub);
     const existing = saved.find(item => item.id === id);
     if (existing) {
-      return existing.answer && existing.question === question && existing.conversation === conversation && sameBiceekChatScope(existing.scope, scope)
+      return existing.answer && existing.question === question && existing.attachmentHash === attachmentHash && existing.conversation === conversation && sameBiceekChatScope(existing.scope, scope)
         ? Response.json({ answer: existing.answer, turn: existing }, { headers: privateHeaders })
         : Response.json({ error: "duplicate_question" }, { status: 409, headers: privateHeaders });
     }
@@ -66,11 +73,12 @@ export async function POST(request: Request) {
   const result = await consultBrandAssistant({
     project: "biceek",
     scope: "market-overview",
+    images,
     prompt: `Interpret Biceek market performance and respond directly in ${input.language === "zh" ? "Simplified Chinese" : "English"}. Give the most useful answer first. Use the supplied rows and scope, cite dates and denominators for numeric claims, and never infer causation from short windows. Use the selected comparison period only for relevant comparisons, and state if its data is incomplete. Conversation is optional context, not a source of facts. Current question: ${question}`,
     metrics: {
       start, end, currency: "USD", refreshedAt: snapshot.refreshedAt,
       markets: Object.fromEntries(Object.entries(marketNames).filter(([code]) => !market || code === market).map(([code, [name]]) => [code, name])),
-      definitions: "Total ROAS = sum of Shopify Total Sales / (sum of Google Spend + sum of Meta Spend). Channel ROAS = sum of channel attributed purchase revenue / sum of channel spend. Null is missing. No ROAS for zero spend. Google and Shopify use Pacific dates; Meta uses Eastern dates.",
+      definitions: "Total ROAS = sum of Shopify Total Sales / (sum of Google Spend + sum of Meta Spend). Channel ROAS = sum of channel attributed purchase revenue / sum of channel spend. Null is missing. No ROAS for zero spend. Google and Shopify use Pacific dates; Meta uses Eastern dates. Same-date platform rows cover different absolute intervals. Describe cross-platform daily comparisons as native report-date comparisons and do not imply synchronized windows.",
       columns: ["date", "market", "googleSpend", "googleRevenue", "metaSpend", "metaRevenue", "shopifySales", "orders"],
       rows: encodeRows(rows),
       comparison: hasComparison ? { start: comparisonStart, end: comparisonEnd, rows: encodeRows(comparisonRows) } : undefined,

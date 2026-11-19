@@ -32,9 +32,9 @@ export function testingRefreshChannel(pathname: string, concluded: boolean): Ref
   return "general";
 }
 
-function formatUpdatedAt(value: string, locale: string) {
+function formatUpdatedAt(value: string, locale: string, timeZone?: string) {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone }).format(date);
 }
 
 export function TestingDataRefresh({ channel, collapsed, variant = "default" }: { channel: RefreshChannel; collapsed: boolean; variant?: "default" | "nova" }) {
@@ -143,12 +143,13 @@ export function TestingDataRefresh({ channel, collapsed, variant = "default" }: 
   </div>;
 }
 
-export function NovaDataRefresh({collapsed,updatedAt,detail,updating,disabled,onRefresh,schedule}:{
- collapsed:boolean;updatedAt?:string|null;detail?:string;updating:boolean;disabled?:boolean;onRefresh:()=>void;schedule?:string;
+export function NovaDataRefresh({collapsed,updatedAt,detail,updating,disabled,onRefresh,schedule,timeZone,timeZoneLabel}:{
+ collapsed:boolean;updatedAt?:string|null;detail?:string;updating:boolean;disabled?:boolean;onRefresh:()=>void;schedule?:string;timeZone?:string;timeZoneLabel?:string;
 }){
  const {language}=useSiteLanguage(),zh=language==="zh";
- const formatted=updatedAt?formatUpdatedAt(updatedAt,zh?"zh-CN":"en-US"):null;
- const timeLabel=formatted?(zh?`数据更新于 ${formatted}`:`Data updated ${formatted}`):(zh?"暂无数据更新时间":"No data update time yet");
+ const formatted=updatedAt?formatUpdatedAt(updatedAt,zh?"zh-CN":"en-US",timeZone):null;
+ const updatedLabel=[formatted,timeZoneLabel].filter(Boolean).join(" ");
+ const timeLabel=formatted?(zh?`数据更新于 ${updatedLabel}`:`Data updated ${updatedLabel}`):(zh?"暂无数据更新时间":"No data update time yet");
  const buttonLabel=updating?(zh?"正在刷新":"Refreshing"):(zh?"刷新数据":"Refresh data");
  const description=[timeLabel,schedule,detail].filter(Boolean).join(" · ");
  return <div className={styles.refresh}>

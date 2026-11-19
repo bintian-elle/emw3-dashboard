@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowUpRight, Check, ChevronDown, ChevronsUpDown, GitCompareArrows, LayoutDashboard, Plus, Sparkles, X } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, ChevronsUpDown, FileText, GitCompareArrows, LayoutDashboard, Plus, Sparkles, X } from "lucide-react";
 import { Dialog, DropdownMenu, Select } from "radix-ui";
 import { createPortal } from "react-dom";
 import { AskDockContext } from "./ask-dock";
@@ -10,6 +10,7 @@ import { NovaChatHeader } from "@/app/bluevua/testing/nova-chat-header";
 import { NovaReportingPeriodCustom, NovaReportingPeriodSelect, novaReportingPeriods } from "@/app/bluevua/testing/nova-reporting-period";
 import { resolveTestingPeriod } from "@/lib/testing-period";
 import { comparisonRange } from "@/lib/testing-comparison";
+import { NovaChatAttachments, NovaChatAttachmentStatus, useNovaChatAttachments } from "@/app/bluevua/testing/nova-chat-attachments";
 import { NovaAiComposer } from "@/app/bluevua/testing/nova-ai-composer";
 import { NovaAskAiButton } from "@/app/bluevua/testing/nova-ask-ai-button";
 import { NovaButton } from "@/app/bluevua/testing/nova-preview-ui";
@@ -17,12 +18,12 @@ import chat from "@/app/bluevua/testing/nova-chat.module.css";
 import styles from "./market-overview.module.css";
 import type { BiceekChatScope, BiceekChatTurn } from "@/lib/biceek-chat-history";
 
-type Turn = { role: "user" | "assistant"; text: string; scope?: BiceekChatScope };
+type Turn = { role: "user" | "assistant"; text: string; scope?: BiceekChatScope; attachments?: string[] };
 type Props = { comparison: { start: string; end: string }; start: string; end: string; disabled: boolean; market?: "GB"; period: string; latest: string };
 
 function chatMessages(entries: BiceekChatTurn[], id: string): Turn[] {
   return entries.filter(item => item.conversation === id).flatMap(item => [
-    { role: "user", text: item.question, scope: item.scope },
+    { role: "user", text: item.question, scope: item.scope, attachments: item.attachments },
     ...(item.answer ? [{ role: "assistant" as const, text: item.answer }] : []),
   ]);
 }
@@ -57,6 +58,7 @@ function MarketConversation({ start, end, disabled, market, comparison, period, 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const files = useNovaChatAttachments(busy || !historyReady || showHistory, t);
   const [error, setError] = useState("");
   const request = useRef<AbortController | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -93,21 +95,24 @@ function MarketConversation({ start, end, disabled, market, comparison, period, 
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const question = draft.trim();
-    if (request.current || !question || !historyReady) return;
+    const outgoing = files.attachments;
+    const question = draft.trim() || (outgoing.length ? t("Analyze these images.", "请分析这些图片。") : "");
+    if (request.current || !question || !historyReady || files.preparingFiles || showHistory) return;
     const thread = conversation ?? crypto.randomUUID();
     setConversation(thread);
     const controller = new AbortController();
     request.current = controller;
     follow.current = true;
-    setTurns([...turns, { role: "user", text: question, scope: viewScope }]);
+    setTurns([...turns, { role: "user", text: question, scope: viewScope, attachments: outgoing.map(file => file.name) }]);
+    files.clear();
     setDraft("");
     setError("");
     setBusy(true);
     try {
       const response = await fetch("/api/biceek/ask", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...viewScope, question, language, id: crypto.randomUUID(), conversation: thread }),
+        body: JSON.stringify({ ...viewScope, question, language, id: crypto.randomUUID(), conversation: thread,
+          attachments: outgoing.map(({ kind, name, mime_type, data }) => ({ kind, name, mime_type, data })) }),
         signal: controller.signal,
       });
       const result = await response.json();
@@ -117,7 +122,8 @@ function MarketConversation({ start, end, disabled, market, comparison, period, 
     } catch {
       if (!controller.signal.aborted) {
         setError(t("AI Biceek couldn’t respond. Try sending your question again.", "AI Biceek 暂未回答，请重试。"));
-        setDraft(question);
+        setDraft(draft);
+        files.setAttachments(outgoing);
         setTurns(turns);
       }
     } finally {
@@ -137,12 +143,14 @@ function MarketConversation({ start, end, disabled, market, comparison, period, 
   const scopeName = (scope: BiceekChatScope) => scope.market
     ? t("United Kingdom", "英国") : t("Overview · 7 markets", "总览 · 七国市场");
   const reset = () => {
+    files.clear();
     setConversation(null); setViewScope({ start, end, market, comparison }); setScopePeriod(period);
     setTurns([]); setDraft(""); setError(""); setShowHistory(false);
   };
   const restore = (id: string) => {
     const item = conversations.find(turn => turn.conversation === id);
     if (!item) return;
+    files.clear();
     setConversation(item.conversation); setViewScope(item.scope); setTurns(chatMessages(saved, item.conversation));
     setScopePeriod("custom"); setDraft(""); setError(""); setShowHistory(false); follow.current = true;
   };
@@ -221,6 +229,7 @@ function MarketConversation({ start, end, disabled, market, comparison, period, 
           {turns.length ? <div className={chat.turns}>{turns.map((turn, index) => <div key={index} className={chat.message}>
             {turn.role === "user" ? <div className={chat.question}>
               {turn.scope && <p className={chat.messageMeta}>{scopeName(turn.scope)} · {turn.scope.start} – {turn.scope.end}</p>}<p>{turn.text}</p>
+              {turn.attachments?.map((name, index) => <span key={index} className={chat.messageFile}><FileText aria-hidden />{name}</span>)}
             </div> : <div className={chat.answer}><span className={chat.answerMark}><Sparkles aria-hidden /></span>
               <div><p className={chat.answerLabel}>AI Biceek</p><p className={styles.aiAnswerText}>{turn.text}</p></div>
             </div>}
@@ -242,8 +251,11 @@ function MarketConversation({ start, end, disabled, market, comparison, period, 
           </div>}
           {error && <p role="alert" className={styles.aiError}>{error === "history_unavailable"
             ? t("Conversation history is unavailable. Reopen the panel to retry.", "暂时无法读取问答历史，请重新打开面板。") : error}</p>}
-          <NovaAiComposer inputRef={inputRef} value={draft} onChange={setDraft} onSubmit={send} disabled={busy || !historyReady || showHistory} sendDisabled={busy || !historyReady || showHistory || !draft.trim()}
+          <NovaChatAttachments inputRef={files.inputRef} attachments={files.attachments} addFiles={files.addFiles} remove={files.remove} disabled={busy || files.preparingFiles} imagesOnly t={t} />
+          <NovaAiComposer inputRef={inputRef} value={draft} onChange={setDraft} onSubmit={send} disabled={busy || !historyReady || showHistory} sendDisabled={busy || !historyReady || showHistory || files.preparingFiles || (!draft.trim() && !files.attachments.length)}
+            onAttach={files.onAttach} onPaste={files.onPaste} attachDisabled={busy || !historyReady || showHistory || files.preparingFiles} attachLabel={t("Add attachments", "添加附件")}
             inputLabel={t("Type a message", "输入消息")} placeholder={t("Type your question…", "输入你的问题…")} sendLabel={t("Send message", "发送消息")} />
+          <NovaChatAttachmentStatus state={files} t={t} />
         </footer>
   </>;
 
