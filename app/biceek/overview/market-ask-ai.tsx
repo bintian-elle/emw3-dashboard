@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
 import { PanelRightClose, Sparkles } from "lucide-react";
 import { Dialog } from "radix-ui";
+import { createPortal } from "react-dom";
+import { AskDockContext } from "./ask-dock";
 import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 import { NovaAiComposer } from "@/app/bluevua/testing/nova-ai-composer";
 import { NovaAskAiButton } from "@/app/bluevua/testing/nova-ask-ai-button";
@@ -26,7 +28,19 @@ export function MarketAskAi(props: Props) {
 }
 
 function MarketConversation({ start, end, disabled, market, comparison }: Props) {
-  const [open, setOpen] = useState(false);
+  const dock = useContext(AskDockContext);
+  const open = dock?.open ?? false;
+  const desktopDocked = Boolean(dock?.docked);
+  const setOpen = dock?.setOpen;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelClose = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (desktopDocked) panelClose.current?.focus({ preventScroll: true });
+  }, [desktopDocked]);
+  function closeDock() {
+    setOpen?.(false);
+    triggerRef.current?.focus({ preventScroll: true });
+  }
   const { language } = useSiteLanguage();
   const t = (en: string, zh: string) => language === "zh" ? zh : en;
   const [saved, setSaved] = useState<BiceekChatTurn[]>([]);
@@ -114,15 +128,14 @@ function MarketConversation({ start, end, disabled, market, comparison }: Props)
     t("Compare Google Ads and Meta Ads in the UK.", "比较英国市场的 Google Ads 和 Meta Ads。"),
   ];
   const conversations = Array.from(new Map(saved.toReversed().map(turn => [turn.conversation, turn])).values());
-  return <Dialog.Root open={open} onOpenChange={setOpen}>
-    <Dialog.Trigger asChild><NovaAskAiButton disabled={disabled}>{t("Ask AI Biceek", "询问 AI Biceek")}</NovaAskAiButton></Dialog.Trigger>
-    <Dialog.Portal>
-      <Dialog.Overlay className={chat.backdrop} />
-      <Dialog.Content className={`${chat.panel} ${styles.aiPanel}`}>
+  const panel = <>
         <header className={chat.header}>
           <div className={chat.headerGroup}>
-            <Dialog.Close asChild><NovaButton variant="ghost" size="icon" aria-label={t("Close Ask AI Biceek", "收起询问 AI Biceek")}><PanelRightClose /></NovaButton></Dialog.Close>
-            <Dialog.Title className={chat.title}>{t("Ask AI Biceek", "询问 AI Biceek")}</Dialog.Title>
+            {desktopDocked
+              ? <NovaButton ref={panelClose} variant="ghost" size="icon" aria-label={t("Close Ask AI Biceek", "收起询问 AI Biceek")} onClick={closeDock}><PanelRightClose /></NovaButton>
+              : <Dialog.Close asChild><NovaButton variant="ghost" size="icon" aria-label={t("Close Ask AI Biceek", "收起询问 AI Biceek")}><PanelRightClose /></NovaButton></Dialog.Close>}
+            {desktopDocked ? <h2 className={chat.title}>{t("Ask AI Biceek", "询问 AI Biceek")}</h2>
+              : <Dialog.Title className={chat.title}>{t("Ask AI Biceek", "询问 AI Biceek")}</Dialog.Title>}
           </div>
           <div className={chat.headerActions}>
             <NovaButton variant="ghost" disabled={busy || !historyReady} aria-expanded={showHistory}
@@ -134,7 +147,8 @@ function MarketConversation({ start, end, disabled, market, comparison }: Props)
           </div>
         </header>
         <div className={chat.context}>
-          <Dialog.Description className={chat.labelRow}>{t("Discussion scope", "讨论范围")}</Dialog.Description>
+          {desktopDocked ? <p className={chat.labelRow}>{t("Discussion scope", "讨论范围")}</p>
+            : <Dialog.Description className={chat.labelRow}>{t("Discussion scope", "讨论范围")}</Dialog.Description>}
           <p className={chat.contextTitle}>{viewScope.market ? t("Biceek · United Kingdom", "Biceek · 英国") : t("Biceek · All 7 markets", "Biceek · 全部七国市场")}</p>
           <p className={chat.date}>{viewScope.start} – {viewScope.end}</p>
           {viewScope.comparison && <p className={chat.date}>{t("Compare with", "对比周期")} {viewScope.comparison.start} – {viewScope.comparison.end}</p>}
@@ -174,7 +188,34 @@ function MarketConversation({ start, end, disabled, market, comparison }: Props)
           <NovaAiComposer value={draft} onChange={setDraft} onSubmit={send} disabled={busy || !historyReady || showHistory} sendDisabled={busy || !historyReady || showHistory || !draft.trim()}
             inputLabel={t("Type a message", "输入消息")} placeholder={t("Ask about this period…", "询问这个周期…")} sendLabel={t("Send message", "发送消息")} />
         </footer>
-      </Dialog.Content>
-    </Dialog.Portal>
-  </Dialog.Root>;
+  </>;
+
+  const name = t("Ask AI Biceek", "询问 AI Biceek");
+  return <>
+    <NovaAskAiButton ref={triggerRef} disabled={disabled} onClick={() => open ? closeDock() : setOpen?.(true)}
+      aria-expanded={open} aria-controls={open ? "biceek-ask-panel" : undefined}>{name}</NovaAskAiButton>
+    {open && (desktopDocked && dock?.slot
+      ? createPortal(<aside id="biceek-ask-panel" aria-label={name} className={`${chat.panel} ${chat.dockedPanel} ${styles.askDockPanel}`}
+          onKeyDown={event => { if (event.key === "Escape") closeDock(); }}>
+          <div role="separator" tabIndex={0} aria-orientation="vertical" aria-label={t("Resize Ask AI panel", "调整问答面板宽度")}
+            aria-valuemin={352} aria-valuemax={840} aria-valuenow={dock.width} className={chat.resize}
+            onPointerDown={event => event.currentTarget.setPointerCapture(event.pointerId)}
+            onPointerMove={event => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) dock.resize(window.innerWidth - event.clientX);
+            }}
+            onKeyDown={event => {
+              if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+              event.preventDefault();
+              dock.resize(dock.width + (event.key === "ArrowLeft" ? 20 : -20));
+            }} />
+          {panel}</aside>, dock.slot)
+      : <Dialog.Root open onOpenChange={setOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className={chat.backdrop} style={{ top: dock?.topbarHeight }} />
+            <Dialog.Content id="biceek-ask-panel" className={`${chat.panel} ${styles.aiPanel}`}
+              style={dock ? { top: dock.topbarHeight, height: `calc(100dvh - ${dock.topbarHeight}px)` } : undefined}
+              onCloseAutoFocus={event => { event.preventDefault(); triggerRef.current?.focus({ preventScroll: true }); }}>{panel}</Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>)}
+  </>;
 }

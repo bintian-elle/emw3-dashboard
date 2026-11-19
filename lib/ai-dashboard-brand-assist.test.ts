@@ -21,3 +21,16 @@ test('Biceek market questions exclude Content Testing and private brand document
  assert.equal(result.status,'available');
  assert.deepEqual(result.notes,['market answer']);
 });
+
+test('Builder background exposes testing instructions only for a Bluevua request carrying a test snapshot', async () => {
+ for (const [project,snapshot,allowed] of [['bluevua',undefined,false],['bluevua',{scope:'test-fixture'},true],['biceek',{scope:'not-allowed'},false],['ringconn',undefined,false]] as const) {
+  const result=await consultBrandAssistant({project,prompt:'Summarize performance.',metrics:{},contentTesting:snapshot},{
+   readContext:async()=> 'Synthetic project background.',
+   runner:async task=>{
+    assert.equal(/content_testing_snapshot|Content Testing snapshot/.test(task.prompt),allowed,project);
+    return '{"notes":["Scoped summary"],"sources":[]}';
+   },
+  });
+  assert.equal(result.status,'available');
+ }
+});

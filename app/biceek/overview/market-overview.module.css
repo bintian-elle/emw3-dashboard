@@ -46,3 +46,9 @@
 .marketPicker { display:grid; gap:.5rem; }
 
 .tableWrap tr.reviewSummary { background: var(--page); font-weight: 600; }
+.askDockRoot { height:100dvh; overflow:hidden; }
+.askDockRoot .askDockLayout { flex:1; min-height:0; height:auto; align-items:stretch; }
+.askDockRoot .askDockContent { height:100%; }
+.askDockSlot { min-width:0; min-height:0; }
+.askDockSlot[hidden] { display:none; }
+.askDockSlot .askDockPanel { height:100%; }

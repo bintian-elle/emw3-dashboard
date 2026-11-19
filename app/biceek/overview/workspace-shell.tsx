@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChartColumnIncreasing, ChartPie, ChevronLeft, ChevronRight, Flag, Languages, Menu, PanelLeft, X } from "lucide-react";
@@ -9,6 +9,9 @@ import { DashboardTopBar } from "@/components/application/dashboard/dashboard-to
 import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 import { NovaButton } from "@/app/bluevua/testing/nova-preview-ui";
 import styles from "@/app/bluevua/testing/nova-preview-shell.module.css";
+import chat from "@/app/bluevua/testing/nova-chat.module.css";
+import layout from "./market-overview.module.css";
+import { AskDockContext, askDockNarrow, subscribeAskDockNarrow } from "./ask-dock";
 import { MarketRefresh, useMarketRefresh } from "./market-refresh";
 import type { SiteUser } from "@/lib/site-auth";
 
@@ -19,6 +22,32 @@ export function BiceekWorkspace({ account, updatedAt, children, view }: { view: 
   const zh = language === "zh";
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
+  const [askSlot, setAskSlot] = useState<HTMLDivElement | null>(null);
+  const [topbarHeight, setTopbarHeight] = useState(60);
+  const [askWidth, setAskWidth] = useState(640);
+  const topbar = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const element = topbar.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => setTopbarHeight(entry.contentRect.height));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const narrow = useSyncExternalStore(subscribeAskDockNarrow, askDockNarrow, () => true);
+  const docked = askOpen && !narrow;
+  const content = useRef<HTMLDivElement>(null);
+  const scroll = useRef(0);
+  const wasDocked = useRef(false);
+  function setAsk(open: boolean) {
+    if (open && !docked) scroll.current = window.scrollY;
+    setAskOpen(open);
+  }
+  useLayoutEffect(() => {
+    if (docked && !wasDocked.current && content.current) content.current.scrollTop = scroll.current;
+    else if (!docked && wasDocked.current) window.scrollTo({ top: scroll.current, behavior: "instant" });
+    wasDocked.current = docked;
+  }, [docked]);
   const refresh = useMarketRefresh(updatedAt);
   const links = [
     { id: "overview", href: "/biceek/overview", label: zh ? "总览" : "Overview", Icon: ChartPie },
@@ -47,14 +76,15 @@ export function BiceekWorkspace({ account, updatedAt, children, view }: { view: 
     </div>
     <MarketRefresh collapsed={compact} state={refresh} />
   </>;
-  return <div className={styles.root}>
+  return <AskDockContext.Provider value={{ open: askOpen, setOpen: setAsk, docked, slot: askSlot, topbarHeight, width: askWidth, resize: width => setAskWidth(Math.min(840, Math.max(352, width))) }}>
+    <div className={`${styles.root} ${docked ? layout.askDockRoot : ""}`}>
     <Dialog.Root open={mobileOpen} onOpenChange={setMobileOpen}>
-      <DashboardTopBar account={account}>
+      <div ref={topbar}><DashboardTopBar account={account}>
         <nav className={styles.topbarBreadcrumb} aria-label={zh ? "面包屑导航" : "Breadcrumb"}>
           <Dialog.Trigger asChild><NovaButton variant="ghost" size="icon" className={styles.mobileMenu} aria-label={zh ? "打开导航" : "Open navigation"}><Menu aria-hidden="true" /></NovaButton></Dialog.Trigger>
           <ChevronRight aria-hidden="true" /><span aria-current="page">{current?.label}</span>
         </nav>
-      </DashboardTopBar>
+      </DashboardTopBar></div>
       <Dialog.Portal>
         <Dialog.Overlay className={styles.sheetOverlay} />
         <Dialog.Content className={styles.mobileSheet}>
@@ -63,10 +93,18 @@ export function BiceekWorkspace({ account, updatedAt, children, view }: { view: 
           {sidebar(false, true)}
         </Dialog.Content>
       </Dialog.Portal>
-      <div className={styles.workspaceBody}>
-        <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`} aria-label={zh ? "Biceek 导航" : "Biceek navigation"}>{sidebar(collapsed)}</aside>
-        <div className={styles.workspace}><main id="overview" className={styles.main}>{children}</main></div>
+      <div className={docked ? `${chat.dockedLayout} ${collapsed ? chat.dockedCollapsed : ""} ${layout.askDockLayout}` : undefined}
+        style={docked ? { "--testing-chat-width": `${askWidth}px` } as CSSProperties : undefined}>
+        <div ref={content} className={docked ? `${chat.dockedContent} ${layout.askDockContent}` : undefined}
+          onScroll={docked ? event => { scroll.current = event.currentTarget.scrollTop; } : undefined}>
+          <div className={styles.workspaceBody}>
+            <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`} aria-label={zh ? "Biceek 导航" : "Biceek navigation"}>{sidebar(collapsed)}</aside>
+            <div className={styles.workspace}><main id="overview" className={styles.main}>{children}</main></div>
+          </div>
+        </div>
+        <div ref={setAskSlot} className={layout.askDockSlot} hidden={!docked} />
       </div>
     </Dialog.Root>
-  </div>;
+    </div>
+  </AskDockContext.Provider>;
 }
