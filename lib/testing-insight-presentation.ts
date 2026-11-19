@@ -1,4 +1,4 @@
-export type PresentationDataset={id:string;scopes?:string[];labels?:Record<string,string>;xKey:string;columns:Record<string,string>;rows:Record<string,string|number|null>[]};
+export type PresentationDataset={provenance?:{verification:'scope-checked-source-unverified';rows:Array<{category:string;period:{start:string;end:string};entities:string[];source:{channel:string;reference:string;request:string;retrieved_at:string}}>};id:string;scopes?:string[];labels?:Record<string,string>;xKey:string;columns:Record<string,string>;rows:Record<string,string|number|null>[]};
 export type PresentationMedia={key:string;asset_id:string;name:string;kind:'frame'|'image'|'video';timestamp_seconds:number|null;width:number;height:number;file:string;sha256:string;url?:string;campaigns:string[]};
 export type PresentationMarker={x:number;y:number;width:number;height:number;label:string;observation:string;recommendation:string;confidence:string};
 export type PresentationChart={chart_type:string;dataset_ref:string;x_key:string;y_keys:string[];reason:string;annotations:{category:string;label:string}[]};

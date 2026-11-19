@@ -131,13 +131,8 @@ export function TestingDataRefresh({ channel, collapsed, variant = "default" }: 
   const setupMessage = status?.messageCode === "cache_setup_required" ? (zh ? "共享缓存尚未配置。" : "Shared cache setup is required.") : status?.messageCode === "cache_unavailable" ? (zh ? "共享缓存暂不可用，请稍后再试。" : "Shared cache unavailable. Try again later.") : status?.message;
   const detail = error || (!status?.available && setupMessage ? setupMessage : "");
 
-  if (variant === "nova") return <div className={styles.refresh}>
-    {!collapsed ? <>
-      <div className={styles.time} aria-live="polite">{formatted ? <><strong>{zh ? "数据" : "Data"}</strong>{zh ? `更新于 ${formatted}` : ` updated ${formatted}`}</> : timeLabel}</div>
-      {detail && <p className={styles.error} role="status">{detail}</p>}
-      <NovaButton type="button" variant="ghost" size="sm" onClick={() => void refresh()} disabled={disabled} aria-label={buttonLabel} className={styles.action}><RotateCw aria-hidden="true" className={updating ? styles.spinning : undefined}/>{buttonLabel}</NovaButton>
-    </> : <NovaButton type="button" variant="ghost" size="icon" aria-label={`${buttonLabel}. ${timeLabel}${detail ? `. ${detail}` : ""}`} title={`${buttonLabel} · ${timeLabel}${detail ? ` · ${detail}` : ""}`} onClick={() => void refresh()} disabled={disabled}><RotateCw aria-hidden="true" className={updating ? styles.spinning : undefined}/></NovaButton>}
-  </div>;
+  if (variant === "nova") return <NovaDataRefresh collapsed={collapsed} updatedAt={status?.updatedAt} detail={detail}
+    onRefresh={() => void refresh()} updating={updating} disabled={disabled} />;
 
   return <div className="mt-4 border-t border-separator-border pt-3 lg:shrink-0">
     <div className={cx("flex flex-col items-start gap-2", collapsed && "lg:hidden")}>
@@ -146,4 +141,24 @@ export function TestingDataRefresh({ channel, collapsed, variant = "default" }: 
     </div>
     {collapsed && <div className="hidden lg:flex lg:justify-center"><IconButton icon={RiRefreshLine} aria-label={`${buttonLabel}. ${timeLabel}${detail ? `. ${detail}` : ""}`} title={`${buttonLabel} · ${timeLabel}${detail ? ` · ${detail}` : ""}`} onClick={() => void refresh()} disabled={disabled}/></div>}
   </div>;
+}
+
+export function NovaDataRefresh({collapsed,updatedAt,detail,updating,disabled,onRefresh,schedule}:{
+ collapsed:boolean;updatedAt?:string|null;detail?:string;updating:boolean;disabled?:boolean;onRefresh:()=>void;schedule?:string;
+}){
+ const {language}=useSiteLanguage(),zh=language==="zh";
+ const formatted=updatedAt?formatUpdatedAt(updatedAt,zh?"zh-CN":"en-US"):null;
+ const timeLabel=formatted?(zh?`数据更新于 ${formatted}`:`Data updated ${formatted}`):(zh?"暂无数据更新时间":"No data update time yet");
+ const buttonLabel=updating?(zh?"正在刷新":"Refreshing"):(zh?"刷新数据":"Refresh data");
+ const description=[timeLabel,schedule,detail].filter(Boolean).join(" · ");
+ return <div className={styles.refresh}>
+  {!collapsed && <>
+   <div className={styles.time} aria-live="polite">{timeLabel}{schedule&&<div>{schedule}</div>}</div>
+   {detail&&<p className={styles.error} role="status">{detail}</p>}
+  </>}
+  <NovaButton type="button" variant="ghost" size={collapsed?"icon":"sm"} onClick={onRefresh}
+    disabled={disabled||updating} aria-label={buttonLabel} title={collapsed?description:undefined} className={collapsed?undefined:styles.action}>
+   <RotateCw aria-hidden="true" className={updating?styles.spinning:undefined}/>{!collapsed&&buttonLabel}
+  </NovaButton>
+ </div>;
 }

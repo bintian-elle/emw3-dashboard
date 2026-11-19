@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Camera } from "lucide-react";
 
 const logos: Record<string, string> = {
+  "Google Ads": "/brand/channels/google-ads.svg",
   "Google Search": "/brand/channels/google-search.svg",
   "Google PMAX": "/brand/channels/google-ads.svg",
   "Google Demand Gen": "/brand/channels/google-discover.svg",

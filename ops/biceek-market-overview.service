@@ -1,0 +1,14 @@
+[Unit]
+Description=Collect Biceek market performance into its private EC2 cache
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/services/biceek-daily-report
+ExecStart=/usr/bin/python3 /home/ubuntu/services/biceek-daily-report/market-overview-refresh.py
+TimeoutStartSec=25min
+UMask=0077
+NoNewPrivileges=true

@@ -70,14 +70,37 @@ export function TestingComparisonControls({children,reportingRange}:{children:Re
   setCustom(null);update(next);
  };
  const mainOptions=path.startsWith('/bluevua/testing/reddit')?[['sinceSep24','Lifetime (Sep 24, 2026 – Now)'] as const,...novaReportingPeriods]:novaReportingPeriods;
- const options=[['previousPeriod',zh?'上一周期':'Previous period'],['previousYear',zh?'去年同期':'Previous year'],...novaReportingPeriods] as const;
+ const options=dashboardComparisonOptions(zh);
+ return <DashboardPeriodComparison
+  main={{range:current,options:mainOptions,value:custom==='main'?'custom':query.get('period')??(path.startsWith('/bluevua/testing/reddit')?'sinceSep24':'lastWeek')}}
+  compare={{range:previous,options,value:custom==='compare'?'custom':compare}}
+  pending={pending} onChoose={choose} onApply={setRange} onSwap={swap}><ComparisonStatus/></DashboardPeriodComparison>;
+}
+export function dashboardComparisonOptions(zh:boolean) {
+ return [['previousPeriod',zh?'上一周期':'Previous period'],['previousYear',zh?'去年同期':'Previous year'],...novaReportingPeriods] as const;
+}
+type ComparisonPicker = { range: ComparisonRange; options: readonly (readonly [string,string])[]; value: string };
+export function DashboardPeriodComparison({main,compare,pending,validateRange,onChoose,onApply,onSwap,children}:{
+ main:ComparisonPicker;compare:ComparisonPicker;pending?:boolean;validateRange?:(range:ComparisonRange)=>string|undefined;
+ onChoose:(which:'main'|'compare',value:string)=>void;onApply:(which:'main'|'compare',range:ComparisonRange)=>void;onSwap:()=>void;children?:ReactNode;
+}){
+ const {language}=useSiteLanguage(),zh=language==='zh';
+ const picker=(which:'main'|'compare',{range,options,value}:ComparisonPicker,label:string)=>
+  <div className={styles.picker}><span className={styles.label}>{label}</span>
+   <ComparisonPeriodSelect ariaLabel={label} value={value} options={options} disabled={pending} onValueChange={next=>onChoose(which,next)}/>
+   <span className={styles.dates} aria-live="polite">{range.start} – {range.end}</span>
+   {value==='custom'&&<NovaReportingPeriodCustom zh={zh} disabled={pending} start={range.start} end={range.end}
+    validateRange={selection=>validateRange?.({start:selection.start.toString(),end:selection.end.toString()})}
+    onApply={selection=>onApply(which,{start:selection.start.toString(),end:selection.end.toString()})}/>}
+  </div>;
  return <div className={styles.controls} data-comparison-controls aria-busy={pending}>
-  <div className={styles.picker}><span className={styles.label}>{zh?'报告周期':'Time Period'}</span><ComparisonPeriodSelect ariaLabel={zh?'报告周期':'Time Period'} options={mainOptions} value={custom==='main'?'custom':query.get('period')??(path.startsWith('/bluevua/testing/reddit')?'sinceSep24':'lastWeek')} disabled={pending} onValueChange={value=>choose('main',value)}/><span className={styles.dates}>{current.start} – {current.end}</span>{(custom==='main'||query.get('period')==='custom')&&<NovaReportingPeriodCustom zh={zh} disabled={pending} start={current.start} end={current.end} onApply={range=>setRange('main',{start:range.start.toString(),end:range.end.toString()})}/>}</div>
-  <Button className={styles.swap} variant="secondary" iconOnly leadingIcon={ArrowLeftRight} disabled={pending} onClick={swap} aria-label={zh?'交换报告与对比周期':'Swap reporting and comparison periods'}/>
-  <div className={styles.picker}><span className={styles.label}>{zh?'对比周期':'Compare With'}</span><ComparisonPeriodSelect ariaLabel={zh?'对比周期':'Compare With'} value={custom==='compare'?'custom':compare} options={options} disabled={pending} onValueChange={value=>choose('compare',value)}/><span className={styles.dates}>{previous.start} – {previous.end}</span>{(custom==='compare'||compare==='custom')&&<NovaReportingPeriodCustom zh={zh} disabled={pending} start={previous.start} end={previous.end} onApply={range=>setRange('compare',{start:range.start.toString(),end:range.end.toString()})}/>}</div>
-  <ComparisonStatus/>
+  {picker('main',main,zh?'报告周期':'Time Period')}
+  <Button className={styles.swap} variant="secondary" iconOnly leadingIcon={ArrowLeftRight} disabled={pending} onClick={onSwap} aria-label={zh?'交换报告与对比周期':'Swap reporting and comparison periods'}/>
+  {picker('compare',compare,zh?'对比周期':'Compare With')}
+  {children}
  </div>;
 }
+
 function ComparisonStatus(){const state=useContext(Context),{language}=useSiteLanguage(),zh=language==='zh';if(!state.loading&&!state.error&&!state.packet?.unavailable.length)return null;return <span className={styles.status} role="status">{state.loading?(zh?'正在加载对比数据…':'Loading comparison…'):state.error?(zh?'对比数据暂不可用':'Comparison unavailable'):`${zh?'对比期暂无数据':'No published comparison data'}: ${state.packet?.unavailable.join(', ')}`}</span>;}
 export function ComparisonDelta({entity,metric,value}:{entity:string;metric:string;value:number|null|undefined}){
  const state=useContext(Context);
@@ -95,6 +118,6 @@ export function ComparisonValueDelta({metric,value,previous,loading=false}:{metr
 /** Same shared select primitive, caption style and labels as EDM's Picker. */
 export function ComparisonPeriodSelect({value,onValueChange,disabled,ariaLabel,options=novaReportingPeriods}:{value:string;onValueChange:(value:string)=>void;disabled?:boolean;ariaLabel:string;options?:readonly (readonly [string,string])[]}){
  const {language}=useSiteLanguage();
- const translated:Record<string,string>={lastWeek:'上周（周二至周一）',wtd:'本周至今',mtd:'本月至今',ytd:'今年至今',last7:'最近 7 天',last30:'最近 30 天',last90:'最近 90 天',custom:'自定义',sinceSep24:'全周期（2026 年 9 月 24 日至今）'};
+ const translated:Record<string,string>={lastWeek:'上周（周二至周一）',wtd:'本周至今',mtd:'本月至今',ytd:'今年至今',last3:'最近 3 天',last7:'最近 7 天',lifetime:'全周期',last30:'最近 30 天',last90:'最近 90 天',custom:'自定义',sinceSep24:'全周期（2026 年 9 月 24 日至今）'};
  return <Select aria-label={ariaLabel} selectedKey={value} isDisabled={disabled} onSelectionChange={key=>onValueChange(String(key))}>{options.map(([id,label])=><SelectItem key={id} id={id}>{language==='zh'?(translated[id]??label):label}</SelectItem>)}</Select>;
 }

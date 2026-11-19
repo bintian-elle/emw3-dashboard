@@ -34,3 +34,7 @@
 .projectHeading { display:flex; align-items:center; gap:.875rem; margin-top:.6rem; }
 .projectHeading .heading { margin:0; }
 .projectLogo { width:3rem; height:3rem; flex:none; border-radius:.625rem; }
+
+.brandMetric { margin-top:.75rem; color:var(--muted-foreground); font-size:.8rem; }
+.brandMetricValues { display:flex; align-items:baseline; flex-wrap:wrap; gap:.35rem .6rem; }
+.brandMetricValues strong { font-size:1.25rem; color:var(--foreground); font-variant-numeric:tabular-nums; }

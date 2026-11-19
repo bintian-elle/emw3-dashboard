@@ -1,5 +1,7 @@
 "use client";
 
+import topBarStyles from "@/components/application/dashboard/account-header.module.css";
+import { DashboardTopBar } from "@/components/application/dashboard/dashboard-top-bar";
 import {TestingComparisonControls} from "./testing-comparison";
 import { Suspense, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
@@ -22,8 +24,6 @@ import { NovaAskAiButton } from "./nova-ask-ai-button";
 import { NovaShareButton } from "./nova-share-button";
 import {NovaHistoryMenu} from './nova-history-menu';
 import {NovaHistoryBadge} from './nova-history-readout';
-import { NovaAccountControls } from "./nova-account-controls";
-import { SiteHomeLogo } from "@/components/brand/site-home-logo";
 import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
 import styles from "./nova-preview-shell.module.css";
 import {useReviewPreview} from "@/components/application/review/review-preview-context";
@@ -88,18 +88,19 @@ export function NovaPreviewShell({children,account,promptsEnabled=false}:{childr
    {refreshChannel&&(!menuOpen||onNavigate)&&<TestingDataRefresh channel={refreshChannel} collapsed={compact} variant="nova"/>}
  </>;
  return <ChannelNavigationContext.Provider value={navigateChannel}><div className={styles.root}>
-  <aside className={`${styles.sidebar} ${collapsed?styles.collapsed:""} ${promptsEnabled?styles.reviewSidebar:""}`} aria-label={zh?"测试导航":"Testing navigation"}>{sidebarContent(collapsed)}</aside>
   <Dialog.Root open={menuOpen} onOpenChange={setMenuOpen}>
    <Dialog.Portal><Dialog.Overlay className={styles.sheetOverlay}/><Dialog.Content className={styles.mobileSheet}><Dialog.Title className={styles.visuallyHidden}>{zh?"导航":"Navigation"}</Dialog.Title><Dialog.Description className={styles.visuallyHidden}>{zh?"选择渠道或页面。":"Choose a channel or view."}</Dialog.Description>{sidebarContent(false,()=>setMenuOpen(false))}</Dialog.Content></Dialog.Portal>
-   <div className={styles.workspace}>
-    <header className={styles.topbar}>
+   <DashboardTopBar account={account}>
      <nav className={styles.topbarBreadcrumb} aria-label={zh?"面包屑导航":"Breadcrumb"}>
       <Dialog.Trigger asChild><NovaButton variant="ghost" size="icon" className={styles.mobileMenu} aria-label={zh?"打开导航":"Open navigation"}><Menu aria-hidden="true"/></NovaButton></Dialog.Trigger>
-      <SiteHomeLogo/><Link href="/bluevua">Bluevua</Link><ChevronRight aria-hidden="true"/><TestingLink href={`/bluevua/testing?${query}`}>{zh?"内容测试":"Content testing"}</TestingLink>
+      <ChevronRight aria-hidden="true"/><TestingLink href={`/bluevua/testing?${query}`} className={topBarStyles.dashboardItem} title={zh?"打开内容测试总览":"Open Content Testing overview"}>{zh?"内容测试":"Content testing"}</TestingLink>
      </nav>
-     <NovaAccountControls account={account}/>
-    </header>
+   </DashboardTopBar>
+   <div className={styles.workspaceBody}>
+  <aside className={`${styles.sidebar} ${collapsed?styles.collapsed:""} ${promptsEnabled?styles.reviewSidebar:""}`} aria-label={zh?"测试导航":"Testing navigation"}>{sidebarContent(collapsed)}</aside>
+   <div className={styles.workspace}>
     <main data-testing-content className={styles.main}>{pendingTarget?<ChannelRouteLoading title={pendingTarget.title} destination={pendingTarget.path}/>:children}</main>
+   </div>
    </div>
   </Dialog.Root>
   <CampaignNavigator variant="nova"/>

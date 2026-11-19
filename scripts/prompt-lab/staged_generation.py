@@ -72,7 +72,15 @@ def validate_stage_result(job, result):
 
 def merge_reports(channel, campaigns):
     result = deepcopy(channel)
+    datasets = result.setdefault('supplemental_datasets', [])
+    for campaign in campaigns:
+        for dataset in campaign.get('supplemental_datasets', []):
+            if any(item['id'] == dataset['id'] for item in datasets):
+                raise ValueError('Duplicate supplemental dataset ID across stages')
+            datasets.append(deepcopy(dataset))
     for lang in ('en', 'zh'):
+        if lang not in result:
+            continue
         result[lang]['presentation']['styles_per_scope'] = True
         for campaign in campaigns:
             result[lang]['presentation']['blocks'].extend(deepcopy(campaign[lang]['presentation']['blocks']))

@@ -4,6 +4,8 @@ import {orchestrateManualReports} from './manual-orchestration.mjs';
 import {storeReportBundle} from './report-store.mjs';
 import {collectCreativeEvidence} from './creative-evidence.mjs';
 import {reportDatabaseConfig} from './report-database.mjs';
+import {buildAiDatasetPolicy} from '../../lib/testing-ai-datasets.ts';
+import {buildOverviewDatasets} from '../../lib/testing-overview-datasets.ts';
 env.loadEnvConfig(process.cwd());
 const id=process.argv[2],temporary=process.argv[3]==='temporary',environment=process.argv[4];if(!/^[a-f0-9-]{36}$/.test(id??'')||!['staging','production'].includes(environment))throw Error('Invalid request');
 const db=new pg.Client({...reportDatabaseConfig(),connectionTimeoutMillis:15000});const exec=promisify(execFile);
@@ -12,9 +14,9 @@ if(remoteHost&&!/^[a-zA-Z0-9][a-zA-Z0-9_@.-]{0,100}$/.test(remoteHost))throw Err
 const python=process.env.CONTENT_TESTING_PYTHON||'/home/ubuntu/work/anc-slack-bridge/.venv/bin/python';
 const source=path.resolve('scripts/prompt-lab');
 const run=(program,args)=>exec(program,args,{cwd:process.cwd(),env:process.env,maxBuffer:2000000,timeout:7200000});
-let tempJob,lockOwned=false,claimed=false;
+let tempJob,lockOwned=false,claimed=false,databaseReady=false;
 async function updateTemporary(extra){const name=path.join(root,'job.json'),current=JSON.parse(await readFile(name,'utf8'));if(current.id!==id)throw Error('Invalid job');const tmp=path.join(root,`job-worker-${process.pid}.tmp`);await writeFile(tmp,JSON.stringify({...current,...extra}),{mode:0o600});await rename(tmp,name);}
-if(!temporary)await db.connect();
+if(!temporary){await db.connect();databaseReady=true;}
 try{
  let request;
  if(temporary){try{await mkdir(path.join(root,'worker-lock'),{mode:0o700});lockOwned=true;}catch(error){if(error.code==='EEXIST')process.exit(0);throw error;}tempJob=JSON.parse(await readFile(path.join(root,'job.json'),'utf8'));if(tempJob.status!=='queued')throw Error('Job is not queued');await updateTemporary({status:'running'});request={scope:tempJob.scope,payload:tempJob.payload};}
@@ -36,7 +38,28 @@ try{
    media.set(item.key,{key:item.key,mimeType:'image/webp',sha256:item.sha256,body:data,metadata:item});if(path.resolve(directory)!==path.resolve(folder,'media'))await copyFile(path.join(directory,item.file),path.join(folder,'media',item.file));
    item.source_path=path.join(remoteHost?remote:folder,'media',item.file);
   }
-  if(channel==='overview'){job.frozen_input.completed_channel_reports=sources.map(x=>({channel:x.channel,content:x.content}));job.frozen_input.overview_sources=sources.map(x=>({channel:x.channel,kind:'saved-or-same-run'}));}
+  let evidenceJobs={};
+  if(channel==='overview'){
+   job.frozen_input.completed_channel_reports=sources.map(x=>({channel:x.channel,content:x.content}));job.frozen_input.overview_sources=sources.map(x=>({channel:x.channel,kind:'saved-or-same-run'}));
+   // A reused channel must use the exact evidence recorded with that saved report.
+   evidenceJobs={...payload.jobs};
+   for(const item of sources){
+    if(evidenceJobs[item.channel])continue;
+    const runId=item.content?.en?.run_id;if(!runId)continue;
+    try{
+     if(!databaseReady){await db.connect();databaseReady=true;}
+     const result=await db.query(`select g.payload->'jobs'->$2 as job, r.prompt_versions->$2 as versions from content_testing_reports.generation_requests g join content_testing_reports.runs r on r.id=g.run_id where g.run_id=$1 and g.status='completed' order by g.updated_at desc limit 1`,[runId,item.channel]);
+     const saved=result.rows[0],candidate=saved?.job,hashes=saved?.versions;
+     if(candidate?.versions&&hashes&&Object.entries(candidate.versions).every(([name,value])=>hashes[name]===createHash('sha256').update(value.content).digest('hex')))evidenceJobs[item.channel]=candidate;
+    }catch{/* Missing verified evidence does not block text analysis. */}
+   }
+   const chartData=buildOverviewDatasets(evidenceJobs,{current:{start:period.start,end:period.end},previous:period.compareStart&&period.compareEnd?{start:period.compareStart,end:period.compareEnd}:null});
+   job.frozen_input.visual_context.datasets={...job.frozen_input.visual_context.datasets,...chartData.datasets};
+   job.frozen_input.presentation_datasets=job.frozen_input.visual_context.datasets;
+   job.frozen_input.overview_dataset_evidence={basis:'Same-run or verified saved channel testing snapshots; each dataset uses the channel’s selected testing entities and exact dates. Monetary units are not assumed when currency is unverified. Cross-channel ROAS and orders describe platform attribution with different attribution windows and objectives; they are not de-duplicated company sales or proof of incremental impact.',gaps:chartData.gaps};
+  }
+  const datasetPolicy=buildAiDatasetPolicy(job.frozen_input,channel,evidenceJobs);
+  job.frozen_input.supplemental_dataset_policy=datasetPolicy;
   job.id=`${id}-${channel}`;job.frozen_input.visual_context.run_id=id;
   await writeFile(path.join(folder,'input.json'),JSON.stringify(job),{mode:0o600});
   await copyFile(path.join(source,'native-preview.py'),path.join(folder,'native-preview.py'));await copyFile(path.join(source,'staged_generation.py'),path.join(folder,'staged_generation.py'));
@@ -47,7 +70,7 @@ try{
   }else await run(python,[path.join(folder,'native-preview.py'),'--root',folder]);
   const raw=JSON.parse(await readFile(path.join(folder,'result.json'),'utf8'));
   const context=job.frozen_input.visual_context,language=temporary?payload.language:'en';
-  const reports=temporary?{[language]:assembleSingleTrialVisualResult(raw,context,language,id)}:assembleTrialVisualResult(raw,context,'en',id).reports;
+  const reports=temporary?{[language]:assembleSingleTrialVisualResult(raw,context,language,id,datasetPolicy)}:assembleTrialVisualResult(raw,context,'en',id,datasetPolicy).reports;
   const expected=job.frozen_input.campaigns??[];for(const lang of temporary?[language]:['en','zh'])if(reports[lang].analysis.campaigns.length!==expected.length||reports[lang].analysis.campaigns.some(x=>!expected.includes(x.test_id)))throw Error('Campaign coverage mismatch');
   return reports;
  }

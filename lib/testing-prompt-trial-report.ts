@@ -1,3 +1,4 @@
+import {registerAiDatasets,type AiDataset,type AiDatasetPolicy} from './testing-ai-datasets.ts';
 import {validateInsightPresentation,type PmaxReadableReport,type PresentationSection} from './testing-insight-presentation.ts';
 export type TrialPresentationContext=Omit<PmaxReadableReport,'presentation'|'analysis'|'language'>&{sections:PresentationSection[]};
 export type TrialVisualResult={report:PmaxReadableReport;reports:{en:PmaxReadableReport;zh:PmaxReadableReport}};
@@ -10,9 +11,11 @@ export function validateTrialVisualResult(value:TrialVisualResult,campaigns:stri
  if(!value.report||!['en','zh'].includes(value.report.language??'')||JSON.stringify(value.report)!==JSON.stringify(value.reports[value.report.language as 'en'|'zh']))throw Error('Trial report language mismatch');
  return value;
 }
-export function assembleTrialVisualResult(raw:{en:{presentation:PmaxReadableReport['presentation'];campaigns:PmaxReadableReport['analysis']['campaigns']};zh:{presentation:PmaxReadableReport['presentation'];campaigns:PmaxReadableReport['analysis']['campaigns']}},context:TrialPresentationContext,language:'en'|'zh',runId:string){
- const build=(language:'en'|'zh'):PmaxReadableReport=>{const {sections,...evidence}=context;void sections;return {...evidence,run_id:runId,language,presentation:raw[language].presentation,analysis:{executive_summary:raw[language].presentation.summary,campaigns:raw[language].campaigns}};};
- const reports={en:build('en'),zh:build('zh')};const result={report:reports[language],reports};return validateTrialVisualResult(result,result.report.analysis.campaigns.map(c=>c.test_id),context);
+export function assembleTrialVisualResult(raw:{en:{presentation:PmaxReadableReport['presentation'];campaigns:PmaxReadableReport['analysis']['campaigns']};zh:{presentation:PmaxReadableReport['presentation'];campaigns:PmaxReadableReport['analysis']['campaigns']};supplemental_datasets?:AiDataset[]},context:TrialPresentationContext,language:'en'|'zh',runId:string,policy?:AiDatasetPolicy){
+ if(raw.supplemental_datasets?.length&&!policy)throw Error('Missing trusted testing scope for supplemental datasets');
+ const expanded={...context,datasets:registerAiDatasets(raw.supplemental_datasets,policy??{periods:[],entities:[],scopes:[]},context.datasets).datasets};
+ const build=(language:'en'|'zh'):PmaxReadableReport=>{const {sections,...evidence}=expanded;void sections;return {...evidence,run_id:runId,language,presentation:raw[language].presentation,analysis:{executive_summary:raw[language].presentation.summary,campaigns:raw[language].campaigns}};};
+ const reports={en:build('en'),zh:build('zh')};const result={report:reports[language],reports};return validateTrialVisualResult(result,result.report.analysis.campaigns.map(c=>c.test_id),expanded);
 }
 
 /** Preserve individual cached measurements; never sum ad/asset associations into totals. */
@@ -24,8 +27,10 @@ export function trialMetricRows(value:unknown):Record<string,string|number|null>
  };visit(value);return rows;
 }
 /** Temporary reports contain exactly the language requested by the user. */
-export function assembleSingleTrialVisualResult(raw:Partial<Record<'en'|'zh',{presentation:PmaxReadableReport['presentation'];campaigns:PmaxReadableReport['analysis']['campaigns']}>>,context:TrialPresentationContext,language:'en'|'zh',runId:string):PmaxReadableReport{
+export function assembleSingleTrialVisualResult(raw:Partial<Record<'en'|'zh',{presentation:PmaxReadableReport['presentation'];campaigns:PmaxReadableReport['analysis']['campaigns']}>>&{supplemental_datasets?:AiDataset[]},context:TrialPresentationContext,language:'en'|'zh',runId:string,policy?:AiDatasetPolicy):PmaxReadableReport{
  const value=raw[language];if(!value?.presentation||!Array.isArray(value.campaigns))throw Error('Requested language is missing');
- const {sections,...evidence}=context;const report={...evidence,run_id:runId,language,presentation:value.presentation,analysis:{executive_summary:value.presentation.summary,campaigns:value.campaigns}};
+ if(raw.supplemental_datasets?.length&&!policy)throw Error('Missing trusted testing scope for supplemental datasets');
+ const expanded={...context,datasets:registerAiDatasets(raw.supplemental_datasets,policy??{periods:[],entities:[],scopes:[]},context.datasets).datasets};
+ const {sections,...evidence}=expanded;const report={...evidence,run_id:runId,language,presentation:value.presentation,analysis:{executive_summary:value.presentation.summary,campaigns:value.campaigns}};
  validateInsightPresentation(report.presentation,{...report,sections});return report;
 }

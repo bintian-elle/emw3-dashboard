@@ -1,3 +1,4 @@
+import {buildAiDatasetPolicy} from '../../lib/testing-ai-datasets.ts';
 import {unlinkSync} from 'node:fs';
 import nextEnv from '@next/env';
 import pg from 'pg';
@@ -59,6 +60,8 @@ async function nativePreview(job,root){
  await writeFile(join(root,'result.json'),stdout,{mode:0o600});
 }
 async function execute(job){
+ const datasetPolicy=buildAiDatasetPolicy(job.frozen_input,job.period.channel,job.frozen_input.channel_evidence_jobs??{});
+ if(job.frozen_input.visual_context)job.frozen_input.supplemental_dataset_policy=datasetPolicy;
  const root=join(localQueue?queueRoot:process.env.REVIEW_PROMPTS_RUN_DIR||process.env.STAGING_PROMPTS_RUN_DIR||join(process.cwd(),'.state/prompt-runs'),job.id);
  await mkdir(root,{recursive:true,mode:0o700});
  if(job.frozen_input.visual_context&&!job.versions.translation&&!job.frozen_input.chat){
@@ -79,7 +82,7 @@ async function execute(job){
   const raw=JSON.parse(await readFile(join(root,'result.json'),'utf8'));
   let result;
   if(job.frozen_input.visual_context&&raw.en&&raw.zh){
-   const visual=assembleTrialVisualResult(raw,job.frozen_input.visual_context,job.language,job.id);
+   const visual=assembleTrialVisualResult(raw,job.frozen_input.visual_context,job.language,job.id,datasetPolicy);
    for(const report of Object.values(visual.reports))report.media_url_base='/api/testing/prompts/media/'+job.id+'/';
    result={title:visual.report.presentation.title,summary:visual.report.presentation.summary,sections:[],campaigns:visual.report.analysis.campaigns.map(c=>({id:c.test_id,summary:c.summary,markdown:c.detail_markdown})),html:null,...visual};
   }else result=raw;

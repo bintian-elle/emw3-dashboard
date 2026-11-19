@@ -79,6 +79,16 @@ class StagedGenerationTests(unittest.TestCase):
         self.assertEqual([c['test_id'] for c in result['zh']['campaigns']], ['A', 'B'])
         self.assertEqual(channel['en']['campaigns'], [])
 
+    def test_merge_preserves_supplemental_datasets_and_rejects_collisions(self):
+        channel, campaign = report('channel', 'channel'), report('A', 'campaign')
+        channel['supplemental_datasets'] = [{'id': 'ai.channel'}]
+        campaign['supplemental_datasets'] = [{'id': 'ai.campaign'}]
+        result = merge_reports(channel, [campaign])
+        self.assertEqual([d['id'] for d in result['supplemental_datasets']], ['ai.channel', 'ai.campaign'])
+        campaign['supplemental_datasets'][0]['id'] = 'ai.channel'
+        with self.assertRaisesRegex(ValueError, 'Duplicate supplemental dataset'):
+            merge_reports(channel, [campaign])
+
     def test_orchestrator_passes_completed_campaigns_to_channel_and_resumes(self):
         bridge = types.ModuleType('anc_bridge')
         sdk = types.ModuleType('anc_bridge.sdk')
