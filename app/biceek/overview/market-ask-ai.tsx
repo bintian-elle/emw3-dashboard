@@ -1,11 +1,15 @@
 "use client";
 
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
-import { PanelRightClose, Sparkles } from "lucide-react";
-import { Dialog } from "radix-ui";
+import { ArrowUpRight, Check, ChevronDown, ChevronsUpDown, GitCompareArrows, LayoutDashboard, Plus, Sparkles, X } from "lucide-react";
+import { Dialog, DropdownMenu, Select } from "radix-ui";
 import { createPortal } from "react-dom";
 import { AskDockContext } from "./ask-dock";
 import { useSiteLanguage } from "@/components/application/dashboard/site-language-provider";
+import { NovaChatHeader } from "@/app/bluevua/testing/nova-chat-header";
+import { NovaReportingPeriodCustom, NovaReportingPeriodSelect, novaReportingPeriods } from "@/app/bluevua/testing/nova-reporting-period";
+import { resolveTestingPeriod } from "@/lib/testing-period";
+import { comparisonRange } from "@/lib/testing-comparison";
 import { NovaAiComposer } from "@/app/bluevua/testing/nova-ai-composer";
 import { NovaAskAiButton } from "@/app/bluevua/testing/nova-ask-ai-button";
 import { NovaButton } from "@/app/bluevua/testing/nova-preview-ui";
@@ -13,12 +17,12 @@ import chat from "@/app/bluevua/testing/nova-chat.module.css";
 import styles from "./market-overview.module.css";
 import type { BiceekChatScope, BiceekChatTurn } from "@/lib/biceek-chat-history";
 
-type Turn = { role: "user" | "assistant"; text: string };
-type Props = { comparison: { start: string; end: string }; start: string; end: string; disabled: boolean; market?: "GB" };
+type Turn = { role: "user" | "assistant"; text: string; scope?: BiceekChatScope };
+type Props = { comparison: { start: string; end: string }; start: string; end: string; disabled: boolean; market?: "GB"; period: string; latest: string };
 
 function chatMessages(entries: BiceekChatTurn[], id: string): Turn[] {
   return entries.filter(item => item.conversation === id).flatMap(item => [
-    { role: "user", text: item.question },
+    { role: "user", text: item.question, scope: item.scope },
     ...(item.answer ? [{ role: "assistant" as const, text: item.answer }] : []),
   ]);
 }
@@ -27,13 +31,14 @@ export function MarketAskAi(props: Props) {
   return <MarketConversation {...props} key={`${props.start}:${props.end}:${props.comparison.start}:${props.comparison.end}:${props.market ?? "all"}`} />;
 }
 
-function MarketConversation({ start, end, disabled, market, comparison }: Props) {
+function MarketConversation({ start, end, disabled, market, comparison, period, latest }: Props) {
   const dock = useContext(AskDockContext);
   const open = dock?.open ?? false;
   const desktopDocked = Boolean(dock?.docked);
   const setOpen = dock?.setOpen;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelClose = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (desktopDocked) panelClose.current?.focus({ preventScroll: true });
   }, [desktopDocked]);
@@ -46,6 +51,7 @@ function MarketConversation({ start, end, disabled, market, comparison }: Props)
   const [saved, setSaved] = useState<BiceekChatTurn[]>([]);
   const [conversation, setConversation] = useState<string | null>(null);
   const [viewScope, setViewScope] = useState<BiceekChatScope>({ start, end, market, comparison });
+  const [scopePeriod, setScopePeriod] = useState(period);
   const [showHistory, setShowHistory] = useState(false);
   const [historyReady, setHistoryReady] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -94,7 +100,7 @@ function MarketConversation({ start, end, disabled, market, comparison }: Props)
     const controller = new AbortController();
     request.current = controller;
     follow.current = true;
-    setTurns([...turns, { role: "user", text: question }]);
+    setTurns([...turns, { role: "user", text: question, scope: viewScope }]);
     setDraft("");
     setError("");
     setBusy(true);
@@ -127,49 +133,98 @@ function MarketConversation({ start, end, disabled, market, comparison }: Props)
     t("Which markets had the strongest Total ROAS and meaningful spend?", "哪些市场的 Total ROAS 较高，同时有一定花费？"),
     t("Compare Google Ads and Meta Ads in the UK.", "比较英国市场的 Google Ads 和 Meta Ads。"),
   ];
-  const conversations = Array.from(new Map(saved.toReversed().map(turn => [turn.conversation, turn])).values());
+  const conversations = Array.from(new Map(saved.map(turn => [turn.conversation, turn])).values()).reverse();
+  const scopeName = (scope: BiceekChatScope) => scope.market
+    ? t("United Kingdom", "英国") : t("Overview · 7 markets", "总览 · 七国市场");
+  const reset = () => {
+    setConversation(null); setViewScope({ start, end, market, comparison }); setScopePeriod(period);
+    setTurns([]); setDraft(""); setError(""); setShowHistory(false);
+  };
+  const restore = (id: string) => {
+    const item = conversations.find(turn => turn.conversation === id);
+    if (!item) return;
+    setConversation(item.conversation); setViewScope(item.scope); setTurns(chatMessages(saved, item.conversation));
+    setScopePeriod("custom"); setDraft(""); setError(""); setShowHistory(false); follow.current = true;
+  };
   const panel = <>
-        <header className={chat.header}>
-          <div className={chat.headerGroup}>
-            {desktopDocked
-              ? <NovaButton ref={panelClose} variant="ghost" size="icon" aria-label={t("Close Ask AI Biceek", "收起询问 AI Biceek")} onClick={closeDock}><PanelRightClose /></NovaButton>
-              : <Dialog.Close asChild><NovaButton variant="ghost" size="icon" aria-label={t("Close Ask AI Biceek", "收起询问 AI Biceek")}><PanelRightClose /></NovaButton></Dialog.Close>}
-            {desktopDocked ? <h2 className={chat.title}>{t("Ask AI Biceek", "询问 AI Biceek")}</h2>
-              : <Dialog.Title className={chat.title}>{t("Ask AI Biceek", "询问 AI Biceek")}</Dialog.Title>}
+        <NovaChatHeader
+          title={desktopDocked ? <h2 className={chat.title}>{t("Ask AI Biceek", "询问 AI Biceek")}</h2>
+            : <Dialog.Title className={chat.title}>{t("Ask AI Biceek", "询问 AI Biceek")}</Dialog.Title>}
+          collapseRef={panelClose} onCollapse={closeDock} onHistory={() => setShowHistory(!showHistory)} onNew={reset}
+          historyOpen={showHistory} historyDisabled={busy || !historyReady} newDisabled={busy || !historyReady} />
+        {showHistory && <div className={chat.history}>
+          {conversations.length ? <Select.Root value={conversation ?? undefined} onValueChange={restore}>
+            <Select.Trigger asChild><NovaButton variant="outline" aria-label={t("Restore a conversation", "恢复历史对话")}>
+              <Select.Value placeholder={t("Select a conversation", "选择历史对话")} /><Select.Icon><ChevronDown /></Select.Icon>
+            </NovaButton></Select.Trigger>
+            <Select.Portal><Select.Content className={chat.dropdown} position="popper" sideOffset={4}><Select.Viewport>
+              {conversations.map(item => <Select.Item key={item.conversation} value={item.conversation} className={chat.dropdownItem}>
+                <Select.ItemText>{item.question.slice(0, 96)}</Select.ItemText><Select.ItemIndicator><Check /></Select.ItemIndicator>
+              </Select.Item>)}
+            </Select.Viewport></Select.Content></Select.Portal>
+          </Select.Root> : <p className={chat.muted}>{t("No saved conversations yet.", "暂无已保存的对话。")}</p>}
+        </div>}
+        <section className={chat.context} aria-label={t("Discussion context", "讨论上下文")}>
+          {!desktopDocked && <Dialog.Description className="sr-only">{t("Discussion context", "讨论上下文")}</Dialog.Description>}
+          <div className={chat.contextHeading}>
+            <div className={chat.subjectRow} aria-live="polite">
+              <span className={chat.subjectIcon}><LayoutDashboard aria-hidden /></span>
+              <div><span>{t("Discussion scope", "讨论范围")}</span><strong>{scopeName(viewScope)}</strong>
+                <span>{viewScope.start} – {viewScope.end}</span></div>
+              <span className={chat.contextCheck}><Check aria-hidden /></span>
+            </div>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild><NovaButton variant="outline" size="sm" className={chat.changeScope} disabled={busy}>
+                <ChevronsUpDown aria-hidden />{t("Change subject", "切换讨论对象")}
+              </NovaButton></DropdownMenu.Trigger>
+              <DropdownMenu.Portal><DropdownMenu.Content className={chat.dropdown} sideOffset={4}>
+                {([undefined, "GB"] as const).map(key => <DropdownMenu.Item key={key ?? "all"} className={chat.dropdownItem}
+                  onSelect={() => setViewScope(current => ({ ...current, market: key }))}>
+                  {scopeName({ ...viewScope, market: key })}{key === viewScope.market && <Check aria-hidden />}
+                </DropdownMenu.Item>)}
+              </DropdownMenu.Content></DropdownMenu.Portal>
+            </DropdownMenu.Root>
           </div>
-          <div className={chat.headerActions}>
-            <NovaButton variant="ghost" disabled={busy || !historyReady} aria-expanded={showHistory}
-              onClick={() => setShowHistory(!showHistory)}>{t("History", "历史")}</NovaButton>
-            <NovaButton variant="ghost" disabled={busy || !historyReady} onClick={() => {
-              setConversation(null); setViewScope({ start, end, market, comparison });
-              setTurns([]); setDraft(""); setError(""); setShowHistory(false);
-            }}>{t("New conversation", "新对话")}</NovaButton>
+          {viewScope.comparison && <div className={chat.selectedComparisons}><div className={chat.comparison}>
+            <GitCompareArrows aria-hidden /><span>{t("Compare:", "对比：")} {viewScope.comparison.start} – {viewScope.comparison.end}</span>
+            <NovaButton variant="ghost" size="icon" disabled={busy} aria-label={t("Remove comparison", "移除比较")}
+              onClick={() => setViewScope(current => ({ ...current, comparison: undefined }))}><X aria-hidden /></NovaButton>
+          </div></div>}
+          <div className={chat.contextControls}>
+            <div className={chat.period}><NovaReportingPeriodSelect value={scopePeriod} ariaLabel={t("AI discussion period", "AI 讨论时间")}
+              options={novaReportingPeriods} disabled={busy} onValueChange={value => {
+                setScopePeriod(value);
+                if (value === "custom") return;
+                const preset = novaReportingPeriods.find(([key]) => key === value)?.[0];
+                if (preset) setViewScope(current => ({ ...current, ...resolveTestingPeriod(latest, { preset }) }));
+              }} /></div>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild><NovaButton variant="outline" size="sm" className={chat.addComparison} disabled={busy}>
+                <Plus aria-hidden />{t("Add comparison", "添加对比对象")}
+              </NovaButton></DropdownMenu.Trigger>
+              <DropdownMenu.Portal><DropdownMenu.Content className={chat.dropdown} sideOffset={4}>
+                {([["previousPeriod", t("Previous period", "上一周期")], ["previousYear", t("Previous year", "去年同期")]] as const).map(([kind, label]) =>
+                  <DropdownMenu.Item key={kind} className={chat.dropdownItem}
+                    onSelect={() => setViewScope(current => ({ ...current, comparison: comparisonRange(current, kind, latest) }))}>{label}</DropdownMenu.Item>)}
+              </DropdownMenu.Content></DropdownMenu.Portal>
+            </DropdownMenu.Root>
           </div>
-        </header>
-        <div className={chat.context}>
-          {desktopDocked ? <p className={chat.labelRow}>{t("Discussion scope", "讨论范围")}</p>
-            : <Dialog.Description className={chat.labelRow}>{t("Discussion scope", "讨论范围")}</Dialog.Description>}
-          <p className={chat.contextTitle}>{viewScope.market ? t("Biceek · United Kingdom", "Biceek · 英国") : t("Biceek · All 7 markets", "Biceek · 全部七国市场")}</p>
-          <p className={chat.date}>{viewScope.start} – {viewScope.end}</p>
-          {viewScope.comparison && <p className={chat.date}>{t("Compare with", "对比周期")} {viewScope.comparison.start} – {viewScope.comparison.end}</p>}
-        </div>
-        <div ref={messages} className={chat.messages} aria-live="polite" onScroll={() => {
+          {scopePeriod === "custom" && <div className={chat.customPeriod}>
+            <NovaReportingPeriodCustom start={viewScope.start} end={viewScope.end} zh={language === "zh"} disabled={busy}
+              onApply={range => setViewScope(current => ({ ...current, start: range.start.toString(), end: range.end.toString() }))} />
+          </div>}
+        </section>
+        <div ref={messages} className={chat.messages} role="log" aria-label={t("AI conversation", "AI 对话记录")} aria-live="polite" onScroll={() => {
           const node = messages.current;
           if (node) follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 40;
         }}>
-          {showHistory ? <div className={chat.suggestionList}>
-            {conversations.length ? conversations.map(item => <NovaButton key={item.conversation} variant="outline" className={chat.suggestion}
-              onClick={() => {
-                setConversation(item.conversation); setViewScope(item.scope); setTurns(chatMessages(saved, item.conversation));
-                setDraft(""); setError(""); setShowHistory(false); follow.current = true;
-              }}>
-              <span>{item.question.slice(0, 96)}</span>
-              <span className={chat.date}>{item.scope.start} – {item.scope.end}</span>
-            </NovaButton>) : <p className={chat.muted}>{t("No saved conversations yet.", "暂无问答历史。")}</p>}
-          </div> : turns.length ? turns.map((turn, index) => <div key={index} className={styles.aiTurn} data-role={turn.role}>
-            <strong>{turn.role === "assistant" ? "AI Biceek" : t("You", "你")}</strong>
-            <p>{turn.text}</p>
-          </div>) : <div className={chat.welcome}>
+          {turns.length ? <div className={chat.turns}>{turns.map((turn, index) => <div key={index} className={chat.message}>
+            {turn.role === "user" ? <div className={chat.question}>
+              {turn.scope && <p className={chat.messageMeta}>{scopeName(turn.scope)} · {turn.scope.start} – {turn.scope.end}</p>}<p>{turn.text}</p>
+            </div> : <div className={chat.answer}><span className={chat.answerMark}><Sparkles aria-hidden /></span>
+              <div><p className={chat.answerLabel}>AI Biceek</p><p className={styles.aiAnswerText}>{turn.text}</p></div>
+            </div>}
+          </div>)}</div> : <div className={chat.welcome}>
             <span className={chat.welcomeMark}><Sparkles aria-hidden="true" /></span>
             <h2>{t("What would you like to know about this period?", "你想了解这个周期的什么？")}</h2>
             <p>{t("Ask about UK performance, market differences or daily ROAS.", "可以询问英国表现、市场差异或每日 ROAS。")}</p>
@@ -178,15 +233,17 @@ function MarketConversation({ start, end, disabled, market, comparison }: Props)
           <div ref={bottom} />
         </div>
         <footer className={chat.footer}>
-          {historyReady && !showHistory && !turns.length && <div className={chat.suggestions}>
-            <p>{t("Suggested questions", "建议问题")}</p>
-            <div className={chat.suggestionList}>{(market ? [suggestions[0], suggestions[2]] : suggestions).map((question) =>
-              <NovaButton key={question} variant="outline" className={chat.suggestion} onClick={() => setDraft(question)}>{question}</NovaButton>)}</div>
+          {historyReady && !showHistory && <div className={chat.suggestions}>
+            <p><Sparkles aria-hidden />{turns.length ? t("Keep exploring", "继续探索") : t("Try asking", "你可以这样问")}</p>
+            <div className={chat.suggestionList}>{(market ? [suggestions[0], suggestions[2]] : suggestions).map((question, index) =>
+              <NovaButton key={question} variant="outline" className={chat.suggestion} disabled={busy} onClick={() => { setDraft(question); inputRef.current?.focus(); }}>
+                <span className={chat.suggestionNumber}>{String(index + 1).padStart(2, "0")}</span><span>{question}</span><ArrowUpRight aria-hidden />
+              </NovaButton>)}</div>
           </div>}
           {error && <p role="alert" className={styles.aiError}>{error === "history_unavailable"
             ? t("Conversation history is unavailable. Reopen the panel to retry.", "暂时无法读取问答历史，请重新打开面板。") : error}</p>}
-          <NovaAiComposer value={draft} onChange={setDraft} onSubmit={send} disabled={busy || !historyReady || showHistory} sendDisabled={busy || !historyReady || showHistory || !draft.trim()}
-            inputLabel={t("Type a message", "输入消息")} placeholder={t("Ask about this period…", "询问这个周期…")} sendLabel={t("Send message", "发送消息")} />
+          <NovaAiComposer inputRef={inputRef} value={draft} onChange={setDraft} onSubmit={send} disabled={busy || !historyReady || showHistory} sendDisabled={busy || !historyReady || showHistory || !draft.trim()}
+            inputLabel={t("Type a message", "输入消息")} placeholder={t("Type your question…", "输入你的问题…")} sendLabel={t("Send message", "发送消息")} />
         </footer>
   </>;
 

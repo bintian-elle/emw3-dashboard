@@ -29,10 +29,6 @@
 @media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
 .shell section[id] { scroll-margin-top: 10rem; }
 .aiPanel { --testing-chat-width: 440px; }
-.aiTurn { margin-bottom: 1rem; padding: .75rem; border-radius: .6rem; overflow-wrap: anywhere; }
-.aiTurn[data-role="user"] { margin-left: 2rem; background: var(--nova-soft); }
-.aiTurn strong { font-size: .75rem; }
-.aiTurn p { margin: .35rem 0 0; white-space: pre-wrap; }
 .aiError { margin: 0 0 .5rem; color: var(--color-text-error-primary); }
 .sectionHeading { display:flex; align-items:center; justify-content:space-between; gap:.65rem; flex-wrap:wrap; }
 .sectionHeading a { font-size:.8125rem; text-decoration:underline; text-underline-offset:.2em; }
@@ -52,3 +48,4 @@
 .askDockSlot { min-width:0; min-height:0; }
 .askDockSlot[hidden] { display:none; }
 .askDockSlot .askDockPanel { height:100%; }
+.aiAnswerText { white-space: pre-wrap; }
