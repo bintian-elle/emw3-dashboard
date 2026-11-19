@@ -1,6 +1,6 @@
 import {dashboardCodexCatalog} from './ai-dashboard-codex-catalog.ts';
 /** Standalone, bounded business-background consultation. Never resumes employee threads. */
-import {spawn} from 'node:child_process';
+import {execFileSync,spawn} from 'node:child_process';
 import {lstat,readFile,writeFile,mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -11,15 +11,22 @@ export const BRAND_ASSISTANTS={
 } as const;
 export type BrandAssistantInput={project:string;prompt:string;metrics:unknown;contentTesting?:unknown};
 export type BrandAssistantResult={assistant:string;notes:string[];sources:string[];status:'available'|'unavailable'|'skipped'};
-export type BrandAssistantRun={assistant:string;prompt:string;args:string[];timeoutMs:number;sources?:string[];signal:AbortSignal};
+export type BrandAssistantRun={assistant:string;prompt:string;args:string[];timeoutMs:number;sources?:string[];signal:AbortSignal;executable?:string};
 export type BrandAssistantOptions={mode?:'anc'|'ssh';timeoutMs?:number;readContext?:(file:string)=>Promise<string>;runner?:(request:BrandAssistantRun)=>Promise<string>};
 export function wantsBrandAssistance(prompt:string){if(/^(?:rename|delete|remove|move|reorder|drag)\b|^change\b.*(?:title|color)|^(?:删除|移除|移动|拖动|重命名)|(?:标题|颜色|配色).*(?:改成|换成)/i.test(prompt.trim()))return false;return /summari[sz]|summary|insights?|why\b|strateg|recommend|interpret|explain.*(?:performance|trend|change)|摘要|总结|洞察|为什么|为何|策略|战略|建议|原因|解读/i.test(prompt);}
 async function safeRead(file:string){const root=path.dirname(file.includes('/knowledge/')?path.dirname(file):file);for(const relative of [root,file.includes('/knowledge/')?path.dirname(file):root,file])if((await lstat(relative)).isSymbolicLink())throw Error('symlink');const stat=await lstat(file);if(!stat.isFile()||stat.size>24000)throw Error('context_size');return readFile(file,'utf8');}
 const setting=(key:string,value:unknown)=>['-c',`${key}=${JSON.stringify(value)}`];
+function readCodexVersion(binary:string){
+ try{return execFileSync(binary,['--version'],{encoding:'utf8',stdio:['ignore','pipe','ignore'],timeout:5000})
+  .match(/codex-cli\s+(\S+)/)?.[1]??null;}
+ catch{return null;}
+}
 export async function runBrandAssistant(request:BrandAssistantRun):Promise<string>{
  const cwd=await mkdtemp(path.join(tmpdir(),'dashboard-brand-'));
- const catalog=await dashboardCodexCatalog(cwd);const schema=path.join(cwd,'schema.json');await writeFile(schema,JSON.stringify({type:'object',additionalProperties:false,properties:{notes:{type:'array',items:{type:'string'}},sources:{type:'array',items:{type:'string',...request.sources?.length?{enum:request.sources}:{}}}},required:['notes','sources']}),{mode:0o600});
- try{return await new Promise((resolve,reject)=>{const child=spawn('codex',[...request.args,...catalog?setting('model_catalog_json',catalog):[],'--output-schema',schema,'--cd',cwd,'-'],{stdio:['pipe','pipe','pipe'],signal:request.signal,detached:true,env:{NODE_ENV:process.env.NODE_ENV,PATH:process.env.PATH,HOME:process.env.HOME,CODEX_HOME:process.env.CODEX_HOME,TMPDIR:process.env.TMPDIR,LANG:process.env.LANG}});const stop=()=>{try{process.kill(-child.pid!,'SIGTERM');}catch{}};request.signal.addEventListener('abort',stop,{once:true});child.on('close',()=>request.signal.removeEventListener('abort',stop));let stdout='';child.stdout.on('data',chunk=>{stdout+=chunk;if(stdout.length>128000){child.kill('SIGKILL');reject(Error('output_size'));}});child.stderr.resume();child.on('error',reject);child.on('close',code=>{if(code!==0)return reject(Error('provider_unavailable'));const events=stdout.split('\n').filter(Boolean).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});const texts=events.filter(e=>e.type==='item.completed'&&e.item?.type==='agent_message').map(e=>e.item.text);resolve(texts.at(-1)||'');});child.stdin.on('error',()=>{});child.stdin.end(request.prompt);});}finally{await rm(cwd,{recursive:true,force:true});}
+ const binary=request.executable??'codex';
+ const version=request.executable?readCodexVersion(binary):undefined;
+ const catalog=version===null?null:await dashboardCodexCatalog(cwd,undefined,version);const schema=path.join(cwd,'schema.json');await writeFile(schema,JSON.stringify({type:'object',additionalProperties:false,properties:{notes:{type:'array',items:{type:'string'}},sources:{type:'array',items:{type:'string',...request.sources?.length?{enum:request.sources}:{}}}},required:['notes','sources']}),{mode:0o600});
+ try{return await new Promise((resolve,reject)=>{const child=spawn(binary,[...request.args,...catalog?setting('model_catalog_json',catalog):[],'--output-schema',schema,'--cd',cwd,'-'],{stdio:['pipe','pipe','pipe'],signal:request.signal,detached:true,env:{NODE_ENV:process.env.NODE_ENV,PATH:process.env.PATH,HOME:process.env.HOME,CODEX_HOME:process.env.CODEX_HOME,TMPDIR:process.env.TMPDIR,LANG:process.env.LANG}});const stop=()=>{try{process.kill(-child.pid!,'SIGTERM');}catch{}};request.signal.addEventListener('abort',stop,{once:true});child.on('close',()=>request.signal.removeEventListener('abort',stop));let stdout='';child.stdout.on('data',chunk=>{stdout+=chunk;if(stdout.length>128000){child.kill('SIGKILL');reject(Error('output_size'));}});child.stderr.resume();child.on('error',reject);child.on('close',code=>{if(code!==0)return reject(Error('provider_unavailable'));const events=stdout.split('\n').filter(Boolean).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});const texts=events.filter(e=>e.type==='item.completed'&&e.item?.type==='agent_message').map(e=>e.item.text);resolve(texts.at(-1)||'');});child.stdin.on('error',()=>{});child.stdin.end(request.prompt);});}finally{await rm(cwd,{recursive:true,force:true});}
 }
 async function sshConsult(input:BrandAssistantInput,signal:AbortSignal):Promise<BrandAssistantResult>{return new Promise((resolve,reject)=>{const child=spawn('ssh',['-o','BatchMode=yes','-o','ConnectTimeout=5','EMW3_ANC_AI','node --experimental-strip-types /home/ubuntu/work/bintian/emw3-dashboard/scripts/ai-dashboard-brand-assist.ts'],{stdio:['pipe','pipe','pipe'],signal});let output='';child.stdout.on('data',b=>{output+=b;if(output.length>20000){child.kill('SIGKILL');reject(Error('output_size'));}});child.stderr.resume();child.on('error',reject);child.on('close',code=>{try{if(code!==0)throw Error('ssh');resolve(JSON.parse(output));}catch{reject(Error('ssh_unavailable'));}});child.stdin.on('error',()=>{});child.stdin.end(JSON.stringify(input));});}
 export async function consultBrandAssistant(input:BrandAssistantInput,options:BrandAssistantOptions={}):Promise<BrandAssistantResult>{

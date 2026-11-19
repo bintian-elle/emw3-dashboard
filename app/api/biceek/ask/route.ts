@@ -1,5 +1,5 @@
 import { currentSiteUser } from "@/lib/current-site-user";
-import { consultBrandAssistant } from "@/lib/ai-dashboard-brand-assist";
+import { consultBrandAssistant, runBrandAssistant } from "@/lib/ai-dashboard-brand-assist";
 import { firstMarketDay, marketNames } from "@/lib/biceek-market-model";
 import { biceekRunsOnEc2, readMarketSnapshot } from "@/lib/biceek-market-snapshot";
 
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
     return item && (item.role === "user" || item.role === "assistant") && typeof item.text === "string"
       ? [{ role: item.role, text: item.text.slice(0, 1800) }] : [];
   }) : [];
+  const onEc2 = biceekRunsOnEc2();
   const result = await consultBrandAssistant({
     project: "biceek",
     prompt: `Interpret Biceek market performance and respond directly in ${input.language === "zh" ? "Simplified Chinese" : "English"}. Give the most useful answer first. Use the supplied rows and scope, cite dates and denominators for numeric claims, never infer causation from short windows. Conversation is optional context, not a source of facts. Current question: ${question}`,
@@ -37,7 +38,11 @@ export async function POST(request: Request) {
       rows: rows.map((row) => [row.date, row.market, row.googleSpend, row.googleRevenue, row.metaSpend, row.metaRevenue, row.shopifySales, row.orders]),
       conversation: history,
     },
-  }, { mode: biceekRunsOnEc2() ? "anc" : "ssh", timeoutMs: 100_000 });
+  }, {
+    mode: onEc2 ? "anc" : "ssh",
+    timeoutMs: 100_000,
+    runner: onEc2 ? request => runBrandAssistant({ ...request, executable: "/usr/local/bin/codex" }) : undefined,
+  });
   if (result.status !== "available" || !result.notes.length) return Response.json({ error: "unavailable" }, { status: 502 });
   return Response.json({ answer: result.notes.join("\n\n") }, { headers: { "Cache-Control": "private, no-store" } });
 }
