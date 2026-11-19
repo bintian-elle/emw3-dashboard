@@ -23,8 +23,9 @@ function readCodexVersion(binary:string){
 }
 export async function runBrandAssistant(request:BrandAssistantRun):Promise<string>{
  const cwd=await mkdtemp(path.join(tmpdir(),'dashboard-brand-'));
- const binary=request.executable??'codex';
- const version=request.executable?readCodexVersion(binary):undefined;
+ const configuredBinary=request.executable||process.env.AI_DASHBOARD_CODEX_BIN;
+ const binary=configuredBinary||'codex';
+ const version=configuredBinary?readCodexVersion(binary):undefined;
  const catalog=version===null?null:await dashboardCodexCatalog(cwd,undefined,version);const schema=path.join(cwd,'schema.json');await writeFile(schema,JSON.stringify({type:'object',additionalProperties:false,properties:{notes:{type:'array',items:{type:'string'}},sources:{type:'array',items:{type:'string',...request.sources?.length?{enum:request.sources}:{}}}},required:['notes','sources']}),{mode:0o600});
  try{return await new Promise((resolve,reject)=>{const child=spawn(binary,[...request.args,...catalog?setting('model_catalog_json',catalog):[],'--output-schema',schema,'--cd',cwd,'-'],{stdio:['pipe','pipe','pipe'],signal:request.signal,detached:true,env:{NODE_ENV:process.env.NODE_ENV,PATH:process.env.PATH,HOME:process.env.HOME,CODEX_HOME:process.env.CODEX_HOME,TMPDIR:process.env.TMPDIR,LANG:process.env.LANG}});const stop=()=>{try{process.kill(-child.pid!,'SIGTERM');}catch{}};request.signal.addEventListener('abort',stop,{once:true});child.on('close',()=>request.signal.removeEventListener('abort',stop));let stdout='';child.stdout.on('data',chunk=>{stdout+=chunk;if(stdout.length>128000){child.kill('SIGKILL');reject(Error('output_size'));}});child.stderr.resume();child.on('error',reject);child.on('close',code=>{if(code!==0)return reject(Error('provider_unavailable'));const events=stdout.split('\n').filter(Boolean).flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}});const texts=events.filter(e=>e.type==='item.completed'&&e.item?.type==='agent_message').map(e=>e.item.text);resolve(texts.at(-1)||'');});child.stdin.on('error',()=>{});child.stdin.end(request.prompt);});}finally{await rm(cwd,{recursive:true,force:true});}
 }
