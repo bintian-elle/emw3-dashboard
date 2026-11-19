@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {failureAlreadyReported, failureMessage} from './systemd-failure-policy.mjs';
+import {dashboardWeeklyFailureDetails,failureAlreadyReported, failureMessage} from './systemd-failure-policy.mjs';
 import {shouldSkipReportDay} from './policy.mjs';
 
 test('a failure already reported by the task is not sent twice',()=>{
@@ -28,4 +28,13 @@ test('EDM waits for its retry and avoids duplicating delivered failure notificat
  assert.equal(!!failureAlreadyReported('emw3-edm-refresh.service',{updatedAt,attempts:2,success:false,outcomes:{}},started),false);
  assert.equal(!!failureAlreadyReported('emw3-edm-refresh.service',{updatedAt,attempts:2,failureSentAt:updatedAt},started),true);
  assert.match(failureMessage('emw3-edm-refresh.service','exit-code'),/EDM/);
+});
+
+test('weekly Builder failure alerts contain the affected dates and a safe source reason',()=>{
+ const lines='unstructured failure\n'+JSON.stringify({targetRange:{start:'2026-11-10',end:'2026-11-16'},results:[
+  {project:'bluevua',status:'failed',message:'Store revenue has no complete target-period value. private info'},
+  {project:'biceek',status:'already_ready'},
+ ]});
+ assert.equal(dashboardWeeklyFailureDetails(lines),'2026-11-10 至 2026-11-16\nbluevua: Shopify 销售额或订单数据未通过完整性校验');
+ assert.match(failureMessage('dashboard-builder-weekly.service','exit-code'),/dashboard-builder/);
 });

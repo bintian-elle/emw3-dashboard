@@ -189,7 +189,7 @@ export default function MarketOverview({ snapshot, view }: { snapshot: MarketSna
           onApply={(which,range) => setCustom((ranges) => ({...ranges,[which]:range}))}
           onSwap={() => { setCustom({main:previous,compare:current}); setPeriod("custom"); setCompare("custom"); }}
           validateRange={(range) => range.end > through ? t(`Choose dates through ${through}.`, `请选择 ${through} 及之前的日期。`) : undefined} />
-        <MarketAskAi start={start} end={end} market={ukOnly ? "GB" : undefined} disabled={!snapshot || !validRange} />
+        <MarketAskAi start={start} end={end} comparison={previous} market={ukOnly ? "GB" : undefined} disabled={!snapshot || !validRange} />
       </div>
     </header>
       {!snapshot && <p className={styles.muted} role="status">{t("The Biceek data snapshot is unavailable.", "Biceek 数据快照暂不可用。")}</p>}

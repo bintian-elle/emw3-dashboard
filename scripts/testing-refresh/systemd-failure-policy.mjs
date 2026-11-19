@@ -7,6 +7,7 @@ export const monitoredTasks={
  'emw3-ai-insights-refresh.service':'EDM AI Insights',
  'emw3-website-tracking-cache.service':'Website Tracking 数据刷新',
  'emw3-edm-refresh.service':'EDM 数据采集',
+ 'dashboard-builder-weekly.service':'Dashboard Builder 周报',
 };
 
 export function failureAlreadyReported(service,state,startedAt=0){
@@ -23,5 +24,21 @@ export function failureAlreadyReported(service,state,startedAt=0){
 export function failureMessage(service,result){
  if(!Object.hasOwn(monitoredTasks,service))throw Error('Unknown scheduled task');
  const status=['exit-code','timeout','signal','core-dump','watchdog','resources','protocol','start-limit-hit'].includes(result)?result:'failed';
- return `Dashboard 定时任务失败：${monitoredTasks[service]}\n状态：${status}\n已有数据和报告会保留，请检查任务日志。\nhttps://emw3-dashboard.win/bluevua/testing`;
+ return `Dashboard 定时任务失败：${monitoredTasks[service]}\n状态：${status}\n已有数据和报告会保留，请检查任务日志。\n${service==='dashboard-builder-weekly.service'?'https://emw3-dashboard.win/ai-tools/dashboard-builder':'https://emw3-dashboard.win/bluevua/testing'}`;
+}
+
+export function dashboardWeeklyFailureDetails(lines){
+ const report=String(lines).split('\n').reverse().flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}})
+  .find(item=>item?.targetRange&&Array.isArray(item.results));
+ if(!report)return '';
+ const {start,end}=report.targetRange;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end))return '';
+ const failures=report.results.filter(row=>['bluevua','biceek','ringconn'].includes(row?.project)&&row.status==='failed').map(row=>{
+  const message=String(row.message??'');
+  const reason=/shopify|store revenue|store orders/i.test(message)?'Shopify 销售额或订单数据未通过完整性校验':
+   /previously available source|validated source data|validated report|incomplete/i.test(message)?'一个或多个数据源未通过本周覆盖校验':
+   '周报生成失败，请查看 EC2 任务日志';
+  return `${row.project}: ${reason}`;
+ });
+ return failures.length?`${start} 至 ${end}\n${failures.join('\n')}`:'';
 }

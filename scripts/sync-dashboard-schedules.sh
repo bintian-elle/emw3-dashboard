@@ -25,7 +25,7 @@ if ! cmp -s ops/emw3-failure-notify@.service /etc/systemd/system/emw3-failure-no
  sudo -n install -m 0644 ops/emw3-failure-notify@.service /etc/systemd/system/emw3-failure-notify@.service
  changed=1
 fi
-for name in "${units[@]}"; do
+for name in "${units[@]}" dashboard-builder-weekly; do
  [[ -f "/etc/systemd/system/$name.service" ]] || continue
  directory="/etc/systemd/system/$name.service.d"
  content=$'[Unit]\nOnFailure=emw3-failure-notify@%n.service\n'

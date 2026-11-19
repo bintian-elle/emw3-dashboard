@@ -11,13 +11,13 @@ import chat from "@/app/bluevua/testing/nova-chat.module.css";
 import styles from "./market-overview.module.css";
 
 type Turn = { role: "user" | "assistant"; text: string };
-type Props = { start: string; end: string; disabled: boolean; market?: "GB" };
+type Props = { comparison: { start: string; end: string }; start: string; end: string; disabled: boolean; market?: "GB" };
 
 export function MarketAskAi(props: Props) {
-  return <MarketConversation {...props} key={`${props.start}:${props.end}`} />;
+  return <MarketConversation {...props} key={`${props.start}:${props.end}:${props.comparison.start}:${props.comparison.end}`} />;
 }
 
-function MarketConversation({ start, end, disabled, market }: Props) {
+function MarketConversation({ start, end, disabled, market, comparison }: Props) {
   const [open, setOpen] = useState(false);
   const { language } = useSiteLanguage();
   const t = (en: string, zh: string) => language === "zh" ? zh : en;
@@ -48,7 +48,7 @@ function MarketConversation({ start, end, disabled, market }: Props) {
     try {
       const response = await fetch("/api/biceek/ask", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start, end, question, language, market, history: turns.slice(-6) }),
+        body: JSON.stringify({ start, end, question, language, market, comparison, history: turns.slice(-6) }),
         signal: controller.signal,
       });
       const result = await response.json();

@@ -7,3 +7,17 @@ test('runner receives isolated fixed context paths and no caller path',async()=>
 test('an explicitly injected test deadline never throws',async()=>{const result=await consultBrandAssistant({project:'bluevua',prompt:'summarize',metrics:{}},{readContext:async()=> 'background',timeoutMs:5,runner:async()=>new Promise(()=>{})});assert.equal(result.status,'unavailable');});
 
 test('normal Builder consultations have no elapsed-time cutoff',async()=>{const result=await consultBrandAssistant({project:'ringconn',prompt:'summarize',metrics:{}},{readContext:async()=> 'background',runner:async request=>{assert.equal(request.timeoutMs,0);await new Promise(resolve=>setTimeout(resolve,20));assert.equal(request.signal.aborted,false);return JSON.stringify({notes:['Brand context'],sources:['README.md']});}});assert.equal(result.status,'available');});
+
+test('Biceek market questions exclude Content Testing and private brand documents', async () => {
+ const result=await consultBrandAssistant({project:'biceek',scope:'market-overview',prompt:'Interpret market performance.',metrics:{comparison:{rows:[1]}},contentTesting:{unexpected:true}},{
+  readContext:async()=>{assert.fail('The market assistant must not read brand documents.');},
+  runner:async request=>{
+   assert.doesNotMatch(request.prompt,/content.testing|unexpected|untrusted_business_background/i);
+   assert.match(request.prompt,/Shopify/);
+   assert.match(request.prompt,/"comparison":\{"rows":\[1\]\}/);
+   return '{"notes":["market answer"],"sources":[]}';
+  },
+ });
+ assert.equal(result.status,'available');
+ assert.deepEqual(result.notes,['market answer']);
+});

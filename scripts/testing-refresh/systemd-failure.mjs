@@ -5,7 +5,7 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {easternClock} from './policy.mjs';
 import {notifyTesting} from './notifications.mjs';
-import {failureAlreadyReported,failureMessage,monitoredTasks} from './systemd-failure-policy.mjs';
+import {dashboardWeeklyFailureDetails,failureAlreadyReported,failureMessage,monitoredTasks} from './systemd-failure-policy.mjs';
 import {trackingFailureDetails,trackingNoticeDirectory} from '../website-tracking-notices.mjs';
 
 const service=process.argv[2];
@@ -31,6 +31,12 @@ const folder=path.resolve('.state/testing-refresh/systemd-notices');await mkdir(
 const marker=path.join(folder,key);
 try{await readFile(marker);process.exit(0);}catch(error){if(error.code!=='ENOENT')throw error;}
 let details='';
+if(service==='dashboard-builder-weekly.service'&&Number.isFinite(startedAt)){
+ try{
+  const {stdout: log}=await promisify(execFile)('journalctl',['-u',service,'--since',`@${Math.floor(startedAt/1000)}`,'-n','80','-o','cat','--no-pager']);
+  details=dashboardWeeklyFailureDetails(log);
+ }catch{/* Keep the generic notification when the journal is unavailable. */}
+}
 if(service==='emw3-website-tracking-cache.service'){
  try{details=trackingFailureDetails(JSON.parse(await readFile(path.join(trackingNoticeDirectory(),'status.json'),'utf8')),startedAt);}catch{/* A crash before state persistence still gets the generic alert. */}
 }
