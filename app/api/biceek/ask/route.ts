@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { listBiceekChat, saveBiceekChat, sameBiceekChatScope, validChatId, type BiceekChatTurn } from "@/lib/biceek-chat-history";
 import { currentSiteUser } from "@/lib/current-site-user";
 import { consultBrandAssistant, runBrandAssistant } from "@/lib/ai-dashboard-brand-assist";
 import { firstMarketDay, marketNames } from "@/lib/biceek-market-model";
@@ -9,8 +11,18 @@ const isoDay = (value: unknown): value is string => typeof value === "string" &&
   /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) &&
   new Date(value).toISOString().slice(0, 10) === value;
 
+const privateHeaders = { "Cache-Control": "private, no-store" };
+
+export async function GET() {
+  const user = await currentSiteUser();
+  if (!user) return Response.json({ error: "unauthorized" }, { status: 401, headers: privateHeaders });
+  try { return Response.json({ turns: await listBiceekChat(user.sub) }, { headers: privateHeaders }); }
+  catch { return Response.json({ error: "history_unavailable" }, { status: 503, headers: privateHeaders }); }
+}
+
 export async function POST(request: Request) {
-  if (!await currentSiteUser()) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const user = await currentSiteUser();
+  if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
   const input = await request.json().catch(() => null);
   const question = typeof input?.question === "string" ? input.question.trim() : "";
   const { start, end, market } = input ?? {};
@@ -21,11 +33,6 @@ export async function POST(request: Request) {
   const snapshot = await readMarketSnapshot();
   const rows = snapshot?.rows.filter((row) => row.date >= start && row.date <= end && (!market || row.market === market)) ?? [];
   if (!snapshot || end > snapshot.through || !rows.length) return Response.json({ error: "missing_data" }, { status: 422 });
-  const history = Array.isArray(input.history) ? input.history.slice(-6).flatMap((turn: unknown) => {
-    const item = turn as { role?: unknown; text?: unknown } | null;
-    return item && (item.role === "user" || item.role === "assistant") && typeof item.text === "string"
-      ? [{ role: item.role, text: item.text.slice(0, 1800) }] : [];
-  }) : [];
   const comparison = input.comparison;
   const comparisonStart = comparison?.start, comparisonEnd = comparison?.end;
   const hasComparison = isoDay(comparisonStart) && isoDay(comparisonEnd) && comparisonStart <= comparisonEnd
@@ -34,6 +41,27 @@ export async function POST(request: Request) {
     row.date >= comparisonStart && row.date <= comparisonEnd && (!market || row.market === market)) : [];
   const encodeRows = (values: typeof rows) => values.map(row =>
     [row.date, row.market, row.googleSpend, row.googleRevenue, row.metaSpend, row.metaRevenue, row.shopifySales, row.orders]);
+  const scope = { start, end, market, ...(hasComparison ? { comparison: { start: comparisonStart, end: comparisonEnd } } : {}) };
+  const id = validChatId(input.id) ? input.id : randomUUID();
+  const conversation = validChatId(input.conversation) ? input.conversation : randomUUID();
+  const turn: BiceekChatTurn = { id, conversation, scope, question, answer: null, at: new Date().toISOString() };
+  let history: Array<{ role: string; text: string }>;
+  try {
+    const saved = await listBiceekChat(user.sub);
+    const existing = saved.find(item => item.id === id);
+    if (existing) {
+      return existing.answer && existing.question === question && existing.conversation === conversation && sameBiceekChatScope(existing.scope, scope)
+        ? Response.json({ answer: existing.answer, turn: existing }, { headers: privateHeaders })
+        : Response.json({ error: "duplicate_question" }, { status: 409, headers: privateHeaders });
+    }
+    history = saved.filter(item => item.conversation === conversation && item.answer && sameBiceekChatScope(item.scope, scope))
+      .slice(-3).flatMap(item => [{ role: "user", text: item.question }, { role: "assistant", text: item.answer! }]);
+    await saveBiceekChat(user.sub, turn, true);
+  } catch (error) {
+    const duplicate = (error as NodeJS.ErrnoException).code === "EEXIST";
+    return Response.json({ error: duplicate ? "duplicate_question" : "history_unavailable" },
+      { status: duplicate ? 409 : 503, headers: privateHeaders });
+  }
   const onEc2 = biceekRunsOnEc2();
   const result = await consultBrandAssistant({
     project: "biceek",
@@ -57,7 +85,10 @@ export async function POST(request: Request) {
   const answer = result.notes.map(note => note.split(/(?<=[。！？])|(?<=[.!?])(?=\s)|(?<=\n)/u)
     .filter(sentence => !/content[\s_-]*testing|(?:内容|素材)测试/iu.test(sentence)).join("").trim())
     .filter(Boolean).join("\n\n");
-  return Response.json({ answer: answer || (input.language === "zh"
+  turn.answer = answer || (input.language === "zh"
     ? "我可以根据所选市场和日期回答 Google Ads、Meta Ads 和 Shopify 的表现。请问你想看哪个指标？"
-    : "I can answer questions about Google Ads, Meta Ads, and Shopify for the selected markets and dates. Which metric would you like to look at?") }, { headers: { "Cache-Control": "private, no-store" } });
+    : "I can answer questions about Google Ads, Meta Ads, and Shopify for the selected markets and dates. Which metric would you like to look at?");
+  try { await saveBiceekChat(user.sub, turn); }
+  catch { return Response.json({ error: "history_unavailable" }, { status: 503, headers: privateHeaders }); }
+  return Response.json({ answer: turn.answer, turn }, { headers: privateHeaders });
 }

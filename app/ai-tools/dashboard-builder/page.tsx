@@ -1,2 +1,2 @@
-import {DashboardStudio} from './studio';
-export default function DashboardBuilderPage(){return <DashboardStudio initialHome/>;}
+import {AccountDashboardStudio} from './account-studio';
+export default function DashboardBuilderPage(){return <AccountDashboardStudio initialHome/>;}
