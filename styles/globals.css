@@ -95,10 +95,21 @@ html {
 }
 html.dark {
   color-scheme: dark;
+  background-color: var(--night-canvas);
+  background-image: var(--night-glow);
+  background-attachment: fixed;
 }
 body {
   background-color: var(--color-background-full);
   color: var(--color-text-primary);
+}
+
+html.dark body {
+  background-color: transparent;
+}
+
+.dark [data-slot="card"] {
+  background-image: var(--night-panel-sheen);
 }
 
 /* Theme-aware monochrome BoardUI mark. Both images keep their intrinsic

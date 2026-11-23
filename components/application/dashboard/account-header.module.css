@@ -7,8 +7,8 @@
   color:var(--nova-foreground); font-size:.875rem;
 }
 :global(.dark) .header {
-  --nova-surface:#232529; --nova-foreground:#f1f2f3; --nova-muted:#adb4be;
-  --nova-border:#3b3e43; --nova-ring:#aeb6c1; --nova-soft:#303338;
+  --nova-surface:var(--night-chrome); --nova-foreground:var(--night-text); --nova-muted:var(--night-muted);
+  --nova-border:var(--night-outline); --nova-ring:var(--night-focus); --nova-soft:var(--night-hover);
 }
 .left { display:flex; min-width:0; align-items:center; gap:.75rem; }
 .breadcrumb { display:flex; min-width:0; align-items:center; gap:.65rem; color:var(--nova-muted); font-size:.875rem; white-space:nowrap; }

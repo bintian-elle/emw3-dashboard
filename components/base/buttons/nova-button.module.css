@@ -29,6 +29,6 @@
   .button[data-close-size="2xs"] svg { width:.5rem; height:.5rem; }
   .button[data-close-size="sm"] svg { width:.875rem; height:.875rem; }
   .button[data-close-size="md"] svg { width:1rem; height:1rem; }
-  :global(.dark) .button { --nova-foreground:#f1f2f3; --nova-surface:#232529; --nova-border:#3b3e43; --nova-ring:#aeb6c1; --nova-soft:#303338; }
+  :global(.dark) .button { --nova-foreground:var(--night-text); --nova-surface:var(--night-panel); --nova-border:var(--night-outline); --nova-ring:var(--night-focus); --nova-soft:var(--night-hover); }
   @media (prefers-reduced-motion:reduce) { .button { transition:none; } }
 }

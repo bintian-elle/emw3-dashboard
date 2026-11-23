@@ -371,6 +371,25 @@
 }
 
 .dark {
+  /* A single canvas and shared depth levels for dashboard, entry and AI surfaces. */
+  --night-canvas: #0d0f14;
+  --night-glow: radial-gradient(ellipse 66vw 64vh at 5% 0%, rgb(55 105 184 / 27%), transparent 85%),
+    radial-gradient(ellipse 54vw 48vh at 68% 0%, rgb(78 68 177 / 15%), transparent 87%),
+    radial-gradient(ellipse 50vw 56vh at 104% 35%, rgb(64 91 207 / 10%), transparent 85%),
+    linear-gradient(145deg, #14171f 0%, #10131b 56%, var(--night-canvas) 100%);
+  --night-panel: rgb(18 26 44 / 64%);
+  --night-panel-sheen: linear-gradient(155deg, rgb(125 153 226 / 10%), rgb(79 101 174 / 4%) 44%, transparent 76%);
+  --night-panel-depth: inset 0 1px 0 rgb(151 180 239 / 7%);
+  --night-chrome: rgb(22 28 40 / 93%);
+  --night-popover: #1a202d;
+  --night-inset: #1a2231;
+  --night-hover: #2a3549;
+  --night-outline: rgb(167 190 229 / 22%);
+  --night-divider: rgb(167 190 229 / 15%);
+  --night-text: #f1f3f9;
+  --night-muted: #afbbcf;
+  --night-focus: #a9c5ef;
+
   /* Foreground */
   --color-foreground-full:            var(--color-neutral-700);
   --color-foreground-icon-primary:    var(--color-neutral-50);
@@ -386,28 +405,29 @@
   --color-button-primary-disabled-foreground: var(--color-neutral-500);
 
   /* Text */
-  --color-text-primary:  var(--color-neutral-50);
-  --color-text-tertiary: var(--color-neutral-600);
+  --color-text-primary:  var(--night-text);
+  --color-text-secondary: var(--night-muted);
+  --color-text-tertiary: #96a3bb;
   --color-text-disabled: var(--color-neutral-800);
   --color-text-error-primary: var(--color-red-400);
   --color-input-disabled-text: color-mix(in srgb, var(--color-neutral-500) 40%, transparent);
 
   /* Background */
-  --color-background-full:              var(--color-neutral-925);
-  --color-background-primary-default:   var(--color-neutral-800);
-  --color-background-inner-default:     color-mix(in srgb, var(--color-neutral-800) 60%, transparent);
-  --color-background-primary-hover:     color-mix(in srgb, var(--color-neutral-700) 60%, transparent);
-  --color-background-primary-active:    var(--color-neutral-800);
+  --color-background-full:              var(--night-canvas);
+  --color-background-primary-default:   var(--night-panel);
+  --color-background-inner-default:     var(--night-panel);
+  --color-background-primary-hover:     var(--night-hover);
+  --color-background-primary-active:    var(--night-popover);
   --color-background-primary-disabled:  var(--color-neutral-800);
   --color-input-disabled-background:    color-mix(in srgb, var(--color-neutral-800) 30%, transparent);
   --color-switch-off-chip-start:        var(--color-background-tertiary-default);
   --color-switch-off-chip-end:          var(--color-background-tertiary-default);
-  --color-background-secondary-default: var(--color-neutral-900);
-  --color-background-secondary-hover:   var(--color-neutral-800);
-  --color-background-tertiary-default:  var(--color-neutral-800);
-  --color-background-tertiary-hover:    var(--color-neutral-700);
+  --color-background-secondary-default: var(--night-inset);
+  --color-background-secondary-hover:   var(--night-hover);
+  --color-background-tertiary-default:  var(--night-popover);
+  --color-background-tertiary-hover:    var(--night-hover);
   --color-background-tertiary-error:    color-mix(in srgb, var(--color-red-950) 60%, transparent);
-  --color-background-quaternary-default: var(--color-neutral-700);
+  --color-background-quaternary-default: var(--night-hover);
   --color-background-quaternary-hover:   var(--color-neutral-600);
   --color-background-recent-hire-role:  color-mix(in srgb, var(--color-neutral-900) 60%, transparent);
   --color-avatar-neutral-background:    var(--color-background-primary-default);
@@ -481,20 +501,20 @@
   --color-notification-center-background:      var(--color-neutral-900);
 
   /* Borders and separators */
-  --color-border-button-default:   var(--color-neutral-700);
+  --color-border-button-default:   var(--night-outline);
   --color-border-button-hover:     var(--color-neutral-500);
   --color-border-button-active:    var(--color-neutral-600);
-  --color-border-button-white:     var(--color-zinc-800);
+  --color-border-button-white:     var(--night-outline);
   --color-border-error-default:    var(--color-red-400);
   --color-border-checkbox-default: var(--color-neutral-700);
   --color-border-checkbox-hover:   var(--color-neutral-500);
   --color-border-checkbox-active:  var(--color-neutral-500);
   --color-border-component-detail-container: var(--color-neutral-800);
   --color-border-ai-profile-card:             var(--color-neutral-800);
-  --color-border-table:            var(--color-neutral-800);
+  --color-border-table:            var(--night-divider);
   --color-border-button-group:     color-mix(in srgb, var(--color-neutral-600) 60%, transparent);
   --color-border-sidebar-profile-hover: var(--color-neutral-600);
-  --color-separator-border:        var(--color-neutral-800);
+  --color-separator-border:        var(--night-divider);
   --color-separator-border-strong: color-mix(in srgb, var(--color-neutral-700) 60%, transparent);
 
   /* Figma's dark table status pairs. */
