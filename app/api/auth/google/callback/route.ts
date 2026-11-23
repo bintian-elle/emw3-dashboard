@@ -1,8 +1,7 @@
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { verifyGoogleIdentity } from "@/lib/google-identity";
 import { NextRequest, NextResponse } from "next/server";
 import { allowedGoogleUser, OAUTH_COOKIE, SESSION_COOKIE, SESSION_MAX_AGE, verifyAuthPayload, signAuthPayload, safeReturnPath, authCookieOptions, authOrigin, googleCredentials } from "@/lib/site-auth";
 
-const keys = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 export async function GET(request: NextRequest) {
   let returnTo = "/";
   const fail = (error: string) => {
@@ -25,8 +24,7 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) return fail("login");
     const tokens = await tokenResponse.json();
     if (typeof tokens.id_token !== "string") return fail("login");
-    const { payload } = await jwtVerify(tokens.id_token, keys, { issuer: ["https://accounts.google.com", "accounts.google.com"], audience: clientId, algorithms: ["RS256"] });
-    if (payload.nonce !== state.nonce) return fail("login");
+    const payload = await verifyGoogleIdentity(tokens.id_token, clientId, state.nonce);
     const user = allowedGoogleUser(payload);
     if (!user) return fail("domain");
     const response = NextResponse.redirect(new URL(safeReturnPath(state.returnTo), authOrigin(request.url)));

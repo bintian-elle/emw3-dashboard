@@ -8,7 +8,7 @@ export type SiteUser = { sub: string; email: string; name: string; picture?: str
 
 // Profile pictures come from the verified Google ID token; restrict the URL
 // before retaining it in the signed session or rendering it in the browser.
-function googleProfilePicture(value: unknown): string | undefined {
+export function googleProfilePicture(value: unknown): string | undefined {
   if (typeof value !== "string" || !value || value.length > 1024) return undefined;
   try {
     const url = new URL(value);

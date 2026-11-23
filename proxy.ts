@@ -1,3 +1,5 @@
+import { isLocalScriptLabHost, scriptLabCookie, scriptLabLanguageCookie, SCRIPT_LAB_COMPANY_COOKIE, SCRIPT_LAB_LOCAL_COMPANY_COOKIE, SCRIPT_LAB_PUBLIC_HOST } from "@/lib/script-lab-host";
+import { isPublicScriptLabSectionPath } from "@/lib/script-lab-navigation";
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, readSession, safeReturnPath } from "@/lib/site-auth";
 import { testingDocumentPeriodRedirect } from "@/lib/testing-navigation";
@@ -26,6 +28,53 @@ function resetTestingDocumentPeriod(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const host = request.headers.get("host")?.toLowerCase() ?? "";
+  const publicScriptLabHost = host === SCRIPT_LAB_PUBLIC_HOST;
+  const scriptLabPage = pathname === "/script-lab" || isPublicScriptLabSectionPath(pathname);
+  const scriptLabVerify = pathname === "/script-lab/verify";
+  const scriptLabRules = pathname === "/script-lab/rules";
+  const scriptLabBaselines = pathname === "/script-lab/baselines";
+  const scriptLabPrepare = pathname === "/script-lab/prepare";
+  const scriptLabReviews = pathname === "/script-lab/reviews";
+  const scriptLabTrendFeed = pathname === "/script-lab/trend-feed";
+  const scriptLabTrendMedia = /^\/script-lab\/trend-media\/\d{15,24}$/.test(pathname);
+  const scriptLabHistory = pathname === "/script-lab/rule-history";
+  const scriptLabGoogle = pathname === "/script-lab/auth/google";
+  const scriptLabCompany = pathname === "/script-lab/company-session";
+  const scriptLabAccount = pathname === "/script-lab/account";
+  const publicScriptLabLogo = pathname === "/brand/biceek-wordmark.png" || pathname === "/brand/emw3-wordmark.png";
+  if (publicScriptLabHost || (isLocalScriptLabHost(host) && (scriptLabPage || scriptLabVerify || scriptLabAccount || scriptLabRules || scriptLabBaselines || scriptLabPrepare || scriptLabReviews || scriptLabTrendFeed || scriptLabTrendMedia || scriptLabHistory || scriptLabGoogle || publicScriptLabLogo))) {
+    const read = request.method === "GET" || request.method === "HEAD";
+    const asset = publicScriptLabLogo || /^\/ai-tools\/script-lab\/(?:commute|home|shop|travel|reveal)\.webp$/.test(pathname);
+    const rulesWrite = scriptLabRules && ["POST", "PATCH", "DELETE"].includes(request.method);
+    if (!(read && (scriptLabPage || scriptLabVerify || scriptLabRules || scriptLabBaselines || scriptLabPrepare || scriptLabReviews || scriptLabTrendFeed || scriptLabTrendMedia || scriptLabHistory || scriptLabGoogle || asset))
+      && !(request.method === "POST" && (scriptLabAccount || scriptLabPrepare || scriptLabReviews))
+      && !(scriptLabCompany && ["POST", "DELETE"].includes(request.method)) && !rulesWrite) {
+      return new NextResponse(null, { status: 404 });
+    }
+    const headers = new Headers(request.headers);
+    const customerSession = request.cookies.get(scriptLabCookie)?.value;
+    const customerCookies: string[] = [];
+    const companyCookieName = publicScriptLabHost ? SCRIPT_LAB_COMPANY_COOKIE : SESSION_COOKIE;
+    const companyCookie = request.cookies.get(companyCookieName)?.value;
+    if ((scriptLabPage || scriptLabRules || scriptLabPrepare || scriptLabReviews || scriptLabHistory) && companyCookie && /^[A-Za-z0-9_.-]{1,2048}$/.test(companyCookie)) {
+      customerCookies.push(`${publicScriptLabHost ? companyCookieName : SCRIPT_LAB_LOCAL_COMPANY_COOKIE}=${companyCookie}`);
+    }
+    const customerLanguage = request.cookies.get(scriptLabLanguageCookie)?.value;
+    headers.delete("cookie");
+    headers.delete("authorization");
+    if ((scriptLabPage || scriptLabAccount || scriptLabRules || scriptLabPrepare || scriptLabReviews || scriptLabHistory) && customerSession && /^[a-f0-9]{64}$/.test(customerSession)) {
+      customerCookies.push(`${scriptLabCookie}=${customerSession}`);
+    }
+    if ((scriptLabPage || scriptLabVerify || scriptLabHistory) && (customerLanguage === "en" || customerLanguage === "zh")) {
+      customerCookies.push(`${scriptLabLanguageCookie}=${customerLanguage}`);
+    }
+    if (customerCookies.length) headers.set("cookie", customerCookies.join("; "));
+    const response = NextResponse.next({ request: { headers } });
+    if (!asset && !scriptLabTrendMedia) response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  }
+  if (scriptLabPage || scriptLabVerify || scriptLabAccount || scriptLabRules || scriptLabBaselines || scriptLabPrepare || scriptLabReviews || scriptLabTrendFeed || scriptLabTrendMedia || scriptLabHistory || scriptLabCompany || scriptLabGoogle) return new NextResponse(null, { status: 404 });
   // Local-only AI tools preview; production authentication is unchanged.
   // Bundled open-source font files are static assets, not protected report data.
   if (/^\/fonts\/overpass\/(?:overpass-(?:400|500|600|700|800)\.ttf|OFL\.txt)$/.test(pathname)) return NextResponse.next();
@@ -37,6 +86,8 @@ export async function proxy(request: NextRequest) {
     const response=NextResponse.next();response.headers.set("Cache-Control","private, no-store");return response;
   }
   if (crawlerPattern.test(request.headers.get("user-agent") || "")) return blockedResponse();
+  if ((pathname === "/api/script-lab/company-session" && request.method === "GET")
+    || (pathname === "/api/script-lab/company-logout" && request.method === "POST")) return NextResponse.next();
   if (publicPaths.has(pathname)) return NextResponse.next();
 
   const testingScheduledPost = request.method === "POST" && (pathname === "/api/testing/readouts/refresh" || pathname === "/api/testing/social-refresh" || pathname === "/api/testing/data-refresh" || pathname === "/api/testing/history/generate");
