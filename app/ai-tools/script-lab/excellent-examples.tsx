@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Minus } from "lucide-react";
+import { CustomerAccount } from "@/app/script-lab/customer-account";
 import { Button } from "@/components/base/buttons/button";
 import { Card } from "@/components/ui/card";
+import { scriptLabSectionPath } from "@/lib/script-lab-navigation";
 import { sampleScriptBatch, sampleStoryboards, type SampleScript, type SampleStoryboard } from "@/lib/script-lab-sample-batch";
-import { batchName } from "./batch-name";
-import { parseStored, useVideoBatch, useVideoJobs } from "./use-video-jobs";
+import { parseStored, useVideoBatch } from "./use-video-jobs";
 import { readGeneratorStorage, useGeneratorStorage, writeGeneratorStorage } from "./use-generator-selection";
 import { ScriptCopy, StoryboardContent } from "./video-artifact-detail";
 import type { LocalizedText } from "@/lib/script-lab-project";
@@ -16,13 +17,14 @@ type Translate = (text: LocalizedText) => string;
 type Example = { batch_id: string; script_id: string; title: LocalizedText };
 const endpoint = (customer: boolean) => customer ? "/script-lab/reviews" : "/ai-tools/script-lab/reviews";
 
-function useExamples(customer: boolean, attempt = 0) {
+function useExamples(customer: boolean, attempt = 0, sync = true) {
   const url = endpoint(customer);
   const key = `script-lab:excellent-examples:v1:${url}`;
   const snapshot = useGeneratorStorage(key);
   const examples = useMemo(() => parseStored<Example[]>(snapshot), [snapshot]);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
+    if (!sync) return;
     const controller = new AbortController();
     const initial = readGeneratorStorage(key);
     void fetch(`${url}?view=examples`, { signal: controller.signal, cache: "no-store" })
@@ -35,22 +37,23 @@ function useExamples(customer: boolean, attempt = 0) {
         }
       }).catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
-  }, [attempt, key, url]);
+  }, [attempt, key, sync, url]);
   return { examples, failed, key };
 }
 
 export function ExampleActions({ batch, ids, customer, canManage, signIn, onSavedChange, titles, t }: {
-  batch: string; ids: string[]; customer: boolean; canManage: boolean; signIn: () => void; onSavedChange: (ids: Set<string>) => void; titles: Map<string, LocalizedText>; t: Translate;
+  batch: string; ids: string[]; customer: boolean; canManage: boolean; signIn: () => void;
+  onSavedChange?: (ids: Set<string>) => void; titles?: Map<string, LocalizedText>; t: Translate;
 }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"added" | "removed" | "error">();
   const [attempt, setAttempt] = useState(0);
 
-  const { examples, failed, key } = useExamples(customer, attempt);
+  const { examples, failed, key } = useExamples(customer, attempt, titles !== undefined);
   const saved = useMemo(() => examples && new Set(examples.filter(item => item.batch_id === batch).map(item => item.script_id)), [examples, batch]);
-  useEffect(() => { if (saved) onSavedChange(saved); }, [saved, onSavedChange]);
+  useEffect(() => { if (saved) onSavedChange?.(saved); }, [saved, onSavedChange]);
 
-  const addable = saved ? ids.filter(id => !saved.has(id)) : [];
+  const addable = saved && titles ? ids.filter(id => !saved.has(id)) : [];
   const removable = saved ? ids.filter(id => saved.has(id)) : [];
 
   async function save(add: boolean, targets: string[]) {
@@ -66,7 +69,7 @@ export function ExampleActions({ batch, ids, customer, canManage, signIn, onSave
       const latest = parseStored<Example[]>(readGeneratorStorage(key)) ?? [];
       const next = latest.filter(item => item.batch_id !== batch || !targets.includes(item.script_id));
       if (add) targets.forEach(id => {
-        const title = titles.get(id);
+        const title = titles?.get(id);
         if (title) next.unshift({ batch_id: batch, script_id: id, title });
       });
       writeGeneratorStorage(key, JSON.stringify(next));
@@ -97,23 +100,13 @@ export function ExampleActions({ batch, ids, customer, canManage, signIn, onSave
   </div>;
 }
 
-export function ExcellentExamples({ customer, t }: { customer: boolean; t: Translate }) {
+export function ExcellentExamples({ customer, canManage, t }: { customer: boolean; canManage: boolean; t: Translate }) {
   const { examples, failed } = useExamples(customer);
-  const jobs = useVideoJobs(customer);
-  const [selectedBatch, setSelectedBatch] = useState<string>();
-  const [selectedScript, setSelectedScript] = useState<string>();
-  const grouped = new Map<string, Example[]>();
-  for (const example of examples ?? []) {
-    const group = grouped.get(example.batch_id);
-    if (group) group.push(example);
-    else grouped.set(example.batch_id, [example]);
-  }
-  const batchDates = new Map(jobs.map(job => [job.batch_id, job.finished_at ?? job.submitted_at]));
-  const batchIds = [...grouped.keys()].sort((a, b) =>
-    (Date.parse(batchDates.get(b) ?? "") || 0) - (Date.parse(batchDates.get(a) ?? "") || 0));
-  const batchId = selectedBatch && grouped.has(selectedBatch) ? selectedBatch : batchIds[0];
-  const scripts = grouped.get(batchId) ?? [];
-  const selected = scripts.find(item => item.script_id === selectedScript) ?? scripts[0];
+  const [selection, setSelection] = useState<Example>();
+  const [loginPrompt, setLoginPrompt] = useState(0);
+  const selected = examples?.find(item =>
+    item.batch_id === selection?.batch_id && item.script_id === selection?.script_id) ?? examples?.[0];
+  const batchId = selected?.batch_id;
   const { batch: loaded, failed: unavailable } = useVideoBatch(customer,
     batchId && batchId !== sampleScriptBatch.id ? batchId : null);
 
@@ -128,40 +121,34 @@ export function ExcellentExamples({ customer, t }: { customer: boolean; t: Trans
       : examples ? t(["No excellent examples yet.", "暂无优秀案例。"]) : t(["Loading examples…", "正在读取优秀案例…"])}</p>
   </Card>;
 
-  return <section className={styles.candidateScriptGroup} aria-label={t(["Batches", "批次"])}>
-    <h2 className={styles.candidateGroupHeading}>{t(["Batches", "批次"])}</h2>
-    <div className={styles.scriptBatchList} role="group" aria-label={t(["Example batches", "案例批次"])}>
-      {batchIds.map((id, index) => {
-        const date = batchDates.get(id);
-        return <button key={id} type="button" aria-pressed={id === batchId} aria-controls="excellent-example-scripts"
-          onClick={() => { setSelectedBatch(id); setSelectedScript(undefined); }}>
-          <strong>{date ? <time dateTime={date}>{batchName(date)}</time>
-            : t([`Batch ${index + 1}`, `批次 ${index + 1}`])}</strong>
-        </button>;
-      })}
+  return <section className={styles.scriptCandidateStack} aria-label={t(["Excellent examples", "优秀案例"])}>
+    <div className={styles.exampleScriptList} role="group" aria-label={t(["Example scripts", "案例剧本"])}>
+      {examples?.map(item => <button key={`${item.batch_id}:${item.script_id}`} type="button"
+        aria-pressed={item.batch_id === selected.batch_id && item.script_id === selected.script_id}
+        aria-controls="excellent-example-detail" onClick={() => setSelection(item)}>
+        <strong>{t(item.title)}</strong>
+      </button>)}
     </div>
-    <Card id="excellent-example-scripts" className={`${styles.panel} ${styles.candidateTabPanel}`}>
-      <h2>{t([`Scripts (${scripts.length})`, `剧本名单（${scripts.length} 条）`])}</h2>
-      <div className={styles.scriptNames} role="group" aria-label={t(["Example scripts", "案例剧本"])}>
-        {scripts.map(item => <button key={item.script_id} type="button" aria-pressed={item.script_id === selected.script_id}
-          aria-controls="excellent-example-detail" onClick={() => { setSelectedBatch(batchId); setSelectedScript(item.script_id); }}>
-          <strong>{t(item.title)}</strong>
-        </button>)}
-      </div>
-      <Card id="excellent-example-detail" className={`${styles.panel} ${styles.candidateTabPanel}`}>
+    <Card id="excellent-example-detail" className={styles.panel}>
+      <div className={styles.scriptDetailHeader}>
         <h2>{t(selected.title)}</h2>
-        {script ? <div className={styles.storyboardSections}>
-          <section><h3>{t(["Combination elements", "组合元素"])}</h3>
-            <p>{script.combination.map(value => t(value.label)).join(" × ")}</p>
-          </section>
-          <section><h3>{t(["Opening hook", "开头 Hook"])}</h3><ScriptCopy copy={script.copy.hook} language={script.language} t={t} /></section>
-          <section><h3>{t(["Script text", "剧本正文"])}</h3><ScriptCopy copy={script.copy.body} language={script.language} t={t} /></section>
-          <section><h3>{t(["Closing CTA", "结尾 CTA"])}</h3><ScriptCopy copy={script.copy.cta} language={script.language} t={t} /></section>
-          {board && <StoryboardContent storyboard={board} t={t} />}
-        </div> : <p role="status">{unavailable || loaded || demo
-          ? t(["This example is unavailable.", "无法读取这个案例。"]) : t(["Loading example…", "正在读取案例…"])}</p>}
-      </Card>
+        <ExampleActions batch={selected.batch_id} ids={[selected.script_id]} customer={customer}
+          canManage={canManage} signIn={() => setLoginPrompt(value => value + 1)} t={t} />
+      </div>
+      {script ? <div className={styles.storyboardSections}>
+        <section><h3>{t(["Combination elements", "组合元素"])}</h3>
+          <p>{script.combination.map(value => t(value.label)).join(" × ")}</p>
+        </section>
+        <section><h3>{t(["Opening hook", "开头 Hook"])}</h3><ScriptCopy copy={script.copy.hook} language={script.language} t={t} /></section>
+        <section><h3>{t(["Script text", "剧本正文"])}</h3><ScriptCopy copy={script.copy.body} language={script.language} t={t} /></section>
+        <section><h3>{t(["Closing CTA", "结尾 CTA"])}</h3><ScriptCopy copy={script.copy.cta} language={script.language} t={t} /></section>
+        {board && <StoryboardContent storyboard={board} t={t} />}
+      </div> : <p role="status">{unavailable || loaded || demo
+        ? t(["This example is unavailable.", "无法读取这个案例。"]) : t(["Loading example…", "正在读取案例…"])}</p>}
     </Card>
+    {customer && loginPrompt > 0 && <div hidden>
+      <CustomerAccount key={loginPrompt} email={null} autoOpen returnTo={scriptLabSectionPath("examples", true)} />
+    </div>}
   </section>;
 }
 

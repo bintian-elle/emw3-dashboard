@@ -97,7 +97,7 @@ export default function ScriptLabWorkbench({ project, publicView, canManageRules
 
     {section === "generator" && <ScriptGenerator customer={publicView} canManage={canManageRules} pending={projectLoading} selectionScope={selectionScope} t={t} />}
 
-    {section === "examples" && <ExcellentExamples customer={publicView} t={t} />}
+    {section === "examples" && <ExcellentExamples customer={publicView} canManage={canManageRules} t={t} />}
     {section === "rules" && <RuleLibrary customer={publicView} canManage={canManageRules} sourceUrl={ruleSourceUrl} t={t} />}
 
     {section === "trends" && <TrendReferences customer={publicView} t={t} />}
