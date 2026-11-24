@@ -28,7 +28,7 @@ const marketNames: Record<typeof trendMarkets[number], LocalizedText> = {
 function Preview({ item, customer, t }: { item: TrendItem; customer: boolean; t: Translate }) {
   const ref = useRef<HTMLVideoElement>(null);
   const video = item.kind === "ad"
-    ? item.mediaId && `${customer ? "/script-lab" : "/api/script-lab"}/trend-media/${item.mediaId}`
+    ? item.video ?? (item.mediaId && `${customer ? "/script-lab" : "/api/script-lab"}/trend-media/${item.mediaId}`)
     : item.video;
   function stop() {
     const player = ref.current;
@@ -220,7 +220,7 @@ export function TrendReferences({ customer, t }: { customer: boolean; t: Transla
           <CreativeSummary item={item} t={t} />
           <div className={styles.actions}>
             {item.kind !== "ad" && <a href={item.url} target="_blank" rel="noreferrer">{t(["View post", "查看原帖"])} <ExternalLink size={13} /></a>}
-            {item.kind === "ad" && !item.videoAnalysis && <span>{item.mediaId
+            {item.kind === "ad" && !item.videoAnalysis && <span>{item.video || item.mediaId
               ? t(["Video analysis pending", "视频分析待生成"])
               : t(["Awaiting verified video", "视频待核实"])}</span>}
           </div>
