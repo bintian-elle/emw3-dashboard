@@ -75,6 +75,7 @@ function CreativeSummary({ item, t }: { item: TrendItem; t: Translate }) {
   const id = useId();
   const hook = item.hook ? t(item.hook) : "";
   const takeaway = item.takeaway ? t(item.takeaway) : "";
+  const sourceBreakdown = item.videoAnalysis?.sourceBreakdown;
   const hookLabel = item.analysisBasis === "cover" ? t(["Cover hook", "封面钩子"]) : t(["Hook", "开头钩子"]);
 
   useEffect(() => {
@@ -98,6 +99,18 @@ function CreativeSummary({ item, t }: { item: TrendItem; t: Translate }) {
           <dt>{t(["Pacing", "节奏"])}</dt><dd>{t(item.videoAnalysis.pacing)}</dd>
           <dt>{t(["On-screen text", "画面字幕"])}</dt><dd>{t(item.videoAnalysis.captions)}</dd>
         </dl>}
+        {expanded && sourceBreakdown && <section className={styles.sourceBreakdown}>
+          <h3>{t(["Original ad script", "原广告剧本"])}</h3>
+          <p>{t(sourceBreakdown.script)}</p>
+          <h3>{t(["Original ad storyboard", "原广告分镜"])}</h3>
+          <ol>
+            {sourceBreakdown.storyboard.map(scene => <li key={scene.time}>
+              <strong>{scene.time}</strong>
+              <p>{t(scene.visual)}</p>
+              <p>{t(scene.copy)}</p>
+            </li>)}
+          </ol>
+        </section>}
       </div>
       {(expanded || clipped || item.videoAnalysis) && <button type="button" className={styles.loadMore}
         aria-controls={id} aria-expanded={expanded}

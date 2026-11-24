@@ -25,6 +25,10 @@ export type TrendItem = {
     shots: [string, string];
     pacing: [string, string];
     captions: [string, string];
+    sourceBreakdown?: {
+      script: [string, string];
+      storyboard: { time: string; visual: [string, string]; copy: [string, string] }[];
+    };
   };
   searchAnalysis?: {
     connection: [string, string];
