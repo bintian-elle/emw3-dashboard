@@ -9,3 +9,5 @@
 @media (max-width:400px) { .link { width:5.75rem; } .image { width:14rem; } }
 @container nova-workspace (max-width:480px) { .link { width:5.75rem; } .image { width:14rem; } }
 @media (prefers-reduced-motion:reduce) { .image { display:none; } .static { display:block; } }
+.still .image { position:static; display:block; width:calc(100% - .5rem); height:auto; transform:none; }
+.still .static { display:none; }
