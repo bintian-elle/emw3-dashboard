@@ -15,6 +15,37 @@ MARKETS = {'GB': '2826', 'DE': '2276', 'FR': '2250', 'NL': '2528',
 FIRST_DAY = date(2026, 10, 26)
 
 
+def collect_funnel(daily, config, period, exports):
+    source = {'sessions': 'sessions', 'addToCarts': 'addToCart', 'checkouts': 'beginCheckout'}
+    response = daily.cli(config, 'ga4', ['reports', 'query'], {
+        'period': period, 'dimensions': ['date', 'countryId'], 'metrics': list(source),
+        'dimensionFilter': {'filter': {'fieldName': 'countryId', 'inListFilter': {'values': list(MARKETS)}}},
+        'max_rows': 1000,
+    })
+    metadata = response.get('response_metadata', {})
+    if (response.get('includes_incomplete_day') or metadata.get('subjectToThresholding')
+            or metadata.get('samplingMetadatas') or metadata.get('dataLossFromOtherRow')):
+        raise ValueError('Incomplete or restricted GA4 funnel data')
+    totals = {}
+    for row in daily.business_rows(response, exports):
+        raw_date = row['date']
+        if not isinstance(raw_date, str) or len(raw_date) != 8 or not raw_date.isdigit():
+            raise ValueError('Unexpected GA4 report date')
+        day = f'{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:]}'
+        country = row['countryId']
+        key = (day, country)
+        if key in totals or country not in MARKETS or not period['start'] <= day < period['end']:
+            raise ValueError('Unexpected GA4 market or date')
+        metrics = {}
+        for name, field in source.items():
+            value = daily.number(row[name])
+            if value is None or value < 0 or value != value.to_integral_value():
+                raise ValueError('Invalid GA4 funnel count')
+            metrics[field] = int(value)
+        totals[key] = metrics
+    return totals
+
+
 def collect(daily, config, start, end):
     period = {'start': str(start), 'end': str(end + timedelta(days=1))}
     fields = ['segments.date', 'user_location_view.country_criterion_id']
@@ -59,6 +90,7 @@ def collect(daily, config, start, end):
         shop_days[str(current)] = by_day(shop['data']['rows'], 'shipping_country_code')
         current += timedelta(days=1)
 
+    funnel = collect_funnel(daily, config, period, exports)
     for country, criterion in MARKETS.items():
         spend = google_by_day(google_spend, criterion, 'costMicros')
         purchase_value = google_by_day(google_sales, criterion, 'conversionsValue')
@@ -78,8 +110,9 @@ def collect(daily, config, start, end):
                       daily.number(s['orders']) if s else Decimal(0)]
             if any(value is None for value in values):
                 raise ValueError('Missing metric in a source row')
-            yield dict(zip(('date', 'market', 'googleSpend', 'googleRevenue', 'metaSpend', 'metaRevenue',
+            row = dict(zip(('date', 'market', 'googleSpend', 'googleRevenue', 'metaSpend', 'metaRevenue',
                             'shopifySales', 'orders'), (day, country, *(float(v) if v is not None else None for v in values))))
+            yield row | funnel.get((day, country), {'sessions': None, 'addToCart': None, 'beginCheckout': None})
             current += timedelta(days=1)
 
 
@@ -101,6 +134,10 @@ def main():
         previous = daily.read_json(args.output)
         start = args.start or (max(FIRST_DAY, min(end, date.fromisoformat(previous['through'])) - timedelta(days=6))
                                if previous else FIRST_DAY)
+        if previous and not args.start:
+            missing_days = [date.fromisoformat(row['date']) for row in previous['rows']
+                            if 'sessions' not in row and row['date'] <= str(end)]
+            start = min([start, *missing_days])
         if not FIRST_DAY <= start <= end <= last_closed:
             parser.error('Requested period must be between campaign launch and the last closed Pacific day')
         config = daily.load_config()

@@ -49,3 +49,7 @@
 .askDockSlot[hidden] { display:none; }
 .askDockSlot .askDockPanel { height:100%; }
 .aiAnswerText { white-space: pre-wrap; }
+.chartHeader, .chartFilters { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; }
+.chartHeader { justify-content:space-between; margin-bottom:.55rem; }
+.chartHeader h3 { margin:0; }
+.chartFilters { min-width:0; }
