@@ -91,7 +91,14 @@ function CreativeSummary({ item, t }: { item: TrendItem; t: Translate }) {
   return <div className={styles.summary} data-expanded={expanded}>
     <h2 title={item.title}>{item.rank ? `#${item.rank} ` : ""}{item.title}</h2>
     <div>
-      <div ref={body} id={id}>
+      <div
+        ref={body}
+        id={id}
+        className={expanded ? styles.expandedSummary : undefined}
+        role={expanded ? "region" : undefined}
+        tabIndex={expanded ? 0 : undefined}
+        aria-label={expanded ? t([`${item.title} analysis`, `${item.title} 创意分析`]) : undefined}
+      >
         {hook && <p><b>{hookLabel}</b> {hook}</p>}
         {takeaway && <p><b>{t(["Adaptation", "可借鉴点"])}</b> {takeaway}</p>}
         {expanded && item.videoAnalysis && <dl className={styles.analysisDetails}>

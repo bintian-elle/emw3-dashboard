@@ -65,6 +65,13 @@
 .summary[data-expanded="false"] p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .summary p + p { margin-top: .3rem; }
 .summary b { color: var(--trend-accent); font-weight: 600; }
+.expandedSummary {
+  max-block-size: min(22rem, 45dvh);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-inline-end: .45rem;
+}
+.expandedSummary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: .15rem; }
 .summary .analysisDetails { margin-top: .5rem; font-size: .8125rem; overflow-wrap: anywhere; }
 .sourceBreakdown { margin-top: .75rem; border-top: 1px solid var(--border); padding-top: .65rem; overflow-wrap: anywhere; }
 .sourceBreakdown h3 { margin: 0 0 .3rem; color: var(--foreground); font-size: .875rem; font-weight: 700; }
