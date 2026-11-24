@@ -121,15 +121,15 @@ export function ExcellentExamples({ customer, canManage, t }: { customer: boolea
       : examples ? t(["No excellent examples yet.", "暂无优秀案例。"]) : t(["Loading examples…", "正在读取优秀案例…"])}</p>
   </Card>;
 
-  return <section className={styles.scriptCandidateStack} aria-label={t(["Excellent examples", "优秀案例"])}>
-    <div className={styles.exampleScriptList} role="group" aria-label={t(["Example scripts", "案例剧本"])}>
+  return <section className={styles.candidateScriptGroup} aria-label={t(["Excellent examples", "优秀案例"])}>
+    <div className={styles.scriptNames} role="group" aria-label={t(["Example scripts", "案例剧本"])}>
       {examples?.map(item => <button key={`${item.batch_id}:${item.script_id}`} type="button"
         aria-pressed={item.batch_id === selected.batch_id && item.script_id === selected.script_id}
         aria-controls="excellent-example-detail" onClick={() => setSelection(item)}>
         <strong>{t(item.title)}</strong>
       </button>)}
     </div>
-    <Card id="excellent-example-detail" className={styles.panel}>
+    <Card id="excellent-example-detail" className={`${styles.panel} ${styles.candidateTabPanel}`}>
       <div className={styles.scriptDetailHeader}>
         <h2>{t(selected.title)}</h2>
         <ExampleActions batch={selected.batch_id} ids={[selected.script_id]} customer={customer}
