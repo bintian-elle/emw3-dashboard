@@ -146,19 +146,25 @@ export function LocalizationReview({ snapshot }: { snapshot: MarketSnapshot | nu
   const label = (market: Market) => markets[market][zh ? 1 : 0];
   const [reviewMarket, setReviewMarket] = useState<Market>("NL");
   const rows = snapshot?.rows.filter(row => row.market === reviewMarket) ?? [];
-  const daysBetween = (later: string, earlier: string) => Math.round((Date.parse(later) - Date.parse(earlier)) / 86_400_000);
-  const maxDays = Math.max(0, Math.min(daysBetween(launch, firstDay), daysBetween(snapshot?.through ?? launch, launch)));
-  const [windowDays, setWindowDays] = useState(7);
-  const days = Math.min(windowDays, maxDays);
+  const maxDays = Math.round((Date.parse(launch) - Date.parse(firstDay)) / 86_400_000);
+  const [days, setWindowDays] = useState(7);
+  const dayLabel = `${days} ${days === 1 ? "day" : "days"}`;
+  const availableDates = new Set(rows.map(row => row.date));
   const offsets = Array.from({ length: days }, (_, index) => index + 1);
   const groups = [
     { offsets: offsets.map(offset => offset - days - 1), title: t("Pre-launch summary", "上线前汇总") },
     { offsets, title: t("Post-launch summary", "上线后汇总") },
   ].map(({ offsets, title }) => {
     const dates = offsets.map(offset => dayOffset(launch, offset));
+    const available = dates.filter(date => availableDates.has(date));
+    const covered = available.length;
     return { title, records: [
-      ...dates.map(date => ({ label: date, totals: summarize(rows, date, date), summary: false })),
-      { label: title, totals: dates.length ? summarize(rows, dates[0], dates[dates.length - 1]) : summarize([], launch, launch), summary: true },
+      ...dates.map(date => ({ label: date, totals: availableDates.has(date) ? summarize(rows, date, date) : null, summary: false })),
+      {
+        label: covered === days ? title : t(`${title} (${covered}/${days} days)`, `${title}（${covered}/${days} 天）`),
+        totals: covered ? summarize(rows, available[0], available[covered - 1]) : null,
+        summary: true,
+      },
     ] };
   });
 
@@ -177,27 +183,30 @@ export function LocalizationReview({ snapshot }: { snapshot: MarketSnapshot | nu
     </header>
       <section id="localization-review" className={styles.panel} aria-labelledby="localization-review-title">
         <header className={styles.panelHeader}>
-          <div><h2 id="localization-review-title">{label(reviewMarket)} · {t("Before and after launch", "上线前后对比")}</h2><p>{t(`November 13 launch · ${days} complete days on each side`, `11 月 13 日上线 · 对比前后各 ${days} 个完整日`)}</p></div>
-          {maxDays > 0 && <form key={maxDays} className={styles.chartFilters} onSubmit={event => {
-            event.preventDefault();
-            const value = Number(new FormData(event.currentTarget).get("days"));
-            if (Number.isInteger(value) && value >= 1 && value <= maxDays) setWindowDays(value);
-          }}>
-            <label htmlFor="localization-window-days" className={nova.periodLabel}>
-              {t(`Days on each side (1–${maxDays})`, `上线前后各几天（1–${maxDays}）`)}
-            </label>
-            <input id="localization-window-days" className={`${nova.selectTrigger} ${styles.windowDaysInput}`}
-              name="days" type="number" min={1} max={maxDays} step={1} required defaultValue={days} />
-            <NovaButton type="submit" variant="outline">{t("Apply", "应用")}</NovaButton>
-          </form>}
+          <div><h2 id="localization-review-title">{label(reviewMarket)} · {t("Before and after launch", "上线前后对比")}</h2><p>{t(`November 13 launch · ${dayLabel} on each side`, `11 月 13 日上线 · 对比前后各 ${days} 天`)}</p></div>
+          <div className={styles.reviewWindow}>
+            <div className={styles.reviewWindowLabel}>
+              <label htmlFor="localization-window-days" className={nova.periodLabel}>
+                {t("Days on each side", "上线前后各几天")}
+              </label>
+              <span aria-hidden="true">{t(dayLabel, `${days} 天`)}</span>
+            </div>
+            <input id="localization-window-days" type="range" min={1} max={maxDays} step={1} value={days}
+              aria-valuetext={t(`${dayLabel} on each side`, `上线前后各 ${days} 天`)}
+              onChange={event => setWindowDays(event.currentTarget.valueAsNumber)} />
+            <div className={styles.reviewWindowLabel} aria-hidden="true"><span>1</span><span>{maxDays}</span></div>
+          </div>
         </header>
         <div className={styles.tableWrap} tabIndex={0} role="region" aria-labelledby="localization-review-title">
           <table>
             <thead><tr><th scope="col">{t("Date", "日期")}</th>{reviewColumns.map(([key, name]) => <th key={key} scope="col">{name}</th>)}</tr></thead>
             {groups.map(({ title, records }) => <tbody key={title}>
               {records.map(({ label, totals, summary }) => <tr key={label} className={summary ? styles.reviewSummary : undefined}>
-                <th scope="row">{label}</th><td>{formatMoney(totals.spend)}</td><td>{formatMoney(totals.sales)}</td>
-                <td>{formatCount(totals.orders)}</td><td>{formatPercent(totals.cvr)}</td><td>{formatRatio(totals.roas)}</td>
+                <th scope="row">{label}</th>
+                {totals ? <>
+                  <td>{formatMoney(totals.spend)}</td><td>{formatMoney(totals.sales)}</td><td>{formatCount(totals.orders)}</td>
+                  <td>{formatPercent(totals.cvr)}</td><td>{formatRatio(totals.roas)}</td>
+                </> : reviewColumns.map(([key]) => <td key={key}>N/A</td>)}
               </tr>)}
             </tbody>)}
           </table>
