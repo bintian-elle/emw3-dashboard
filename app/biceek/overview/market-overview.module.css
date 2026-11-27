@@ -53,3 +53,5 @@
 .chartHeader { justify-content:space-between; margin-bottom:.55rem; }
 .chartHeader h3 { margin:0; }
 .chartFilters { min-width:0; }
+
+.windowDaysInput { width: 5rem; }

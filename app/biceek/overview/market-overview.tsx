@@ -148,7 +148,6 @@ export function LocalizationReview({ snapshot }: { snapshot: MarketSnapshot | nu
   const rows = snapshot?.rows.filter(row => row.market === reviewMarket) ?? [];
   const daysBetween = (later: string, earlier: string) => Math.round((Date.parse(later) - Date.parse(earlier)) / 86_400_000);
   const maxDays = Math.max(0, Math.min(daysBetween(launch, firstDay), daysBetween(snapshot?.through ?? launch, launch)));
-  const windows = [...new Set([3, 7, 14, maxDays].filter(days => days > 0 && days <= maxDays))];
   const [windowDays, setWindowDays] = useState(7);
   const days = Math.min(windowDays, maxDays);
   const offsets = Array.from({ length: days }, (_, index) => index + 1);
@@ -179,9 +178,18 @@ export function LocalizationReview({ snapshot }: { snapshot: MarketSnapshot | nu
       <section id="localization-review" className={styles.panel} aria-labelledby="localization-review-title">
         <header className={styles.panelHeader}>
           <div><h2 id="localization-review-title">{label(reviewMarket)} · {t("Before and after launch", "上线前后对比")}</h2><p>{t(`November 13 launch · ${days} complete days on each side`, `11 月 13 日上线 · 对比前后各 ${days} 个完整日`)}</p></div>
-          {windows.length > 0 && <NovaReportingPeriodSelect ariaLabel={t("Days before and after launch", "上线前后天数")}
-            value={String(days)} onValueChange={value => setWindowDays(Number(value))}
-            options={windows.map(value => [String(value), t(`${value} days each`, `前后各 ${value} 天`)])} />}
+          {maxDays > 0 && <form key={maxDays} className={styles.chartFilters} onSubmit={event => {
+            event.preventDefault();
+            const value = Number(new FormData(event.currentTarget).get("days"));
+            if (Number.isInteger(value) && value >= 1 && value <= maxDays) setWindowDays(value);
+          }}>
+            <label htmlFor="localization-window-days" className={nova.periodLabel}>
+              {t(`Days on each side (1–${maxDays})`, `上线前后各几天（1–${maxDays}）`)}
+            </label>
+            <input id="localization-window-days" className={`${nova.selectTrigger} ${styles.windowDaysInput}`}
+              name="days" type="number" min={1} max={maxDays} step={1} required defaultValue={days} />
+            <NovaButton type="submit" variant="outline">{t("Apply", "应用")}</NovaButton>
+          </form>}
         </header>
         <div className={styles.tableWrap} tabIndex={0} role="region" aria-labelledby="localization-review-title">
           <table>
